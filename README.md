@@ -6,8 +6,8 @@ A comprehensive collection of hierarchical AI agents and reusable skills for Cla
 
 This project provides:
 
-- **19 Specialized Agents** - Senior (opus) and Standard (sonnet) pairs across 9 domains, plus a Tech Lead
-- **45 Reusable Skills** - Modular capabilities that agents can leverage
+- **20 Specialized Agents** - Senior (opus) and Standard (sonnet) pairs across 9 domains, plus Tech Lead and Doc Editor
+- **46 Reusable Skills** - Modular capabilities that agents can leverage
 
 ## Why Agents + Skills?
 
@@ -199,9 +199,10 @@ Each domain has two agents with distinct responsibilities:
 
 ### Special Agents
 
-| Agent       | Model | Purpose                                                            |
-| ----------- | ----- | ------------------------------------------------------------------ |
-| `tech-lead` | opus  | Cross-functional coordination, project planning, work distribution |
+| Agent        | Model | Purpose                                                            |
+| ------------ | ----- | ------------------------------------------------------------------ |
+| `tech-lead`  | opus  | Cross-functional coordination, project planning, work distribution |
+| `doc-editor` | haiku | Markdown linting, formatting fixes, documentation consistency      |
 
 ### When to Use Senior Agents (opus)
 
@@ -264,6 +265,7 @@ Skills provide modular capabilities that agents can invoke. They are loaded dyna
 | `technical-writing` | Clear prose, audience-aware docs, structure     |
 | `diagramming`       | Mermaid diagrams, architecture, sequences, ERDs |
 | `api-documentation` | OpenAPI specs, endpoint docs, SDK documentation |
+| `md-tables`         | Markdown table alignment and spacing fixes      |
 
 ### QA & Testing
 
