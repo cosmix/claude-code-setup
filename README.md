@@ -29,13 +29,13 @@ Skills are loaded dynamically based on the task. A `software-engineer` agent wor
 
 Subagents can run in parallel (up to 10 concurrent). A single prompt like "refactor authentication across all services" can spawn multiple agents working simultaneously on different files, dramatically reducing total time.
 
-> **Learn more**: [Subagents Documentation](https://docs.anthropic.com/en/docs/claude-code/sub-agents) · [Agent Skills Blog Post](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+> **Learn more**: [Subagents Documentation](https://code.claude.com/docs/en/sub-agents) · [Agent Skills Blog Post](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
 
 ## Installation
 
 ### Prerequisites
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and configured
+- [Claude Code CLI](https://code.claude.com/docs/en/overview) installed and configured
 
 ### Install Agents & Skills
 
@@ -53,9 +53,9 @@ cp -r agents /path/to/your/project/.claude/
 cp -r skills /path/to/your/project/.claude/
 ```
 
-### Configure Agent Orchestration
+### Configure CLAUDE.md
 
-Add the orchestration rules to your user-level CLAUDE.md to enable intelligent parallel agent usage:
+Add these rules to your user-level CLAUDE.md to enable intelligent agent orchestration and enforce development best practices:
 
 ```bash
 # Create or append to your CLAUDE.md
@@ -151,11 +151,11 @@ claude
 
 > **Official Documentation**:
 >
-> - [Subagents Guide](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
-> - [Skills Introduction](https://www.anthropic.com/news/skills)
+> - [Subagents Guide](https://code.claude.com/docs/en/sub-agents)
+> - [Skills Introduction](https://claude.com/blog/skills)
 > - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
 
-## How the CLAUDE.md Orchestration Works
+## How the CLAUDE.md Configuration Works
 
 The CLAUDE.md instructions you add to `~/.claude/CLAUDE.md` become part of Claude's system context. They guide Claude to:
 
@@ -408,9 +408,9 @@ Concrete examples.
 
 ## Further Reading
 
-- [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
-- [Subagents Deep Dive](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
-- [Agent Skills Introduction](https://www.anthropic.com/news/skills)
+- [Claude Code Documentation](https://code.claude.com/docs/en/overview)
+- [Subagents Deep Dive](https://code.claude.com/docs/en/sub-agents)
+- [Agent Skills Introduction](https://claude.com/blog/skills)
 - [Building Agents with Claude Agent SDK](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk)
 - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
 
