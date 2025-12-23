@@ -1,14 +1,16 @@
 ---
 name: terraform
-description: Creates and manages Infrastructure as Code using Terraform for cloud resource provisioning. Trigger keywords: terraform, infrastructure, IaC, provision, cloud, aws, azure, gcp, module.
+description: Creates and manages Infrastructure as Code using Terraform/OpenTofu for cloud resource provisioning. Trigger keywords: terraform, opentofu, tofu, infrastructure, IaC, provision, cloud, aws, azure, gcp, module.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-# Terraform
+# Terraform / OpenTofu
 
 ## Overview
 
-This skill covers Terraform configuration for infrastructure provisioning across cloud providers. It includes module design, state management, and infrastructure best practices.
+This skill covers Terraform and OpenTofu configuration for infrastructure provisioning across cloud providers. It includes module design, state management, and infrastructure best practices.
+
+**Preferred Tool: OpenTofu** - OpenTofu is the open-source fork of Terraform maintained by the Linux Foundation. Prefer `tofu` commands over `terraform` when available. The syntax and configuration are fully compatible.
 
 ## Instructions
 
@@ -46,9 +48,20 @@ This skill covers Terraform configuration for infrastructure provisioning across
 2. **Remote State**: Store state in S3/GCS with locking
 3. **Variables**: Parameterize everything
 4. **Workspaces**: Separate environments
-5. **Formatting**: Use `terraform fmt`
-6. **Validation**: Use `terraform validate`
-7. **Plan Before Apply**: Always review changes
+5. **Formatting**: Use `tofu fmt` (or `terraform fmt`)
+6. **Validation**: Use `tofu validate` (or `terraform validate`)
+7. **Plan Before Apply**: Always review changes with `tofu plan`
+
+## OpenTofu vs Terraform Commands
+
+| Terraform            | OpenTofu (Preferred) |
+| -------------------- | -------------------- |
+| `terraform init`     | `tofu init`          |
+| `terraform plan`     | `tofu plan`          |
+| `terraform apply`    | `tofu apply`         |
+| `terraform destroy`  | `tofu destroy`       |
+| `terraform fmt`      | `tofu fmt`           |
+| `terraform validate` | `tofu validate`      |
 
 ## Examples
 

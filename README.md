@@ -126,17 +126,17 @@ With orchestration rules, Claude will:
 
 Each domain has two agents with distinct responsibilities:
 
-| Domain               | Senior (opus)                    | Standard (sonnet)         |
-| -------------------- | -------------------------------- | ------------------------- |
-| Software Engineering | `senior-software-engineer`       | `software-engineer`       |
-| Security             | `security-engineer` (single agent) | —                       |
-| Machine Learning     | `senior-ml-engineer`             | `ml-engineer`             |
-| Infrastructure       | `senior-infrastructure-engineer` | `infrastructure-engineer` |
-| Product Design       | `senior-product-designer`        | `product-designer`        |
-| Analytics            | `senior-data-analyst`            | `data-analyst`            |
-| Quality Assurance    | `senior-qa-engineer`             | `qa-engineer`             |
-| Data Engineering     | `senior-data-engineer`           | `data-engineer`           |
-| Technical Writing    | `senior-technical-writer`        | `technical-writer`        |
+| Domain               | Senior (opus)                      | Standard (sonnet)         |
+| -------------------- | ---------------------------------- | ------------------------- |
+| Software Engineering | `senior-software-engineer`         | `software-engineer`       |
+| Security             | `security-engineer` (single agent) | —                         |
+| Machine Learning     | `senior-ml-engineer`               | `ml-engineer`             |
+| Infrastructure       | `senior-infrastructure-engineer`   | `infrastructure-engineer` |
+| Product Design       | `senior-product-designer`          | `product-designer`        |
+| Analytics            | `senior-data-analyst`              | `data-analyst`            |
+| Quality Assurance    | `senior-qa-engineer`               | `qa-engineer`             |
+| Data Engineering     | `senior-data-engineer`             | `data-engineer`           |
+| Technical Writing    | `senior-technical-writer`          | `technical-writer`        |
 
 ### Special Agents
 
