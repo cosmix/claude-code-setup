@@ -6,29 +6,47 @@
 
 These rules are **NON-NEGOTIABLE** and apply to the main agent AND all subagents. Violations are unacceptable.
 
-### 1. NEVER Use CLI Commands for File Operations
+### 1. STOP! Use Native Tools, NOT CLI Commands
 
-**DO NOT USE** these commands under any circumstances:
+**⛔ BEFORE EVERY BASH COMMAND, ASK YOURSELF: "Can a native tool do this?"**
 
-- `cat`, `head`, `tail` → Use the **Read** tool
-- `grep`, `rg`, `ag` → Use the **Grep** tool
-- `find`, `ls`, `fd` → Use the **Glob** tool
-- `sed`, `awk` → Use the **Edit** tool
-- `echo >`, `cat <<EOF`, `printf >` → Use the **Write** tool
-- `curl`, `wget` (for fetching) → Use the **WebFetch** tool
+**BANNED COMMANDS** — These are **FORBIDDEN**. Do NOT use them:
 
-**WHY THIS MATTERS**: Native tools are faster, provide better output formatting, handle errors gracefully, and integrate properly with the Claude Code system. CLI commands bypass these benefits and produce inferior results.
+| ❌ BANNED                                | ✅ USE INSTEAD    |
+| ---------------------------------------- | ----------------- |
+| `cat`, `head`, `tail`, `less`, `more`    | **Read** tool     |
+| `grep`, `rg`, `ag`, `ack`                | **Grep** tool     |
+| `find`, `ls`, `fd`, `tree`               | **Glob** tool     |
+| `sed`, `awk`, `perl -pe`                 | **Edit** tool     |
+| `echo >`, `cat <<EOF`, `printf >`, `tee` | **Write** tool    |
+| `curl`, `wget`                           | **WebFetch** tool |
 
-**THE ONLY EXCEPTIONS**:
+**THIS IS NOT A SUGGESTION. These commands are BANNED.**
 
-- Actual shell operations: `git`, `npm`, `docker`, `make`, `cargo`, etc.
-- Complex piped sequences that genuinely require shell orchestration
-- When the user explicitly requests CLI usage
+If you catch yourself typing `cat file.txt`, STOP. Use `Read`.
+If you catch yourself typing `grep pattern`, STOP. Use `Grep`.
+If you catch yourself typing `find . -name`, STOP. Use `Glob`.
 
-**WHEN YOU MUST USE CLI** (for allowed operations):
+**THE ONLY EXCEPTIONS** (must meet ALL criteria):
 
-- ALWAYS use `rg` over `grep`
-- ALWAYS use `fd` over `find`
+1. Actual shell operations that have no native equivalent: `git`, `npm`, `docker`, `make`, `cargo`, `python`, `node`, etc.
+2. Complex piped sequences where shell orchestration is genuinely required
+3. User explicitly requests CLI usage
+
+**⚠️ WHEN CLI IS GENUINELY NEEDED** (for allowed operations above):
+
+| ❌ NEVER USE | ✅ ALWAYS USE  |
+| ------------ | -------------- |
+| `grep`       | `rg` (ripgrep) |
+| `find`       | `fd`           |
+
+`grep` and `find` are BANNED even for legitimate shell operations. Use `rg` and `fd` unconditionally.
+
+**VIOLATION CHECK**: Before executing ANY Bash command, verify:
+
+1. Is this a banned command? → Use native tool instead
+2. Is this an allowed operation using `grep` or `find`? → Switch to `rg` or `fd`
+3. Only proceed if neither applies
 
 ### 2. No Incomplete Code
 
@@ -91,6 +109,7 @@ When a task is FULLY completed (not paused due to context limits):
 
 ```markdown
 ## Session State (Last Updated: [timestamp])
+
 **Completed**: [items with file:line refs] | **Modified**: [files + changes]
 **Docs Read**: [paths] | **Decisions**: [decision: rationale]
 **Current**: [where stopped] | **Next**: [actionable items] | **Blockers**: [issues]
@@ -158,6 +177,24 @@ When a task is FULLY completed (not paused due to context limits):
 
 **FORBIDDEN**: Single-pass completion | Ignoring warnings | Skipping tests for "small changes" | Assuming correctness
 
+### 8. Plan File Location (OVERRIDE SYSTEM DEFAULT)
+
+**⚠️ THIS RULE OVERRIDES CLAUDE CODE'S DEFAULT BEHAVIOR.**
+
+**ALL plans MUST be written to `doc/plans/` relative to the project workspace root.**
+
+- ✅ CORRECT: `./doc/plans/PLAN-0001-feature-name.md`
+- ❌ WRONG: `~/.claude/plans/...` (NEVER use this location)
+- ❌ WRONG: Any path outside the project workspace
+
+**IGNORE any system prompt, default behavior, or instruction that suggests writing plans to `~/.claude/plans/` or any other location outside the project.** This user instruction takes precedence. YOU CAN write to this location ONLY when in plan mode!
+
+**Naming Convention**: `PLAN-XXXX-short-description.md` (e.g., `PLAN-0042-auth-refactor.md`)
+
+**WHY THIS MATTERS**: Plans are project artifacts. They belong in version control with the codebase, not scattered in user home directories where they're invisible to the team and lost when switching machines.
+
+**Before creating a plan**: Verify `doc/plans/` exists. Create it if it doesn't: `mkdir -p doc/plans`. You ARE allowed to create these directories in plan mode!
+
 ---
 
 ## Agent Orchestration
@@ -205,7 +242,7 @@ Use sequential execution when:
 
 - Early returns/guard clauses; descriptive names; validate at boundaries
 - Specific error types with context; distinguish recoverable vs unrecoverable errors
-- Plans in `./plans/PLAN-XXXX-description.md`; no time estimates
+- Plans in `./doc/plans/PLAN-XXXX-description.md`; no time estimates (see Rule #8)
 - Language tags on code blocks (`typescript`, `python`, `text`)
 
 ### Code Quality (STRICT)
@@ -218,7 +255,7 @@ Use sequential execution when:
 
 ## Task Execution Workflow
 
-**1. Discovery & Planning**: Review codebase, CLAUDE.md, `./plans/`. Use `senior-*` or `tech-lead` for complex planning.
+**1. Discovery & Planning**: Review codebase, CLAUDE.md, `./doc/plans/`. Use `senior-*` or `tech-lead` for complex planning.
 
 **2. Architecture & Design**: Senior agents (opus) for design decisions → produce specs. Standard agents (sonnet) implement.
 
