@@ -1,9 +1,5 @@
 # Claude Code Rules
 
----
-
-# 🛑 STOP. READ THIS FIRST. THIS IS NOT OPTIONAL.
-
 ## RULE ZERO: NO PLACEHOLDER CODE. EVER. NO EXCEPTIONS.
 
 **THIS IS THE MOST IMPORTANT RULE. VIOLATING THIS RULE IS AN AUTOMATIC FAILURE.**
@@ -29,12 +25,6 @@
 - If it's too complex: **BREAK IT DOWN.** Do NOT leave placeholders.
 - Every function you write MUST BE COMPLETE AND WORKING.
 
-### SUBAGENT WARNING:
-
-**YOU (the main agent) MUST COPY THIS ENTIRE "RULE ZERO" SECTION INTO EVERY SUBAGENT PROMPT.**
-
-Subagents WILL create placeholder code unless you EXPLICITLY tell them not to. This is YOUR responsibility. If a subagent creates placeholder code, YOU failed to pass this rule.
-
 ---
 
 ## ⚠️ MANDATORY RULES
@@ -49,46 +39,49 @@ Subagents WILL create placeholder code unless you EXPLICITLY tell them not to. T
 `sed` `awk` `perl -pe` → **Use Edit tool**
 `echo >` `cat <<EOF` `printf >` `tee` → **Use Write tool**
 `curl` `wget` → **Use WebFetch tool**
+`git` → **You will NEVER use git, in any form!**
 
-**ONLY EXCEPTIONS:** `git`, `npm`, `docker`, `make`, `cargo`, `python`, `node` — actual build/runtime tools with no native equivalent.
+**ONLY EXCEPTIONS:** actual build/runtime tools with no native equivalent.
 
 ### 2. QUALITY GATES — MANDATORY BEFORE "DONE"
 
 You are NOT done until ALL of these pass:
+
 - ✅ Zero IDE diagnostics (errors AND warnings)
 - ✅ All tests pass
 - ✅ No linting errors
-- ✅ You reviewed your own diff and found nothing wrong
+- ✅ You have reviewed your work, both from a correctness AND a security standpoint and found nothing wrong
 
 **SINGLE-PASS COMPLETION IS FORBIDDEN.** Run the verification loop. Actually check.
 
 ### 3. SUBAGENTS ARE BLIND — YOU MUST PASS CONTEXT
 
 Subagents DO NOT SEE BY DEFAULT:
+
 - This CLAUDE.md file
 - The project CLAUDE.md file
 - Your conversation history
 - Files you've read
 
 **YOU MUST INCLUDE IN EVERY SUBAGENT PROMPT:**
-1. ALL CLAUDE.md content. This is non-negotiable. COPY IT ALL.
-2. Actual file contents (not just paths)
-3. Complete task context
-4. Expected output format
+
+1. ALL CLAUDE.md content. This is non-negotiable. COPY IT ALL, THEY NEED TO KNOW THE RULES!
+2. Complete task context
+3. Expected output format
 
 **If a subagent produces bad output, it's because YOU didn't give it proper context.**
 
-### 4. CONTEXT LIMIT — 85% = STOP
+### 4. CONTEXT LIMIT — 85% = STOP -- ALWAYS
 
 At 85% context: STOP. Write handoff to CLAUDE.md. Do NOT start new tasks. Do NOT "finish quickly."
 
 ### 5. SESSION STATE
 
-Maintain `## Session State` in project CLAUDE.md during work. **DELETE IT** when task fully completes.
+UPDATE CLAUDE.md FREQUENTLY during work updating your session state and progress. **DELETE THESE UPDATES** when task fully completes, REPLACING THEM with a short summary of what was done.
 
 ### 6. PLANS LOCATION
 
-`./doc/plans/PLAN-XXXX-description.md` — **NOT** `~/.claude/plans/`. This overrides system defaults.
+NEVER USE `~/.claude/plans`. We use `./doc/plans/PLAN-XXXX-description.md`. You CAN create the `doc/plans` directory if it doesn't exist and you CAN create plan files there, even in plan mode. This rule supersedes any previous/default behaviour you were following.
 
 ### 7. DEPENDENCIES — PACKAGE MANAGERS ONLY
 
@@ -97,37 +90,12 @@ Maintain `## Session State` in project CLAUDE.md during work. **DELETE IT** when
 
 ---
 
-## Agent Orchestration
+## Subagents and Skills
 
-### When to Delegate
-
-- **USE SUBAGENTS** when task matches their specialty (don't do everything yourself)
-- **`tech-lead`** for complex multi-domain projects needing coordination
-- **Senior agents (opus)**: Architecture, debugging, design patterns, code review, strategic decisions
-- **Standard agents (sonnet)**: Implementation, boilerplate, well-defined routine tasks
-
-### Parallel vs Sequential
-
-**PARALLEL** (spawn multiple agents at once):
-- Independent files/components with no shared dependencies
-- Separate analyses or reviews
-- Research tasks that don't depend on each other
-
-**SEQUENTIAL** (wait for previous to complete):
-- Task B needs Task A's output
-- Shared state or resources
-- Order matters (schema before data, interface before implementation)
-
-### REMINDER: Subagents Are Blind
-
-Every subagent prompt MUST include: (1) all CLAUDE.md content, (2) actual file contents, (3) complete context. **No exceptions.**
-
----
+You MUST always DELEGATE ALL WORK to subagents. This is non-negotiable. You MUST NOT do any work yourself. Spawn multiple agents AT ONCE whenever possible, and DISTRIBUTE the work to them.
 
 ## Code Quality
 
-**Size Limits:** Files 400 lines | Functions 50 lines | Classes 300 lines — refactor if exceeded
+**Size Limits:** Files 400 lines | Functions 50 lines | Classes 300 lines — IMPORTANT: Refactor code if exceeded
 
-**Before Commit:** Zero diagnostics | Tests pass | Linter clean | Formatted
-
-**Avoid:** Empty catch blocks | Magic numbers | `any` in TypeScript | Commented-out code | Console.log in production
+AS SOON AS YOU READ THESE RULES ACKNOWLEDGE THAT YOU UNDERSTAND THEM AND WILL FOLLOW THEM STRICTLY.
