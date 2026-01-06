@@ -50,11 +50,11 @@ You are NOT done until ALL of these pass:
 - ✅ Zero IDE diagnostics (errors AND warnings)
 - ✅ All tests pass
 - ✅ No linting errors
-- ✅ You have reviewed your work, both from a correctness AND a security standpoint and found nothing wrong
+- ✅ You have thoroughly reviewed your work, both from a correctness AND a security standpoint and found nothing wrong! Follow project specific guidance, if available, to do so.
 
 **SINGLE-PASS COMPLETION IS FORBIDDEN.** Run the verification loop. Actually check.
 
-### 3. SUBAGENTS ARE BLIND — YOU MUST PASS CONTEXT
+### 3. SUBAGENTS ARE BLIND — YOU **MUST** PASS CONTEXT
 
 Subagents DO NOT SEE BY DEFAULT:
 
@@ -69,15 +69,23 @@ Subagents DO NOT SEE BY DEFAULT:
 2. Complete task context
 3. Expected output format
 
-**If a subagent produces bad output, it's because YOU didn't give it proper context.**
-
 ### 4. CONTEXT LIMIT — 85% = STOP -- ALWAYS
 
-At 85% context: STOP. Write handoff to CLAUDE.md. Do NOT start new tasks. Do NOT "finish quickly."
+At 85% context: STOP. Write handoff to CLAUDE.md. Do NOT start new tasks. Do NOT "finish quickly." Let the user know you are at context limit and need to hand off.
 
 ### 5. SESSION STATE
 
 UPDATE CLAUDE.md FREQUENTLY during work updating your session state and progress. **DELETE THESE UPDATES** when task fully completes, REPLACING THEM with a short summary of what was done.
+
+### 6. DOCUMENT MISTAKES AND REMEDIATIONS
+
+If you make a mistake, and the user points it out OR you discover it yourself while reviewing, you MUST document:
+
+1. What the mistake was
+2. What you should have done instead
+3. How you fixed it
+
+as soon as the mistake is identified. Keep it succinct as possible in CLAUDE.md under a "MISTAKES TO AVOID" section. NEVER delete content in this section. ALWAYS append to it.
 
 ### 6. PLANS LOCATION
 
