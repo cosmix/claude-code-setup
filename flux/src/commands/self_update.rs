@@ -10,7 +10,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-const GITHUB_REPO: &str = "cosmix/claude-code-setup";
+const GITHUB_REPO: &str = "cosmix/cluade-flux";
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Minisign public key for verifying release signatures.
@@ -360,7 +360,7 @@ fn download_and_save(url: &str, dest: &Path) -> Result<()> {
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S");
     let full_content = format!(
         "# ───────────────────────────────────────────────────────────\n\
-         # claude-code-setup | updated {timestamp}\n\
+         # cluade-flux | updated {timestamp}\n\
          # ───────────────────────────────────────────────────────────\n\n\
          {content}"
     );

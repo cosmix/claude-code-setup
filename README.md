@@ -42,14 +42,14 @@ Subagents can run in parallel (up to 10 concurrent). A single prompt like "refac
 **One-liner (recommended):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cosmix/claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/cosmix/cluade-flux/main/install.sh | bash
 ```
 
 **Or clone and install:**
 
 ```bash
-git clone https://github.com/cosmix/claude-code-setup.git
-cd claude-code-setup
+git clone https://github.com/cosmix/cluade-flux.git
+cd cluade-flux
 bash install.sh
 ```
 
@@ -192,7 +192,7 @@ Flux is installed automatically by `install.sh`. The binary is placed in `~/.loc
 
 **Manual Installation:**
 
-1. Download the latest binary for your platform from [GitHub Releases](https://github.com/cosmix/claude-code-setup/releases)
+1. Download the latest binary for your platform from [GitHub Releases](https://github.com/cosmix/cluade-flux/releases)
 2. Make it executable: `chmod +x flux`
 3. Move to your PATH: `mv flux ~/.local/bin/` or `mv flux /usr/local/bin/`
 
