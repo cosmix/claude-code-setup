@@ -26,3 +26,9 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+# Flux workspace (created by `flux init`)
+.work/
+
+# Rust build artifacts
+target/
