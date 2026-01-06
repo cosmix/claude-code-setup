@@ -128,14 +128,21 @@ Agents monitor their context usage and act accordingly:
 All state lives in `.work/` as structured files:
 
 ```text
-.work/
-├── config.toml          # Active plan, settings
-├── execution-graph.toml # Stage dependency DAG
-├── stages/              # Stage state files
-├── sessions/            # Session state files
-├── signals/             # Stage assignments
-├── handoffs/            # Context dumps
-└── worktrees/           # Worktree metadata
+project/
+├── .work/                    # Flux state (version controlled)
+│   ├── config.toml           # Active plan, settings
+│   ├── execution-graph.toml  # Stage dependency DAG
+│   ├── stages/               # Stage state files
+│   ├── sessions/             # Session state files
+│   ├── signals/              # Stage assignments
+│   ├── handoffs/             # Context dumps
+│   └── worktrees/            # Worktree metadata
+├── .worktrees/               # Git worktrees for parallel stages
+│   ├── stage-1/              # Full checkout for stage-1
+│   │   ├── .work/            # Symlink to main .work/
+│   │   └── [project files]
+│   └── stage-2/
+└── doc/plans/                # Plan documents
 ```
 
 This git-friendly format enables version control, team collaboration, and
@@ -239,7 +246,7 @@ The [`CLAUDE.template.md`](CLAUDE.template.md) configuration includes:
 ```bash
 # Check Flux CLI
 flux --version
-flux doctor
+flux --help
 
 # Start Claude Code and verify agents are available
 claude
@@ -335,10 +342,11 @@ flux merge <stage-id>
 # - If conflicts, prints resolution instructions
 
 # Attach to running session
-flux attach <stage-id>
-# - Attaches terminal to running Claude session
+flux attach <stage-id|session-id>
+# - Attaches terminal to running Claude session (via tmux)
 # - Human can observe, type, intervene
-# - Detach returns control to Flux
+# - Detach with Ctrl+B D
+# - Use 'flux sessions list' to see available sessions
 ```
 
 ### Secondary Commands
@@ -362,15 +370,13 @@ flux stage <id> [complete|block|reset]
 ### Utility Commands
 
 ```bash
-flux validate                # Check state file integrity
-flux doctor                  # Diagnose configuration issues
 flux self-update             # Update Flux CLI, agents, skills, and config
 ```
 
 ## Plan Document Format
 
 Plans live in `doc/plans/` and contain structured YAML metadata embedded in
-markdown comments:
+markdown code blocks:
 
 ````markdown
 # PLAN-0001: User Authentication
@@ -383,13 +389,15 @@ We need to implement JWT-based authentication...
 
 ...
 
-<!-- FLUX METADATA - Do not edit manually -->
+---
+
+<!-- FLUX METADATA -->
 
 ```yaml
 flux:
   version: 1
   stages:
-    - id: stage-1
+    - id: stage-1-jwt
       name: "JWT Token Service"
       description: "Implement core JWT token generation and validation"
       dependencies: []
@@ -401,33 +409,43 @@ flux:
         - "src/auth/token.rs"
         - "src/auth/mod.rs"
 
-    - id: stage-2
+    - id: stage-2-refresh
       name: "Refresh Token Logic"
       description: "Add refresh token rotation and storage"
-      dependencies: ["stage-1"]
+      dependencies: ["stage-1-jwt"]
       parallel_group: null
       acceptance:
         - "cargo test auth::refresh"
       files:
         - "src/auth/refresh.rs"
+
+    - id: stage-3-middleware
+      name: "Auth Middleware"
+      description: "HTTP middleware for token validation"
+      dependencies: ["stage-1-jwt"]
+      parallel_group: "api"
+      acceptance:
+        - "cargo test middleware::auth"
+      files:
+        - "src/middleware/auth.rs"
 ```
-````
 
 <!-- END FLUX METADATA -->
-
 ````
 
 ### Metadata Fields
 
-- **version**: Flux metadata schema version (currently 1)
-- **stages**: List of work stages with dependencies
-  - **id**: Unique stage identifier (e.g., "stage-1")
-  - **name**: Human-readable stage name
-  - **description**: What this stage accomplishes
-  - **dependencies**: List of stage IDs that must complete first
-  - **parallel_group**: Optional group name for stages that can run in parallel
-  - **acceptance**: List of commands to verify stage completion
-  - **files**: Files this stage will modify (for git worktree setup)
+| Field            | Required | Description                                |
+| ---------------- | -------- | ------------------------------------------ |
+| `version`        | Yes      | Flux metadata schema version (currently 1) |
+| `stages`         | Yes      | List of work stages with dependencies      |
+| `id`             | Yes      | Unique stage identifier (kebab-case)       |
+| `name`           | Yes      | Human-readable stage name                  |
+| `description`    | Yes      | What this stage accomplishes               |
+| `dependencies`   | No       | Stage IDs that must complete first         |
+| `parallel_group` | No       | Group name for parallel execution          |
+| `acceptance`     | No       | Shell commands to verify completion        |
+| `files`          | No       | Glob patterns for modified files           |
 
 ## Workflow Example
 
@@ -479,7 +497,7 @@ flux merge stage-1
 # - Updates session state
 # - Exits gracefully
 # - flux run or flux resume continues seamlessly
-````
+```
 
 ## Agent Hierarchy
 
@@ -683,12 +701,24 @@ Key principles.
 Concrete examples.
 ```
 
+## Upgrading from v1.x
+
+If you are upgrading from Flux v1.x (manual track/runner/signal workflow), see
+the [Migration Guide](MIGRATION.md) for:
+
+- Breaking changes summary
+- Command mapping (old to new)
+- Data migration steps
+- Converting tracks to stages
+- Updated CLAUDE.md configuration
+
 ## Further Reading
 
 - [Claude Code Documentation](https://code.claude.com/docs/en/overview)
 - [Subagents Deep Dive](https://code.claude.com/docs/en/sub-agents)
 - [Agent Skills Introduction](https://claude.com/blog/skills)
 - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
+- [Flux CLI Detailed Reference](flux/README.md)
 
 ## License
 

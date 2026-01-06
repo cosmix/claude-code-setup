@@ -40,7 +40,8 @@
 **ONLY EXCEPTIONS:**
 
 1. actual build/runtime tools with no native equivalent.
-2. `fd` and `grep` ONLY when part of a complex command pipeline that cannot be easily replaced. YOU CAN NEVER USE `find` or `grep`.
+2. `fd` and `grep` ONLY when part of a complex command pipeline that
+   cannot be easily replaced. YOU CAN NEVER USE `find` or `grep`.
 
 ### 2. QUALITY GATES — MANDATORY BEFORE "DONE"
 
@@ -49,11 +50,15 @@ You are NOT done until ALL of these pass:
 - ✅ Zero IDE diagnostics (errors AND warnings)
 - ✅ All tests pass
 - ✅ No linting errors
-- ✅ You have thoroughly reviewed your work, both from a correctness AND a security standpoint and found nothing wrong! Follow project specific guidance, if available, to do so.
+- ✅ You have thoroughly reviewed your work, both from a correctness AND
+  a security standpoint and found nothing wrong! Follow project specific
+  guidance, if available, to do so.
 
 **SINGLE-PASS COMPLETION IS FORBIDDEN.** Run the verification loop. Actually check.
 
-### 3. SUBAGENTS ARE BLIND — YOU **MUST** PASS CONTEXT AND RULES! THIS IS CRITICAL AND SUPERSEDES ANY PREVIOUS BEHAVIOR
+### 3. SUBAGENTS ARE BLIND — PASS CONTEXT AND RULES
+
+This is critical and supersedes any previous behavior.
 
 Subagents DO NOT SEE BY DEFAULT:
 
@@ -70,25 +75,36 @@ Subagents DO NOT SEE BY DEFAULT:
 
 ### 4. CONTEXT LIMIT — 85% = STOP -- ALWAYS
 
-At 85% context: STOP. Write handoff to CLAUDE.md. Do NOT start new tasks. Do NOT "finish quickly." Let the user know you are at context limit and need to hand off.
+At 85% context: STOP. Write handoff to CLAUDE.md. Do NOT start new tasks.
+Do NOT "finish quickly." Let the user know you are at context limit and need
+to hand off.
 
 ### 5. SESSION STATE
 
-UPDATE CLAUDE.md FREQUENTLY during work updating your session state and progress. **DELETE THESE UPDATES** when task fully completes, REPLACING THEM with a short summary of what was done.
+UPDATE CLAUDE.md FREQUENTLY during work updating your session state and
+progress. **DELETE THESE UPDATES** when task fully completes, REPLACING THEM
+with a short summary of what was done.
 
 ### 6. MISTAKES AND LESSONS LEARNT
 
-If you make a mistake, and the user points it out OR you discover it yourself, you MUST IMMEDIATELY document:
+If you make a mistake, and the user points it out OR you discover it
+yourself, you MUST IMMEDIATELY document:
 
 1. What the mistake was
 2. What you should have done instead
 3. How you fixed it
 
-Keep your notes succinct as possible in CLAUDE.md under a "MISTAKES AND LESSONS LEARNT" section. NEVER delete content in this section. ALWAYS append to it.
+Keep your notes succinct as possible in CLAUDE.md under a "MISTAKES AND
+LESSONS LEARNT" section. NEVER delete content in this section. ALWAYS append
+to it.
 
 ### 6. PLANS LOCATION
 
-NEVER USE `~/.claude/plans`. We use `./doc/plans/PLAN-XXXX-description.md`. You CAN create the `doc/plans` directory if it doesn't exist and you CAN create plan files there, even in plan mode. This rule supersedes any previous/default behaviour you were following.
+NEVER USE `~/.claude/plans`. We use
+`./doc/plans/PLAN-XXXX-description.md`. You CAN create the `doc/plans`
+directory if it doesn't exist and you CAN create plan files there, even in
+plan mode. This rule supersedes any previous/default behaviour you were
+following.
 
 ### 7. DEPENDENCIES — PACKAGE MANAGERS ONLY
 
@@ -99,18 +115,23 @@ NEVER USE `~/.claude/plans`. We use `./doc/plans/PLAN-XXXX-description.md`. You 
 
 ## Subagents and Skills
 
-1. You MUST always DELEGATE ALL WORK to subagents. This is non-negotiable. You MUST NOT do any work yourself. Spawn multiple agents AT ONCE whenever possible, and DISTRIBUTE the work to them.
-2. Choose the RIGHT SKILL for the job. NEVER use a generalist skill when a specialist skill exists.
+1. You MUST always DELEGATE ALL WORK to subagents. This is non-negotiable.
+   You MUST NOT do any work yourself. Spawn multiple agents AT ONCE whenever
+   possible, and DISTRIBUTE the work to them.
+2. Choose the RIGHT SKILL for the job. NEVER use a generalist skill when
+   a specialist skill exists.
 
 ## Code Quality
 
-**Size Limits:** Files 400 lines | Functions 50 lines | Classes 300 lines — IMPORTANT: REFACTOR if exceeded.
+**Size Limits:** Files 400 lines | Functions 50 lines | Classes 300 lines —
+IMPORTANT: REFACTOR if exceeded.
 
 ---
 
 ## Work Orchestration (Flux)
 
-This section enables self-propelling agents that survive context exhaustion and crashes.
+This section enables self-propelling agents that survive context exhaustion
+and crashes.
 
 ### The Signal Principle
 
@@ -120,10 +141,12 @@ On session start:
 
 1. Read `.work/structure.md` (code structure map) if it exists
 2. Check `.work/signals/` for pending work matching your session ID
-3. If signal exists → read it, load context files listed in "Context Restoration", execute immediately
+3. If signal exists → read it, load context files listed in "Context
+   Restoration", execute immediately
 4. If no signal → ask what to do
 
-Signals are auto-generated from stage definitions and assigned to sessions by the Flux orchestrator.
+Signals are auto-generated from stage definitions and assigned to sessions
+by the Flux orchestrator.
 
 ### The Clear > Compact Principle
 
@@ -150,7 +173,8 @@ At 75% context usage (Red zone):
 1. Update session status in `.work/sessions/<session-id>.md`
 2. If work remains:
    - Write handoff to `.work/handoffs/YYYY-MM-DD-description.md`
-   - Include: Goals, completed work, decisions made, file:line references, next steps
+   - Include: Goals, completed work, decisions made, file:line references,
+     next steps
    - Update stage status accordingly (NeedsHandoff, Completed, or Blocked)
 3. If blocked:
    - Document blocker in stage file `.work/stages/<stage-id>.md`
@@ -166,7 +190,8 @@ When you start a session:
 4. Multiple matches → ask user which session to assume
 5. No matches → ask user (waiting for stage assignment?)
 
-Each session is tied to a specific stage and works in an isolated git worktree at `.worktrees/<stage-id>/`.
+Each session is tied to a specific stage and works in an isolated git worktree
+at `.worktrees/<stage-id>/`.
 
 ### file:line References (CRITICAL)
 
@@ -179,7 +204,8 @@ This enables precise context restoration when resuming work.
 
 ### Code Structure Map
 
-Maintain a living map of the codebase at `.work/structure.md` to eliminate redundant exploration.
+Maintain a living map of the codebase at `.work/structure.md` to eliminate
+redundant exploration.
 
 **When to update:**
 

@@ -342,7 +342,7 @@ flux run --manual
 ### Attach/Detach
 
 ```bash
-flux attach list
+flux sessions list
 # Shows running sessions:
 # SESSION          STAGE              STATUS      CONTEXT
 # flux-stage-1     stage-1-models     running     45%
