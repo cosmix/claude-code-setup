@@ -21,6 +21,7 @@ flux init
 ```
 
 Creates a `.work/` directory with the following structure:
+
 - `runners/` - AI agent configurations
 - `tracks/` - Conversation thread metadata
 - `signals/` - Inter-agent messages

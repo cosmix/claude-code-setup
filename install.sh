@@ -16,7 +16,6 @@ CLAUDE_DIR="$HOME/.claude"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 GITHUB_REPO="cosmix/claude-code-setup"
-GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 GITHUB_RELEASES="https://github.com/${GITHUB_REPO}/releases/latest/download"
 
 print_banner() {
