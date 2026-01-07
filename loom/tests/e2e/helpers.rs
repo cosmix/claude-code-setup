@@ -3,11 +3,26 @@
 use anyhow::{Context, Result};
 use loom::models::session::{Session, SessionStatus};
 use loom::models::stage::{Stage, StageStatus};
+use loom::verify::transitions::transition_stage;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
+
+/// Complete a stage following the proper state machine transitions
+///
+/// Transitions: Ready -> Executing -> Completed
+/// Returns the completed stage
+pub fn complete_stage(stage_id: &str, work_dir: &Path) -> Result<Stage> {
+    // First transition to Executing (required before Completed)
+    transition_stage(stage_id, StageStatus::Executing, work_dir)
+        .with_context(|| format!("Failed to transition {stage_id} to Executing"))?;
+
+    // Then transition to Completed
+    transition_stage(stage_id, StageStatus::Completed, work_dir)
+        .with_context(|| format!("Failed to transition {stage_id} to Completed"))
+}
 
 /// Creates a temporary git repository with initial commit
 ///

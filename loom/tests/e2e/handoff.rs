@@ -182,6 +182,7 @@ fn test_handoff_file_naming() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_marks_context_exhausted() {
     let mut session = Session::new();
     session.context_limit = DEFAULT_CONTEXT_LIMIT;
@@ -365,6 +366,7 @@ fn test_multiple_stages_different_handoffs() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_context_exhausted_triggers_stage_needs_handoff() {
     let mut session = Session::new();
     let mut stage = Stage::new("test-stage".to_string(), None);

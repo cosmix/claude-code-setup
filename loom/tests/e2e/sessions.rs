@@ -67,6 +67,7 @@ fn test_session_release_from_stage() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_status_transitions() {
     let mut session = Session::new();
     assert_eq!(session.status, SessionStatus::Spawning);
@@ -82,6 +83,7 @@ fn test_session_status_transitions() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_all_status_transitions() {
     let mut session = Session::new();
 
@@ -203,6 +205,7 @@ fn test_session_pid_assignment() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_serialization_roundtrip() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let file_path = temp_dir.path().join("sessions").join("test-session.json");
@@ -236,6 +239,7 @@ fn test_session_serialization_roundtrip() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_clone() {
     let mut session = Session::new();
     session.assign_to_stage("stage-1".to_string());
@@ -251,6 +255,7 @@ fn test_session_clone() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_multiple_sessions_independent() {
     let mut session1 = Session::new();
     let mut session2 = Session::new();
@@ -310,6 +315,7 @@ fn test_session_stage_reassignment() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_session_complex_lifecycle() {
     let mut session = Session::new();
 

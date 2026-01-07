@@ -3,6 +3,7 @@
 //! Tests parallel stage triggering, parallel group isolation, and complex
 //! dependency patterns like diamond and fan-out/fan-in.
 
+use super::helpers::complete_stage;
 use loom::models::stage::{Stage, StageStatus};
 use loom::verify::transitions::{load_stage, save_stage, transition_stage, trigger_dependents};
 use tempfile::TempDir;
@@ -174,7 +175,7 @@ fn test_diamond_dependency_pattern() {
     assert_eq!(stage_d.status, StageStatus::Pending);
 
     // Complete B only
-    transition_stage("stage-b", StageStatus::Completed, work_dir).unwrap();
+    complete_stage("stage-b", work_dir).unwrap();
     transition_stage("stage-b", StageStatus::Verified, work_dir).unwrap();
     let triggered = trigger_dependents("stage-b", work_dir).unwrap();
     assert_eq!(triggered.len(), 0);
@@ -184,7 +185,7 @@ fn test_diamond_dependency_pattern() {
     assert_eq!(stage_d.status, StageStatus::Pending);
 
     // Complete C
-    transition_stage("stage-c", StageStatus::Completed, work_dir).unwrap();
+    complete_stage("stage-c", work_dir).unwrap();
     transition_stage("stage-c", StageStatus::Verified, work_dir).unwrap();
     let triggered = trigger_dependents("stage-c", work_dir).unwrap();
     assert_eq!(triggered.len(), 1);
@@ -254,7 +255,7 @@ fn test_fan_out_fan_in() {
 
     // Complete B and C
     for id in ["stage-b", "stage-c"] {
-        transition_stage(id, StageStatus::Completed, work_dir).unwrap();
+        complete_stage(id, work_dir).unwrap();
         transition_stage(id, StageStatus::Verified, work_dir).unwrap();
         trigger_dependents(id, work_dir).unwrap();
     }
@@ -264,7 +265,7 @@ fn test_fan_out_fan_in() {
     assert_eq!(stage_e.status, StageStatus::Pending);
 
     // Complete D
-    transition_stage("stage-d", StageStatus::Completed, work_dir).unwrap();
+    complete_stage("stage-d", work_dir).unwrap();
     transition_stage("stage-d", StageStatus::Verified, work_dir).unwrap();
     let triggered = trigger_dependents("stage-d", work_dir).unwrap();
     assert_eq!(triggered.len(), 1);
