@@ -27,7 +27,7 @@ logs/
 *.temp
 .cache/
 
-# Flux workspace (created by `flux init`)
+# loom workspace (created by `loom init`)
 .work/
 
 # Rust build artifacts
