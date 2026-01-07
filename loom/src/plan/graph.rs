@@ -364,6 +364,7 @@ mod tests {
             dependencies: deps.into_iter().map(String::from).collect(),
             parallel_group: group.map(String::from),
             acceptance: vec![],
+            setup: vec![],
             files: vec![],
         }
     }

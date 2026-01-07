@@ -29,6 +29,8 @@ pub struct StageDefinition {
     #[serde(default)]
     pub acceptance: Vec<String>,
     #[serde(default)]
+    pub setup: Vec<String>,
+    #[serde(default)]
     pub files: Vec<String>,
 }
 
@@ -139,6 +141,7 @@ mod tests {
                         dependencies: vec![],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                     StageDefinition {
@@ -148,6 +151,7 @@ mod tests {
                         dependencies: vec!["stage-1".to_string()],
                         parallel_group: Some("group-a".to_string()),
                         acceptance: vec!["cargo test".to_string()],
+                        setup: vec!["source .venv/bin/activate".to_string()],
                         files: vec!["src/*.rs".to_string()],
                     },
                 ],
@@ -202,6 +206,7 @@ mod tests {
                     dependencies: vec![],
                     parallel_group: None,
                     acceptance: vec![],
+                    setup: vec![],
                     files: vec![],
                 }],
             },
@@ -227,6 +232,7 @@ mod tests {
                     dependencies: vec![],
                     parallel_group: None,
                     acceptance: vec![],
+                    setup: vec![],
                     files: vec![],
                 }],
             },
@@ -252,6 +258,7 @@ mod tests {
                     dependencies: vec!["nonexistent".to_string()],
                     parallel_group: None,
                     acceptance: vec![],
+                    setup: vec![],
                     files: vec![],
                 }],
             },
@@ -278,6 +285,7 @@ mod tests {
                     dependencies: vec!["stage-1".to_string()],
                     parallel_group: None,
                     acceptance: vec![],
+                    setup: vec![],
                     files: vec![],
                 }],
             },
@@ -304,6 +312,7 @@ mod tests {
                         dependencies: vec![],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                     StageDefinition {
@@ -313,6 +322,7 @@ mod tests {
                         dependencies: vec!["stage-2".to_string(), "nonexistent".to_string()],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                 ],
@@ -354,6 +364,7 @@ name: Test Stage
         assert_eq!(stage.dependencies.len(), 0);
         assert_eq!(stage.parallel_group, None);
         assert_eq!(stage.acceptance.len(), 0);
+        assert_eq!(stage.setup.len(), 0);
         assert_eq!(stage.files.len(), 0);
     }
 
@@ -370,6 +381,7 @@ name: Test Stage
                         dependencies: vec![],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                     StageDefinition {
@@ -379,6 +391,7 @@ name: Test Stage
                         dependencies: vec!["stage-1".to_string()],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                     StageDefinition {
@@ -388,6 +401,7 @@ name: Test Stage
                         dependencies: vec!["stage-1".to_string(), "stage-2".to_string()],
                         parallel_group: None,
                         acceptance: vec![],
+                        setup: vec![],
                         files: vec![],
                     },
                 ],
