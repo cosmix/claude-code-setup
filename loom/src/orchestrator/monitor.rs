@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::handoff::{generate_handoff, HandoffContent};
 use crate::models::constants::{CONTEXT_CRITICAL_THRESHOLD, CONTEXT_WARNING_THRESHOLD};
 use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::{Stage, StageStatus};
 use crate::orchestrator::spawner::session_is_running;
-use crate::handoff::{generate_handoff, HandoffContent};
 
 /// Configuration for the monitor
 #[derive(Debug, Clone)]
@@ -303,10 +303,8 @@ impl Monitor {
                         });
                     }
                     ContextHealth::Red => {
-                        let usage_percent = context_usage_percent(
-                            session.context_tokens,
-                            session.context_limit,
-                        );
+                        let usage_percent =
+                            context_usage_percent(session.context_tokens, session.context_limit);
 
                         events.push(MonitorEvent::SessionContextCritical {
                             session_id: session.id.clone(),
@@ -316,7 +314,9 @@ impl Monitor {
                         // Generate handoff file if session has an associated stage
                         if let Some(stage_id) = &session.stage_id {
                             if let Some(stage) = stages.iter().find(|s| &s.id == stage_id) {
-                                if let Ok(handoff_path) = self.handle_context_critical(session, stage) {
+                                if let Ok(handoff_path) =
+                                    self.handle_context_critical(session, stage)
+                                {
                                     eprintln!(
                                         "Generated handoff for session {} at {}",
                                         session.id,
@@ -349,16 +349,17 @@ impl Monitor {
     fn handle_context_critical(&self, session: &Session, stage: &Stage) -> Result<PathBuf> {
         let context_percent = context_usage_percent(session.context_tokens, session.context_limit);
 
-        let goals = stage.description.clone().unwrap_or_else(|| {
-            format!("Work on stage: {}", stage.name)
-        });
+        let goals = stage
+            .description
+            .clone()
+            .unwrap_or_else(|| format!("Work on stage: {}", stage.name));
 
         let content = HandoffContent::new(session.id.clone(), stage.id.clone())
             .with_context_percent(context_percent)
             .with_goals(goals)
             .with_plan_id(stage.plan_id.clone())
             .with_next_steps(vec![
-                "Review handoff and continue from current state".to_string(),
+                "Review handoff and continue from current state".to_string()
             ]);
 
         generate_handoff(session, stage, content, &self.config.work_dir)

@@ -7,7 +7,8 @@ pub mod spawner;
 
 pub use attach::{
     attach_by_session, attach_by_stage, attach_overview_session, create_overview_session,
-    format_attachable_list, list_attachable, print_attach_instructions, print_overview_instructions,
+    create_tiled_overview, format_attachable_list, list_attachable, print_attach_instructions,
+    print_many_sessions_warning, print_overview_instructions, print_tiled_instructions,
     spawn_gui_windows, AttachableSession, TerminalEmulator,
 };
 pub use continuation::{

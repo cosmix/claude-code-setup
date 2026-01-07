@@ -13,7 +13,9 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use crate::fs::stage_files::{find_stage_file, compute_stage_depths, stage_file_path, StageDependencies};
+use crate::fs::stage_files::{
+    compute_stage_depths, find_stage_file, stage_file_path, StageDependencies,
+};
 use crate::git;
 use crate::models::session::Session;
 use crate::models::stage::{Stage, StageStatus};
@@ -32,6 +34,8 @@ pub struct OrchestratorConfig {
     pub max_parallel_sessions: usize,
     pub poll_interval: Duration,
     pub manual_mode: bool,
+    /// Watch mode: continuously spawn ready stages until all are terminal
+    pub watch_mode: bool,
     pub tmux_prefix: String,
     pub work_dir: PathBuf,
     pub repo_root: PathBuf,
@@ -45,6 +49,7 @@ impl Default for OrchestratorConfig {
             max_parallel_sessions: 4,
             poll_interval: Duration::from_secs(5),
             manual_mode: false,
+            watch_mode: false,
             tmux_prefix: "loom".to_string(),
             work_dir: PathBuf::from(".work"),
             repo_root: PathBuf::from("."),
@@ -93,11 +98,12 @@ impl Orchestrator {
         self.sync_graph_with_stage_files()
             .context("Failed to sync graph with existing stage files")?;
 
-        let recovered = self.recover_orphaned_sessions()
+        let recovered = self
+            .recover_orphaned_sessions()
             .context("Failed to recover orphaned sessions")?;
 
         if recovered > 0 {
-            println!("Recovered {} orphaned session(s) - stages reset to Ready", recovered);
+            println!("Recovered {recovered} orphaned session(s) - stages reset to Ready");
         }
 
         let mut total_sessions_spawned = 0;
@@ -117,13 +123,10 @@ impl Orchestrator {
             if started > 0 && !printed_view_instructions && !self.config.manual_mode {
                 printed_view_instructions = true;
                 println!();
-                println!("Sessions are running in tmux. To view them:");
+                println!("Sessions are now running. To view them:");
                 println!("  loom attach <stage-id>    Attach to a stage's session");
-                println!("  loom sessions list        List all active sessions");
+                println!("  loom attach all           View all sessions at once");
                 println!("  loom status               View overall progress");
-                println!();
-                println!("Tip: Run orchestrator in tmux for detach/reattach:");
-                println!("  tmux new -s loom-orchestrator 'loom run'");
                 println!();
             }
 
@@ -166,16 +169,28 @@ impl Orchestrator {
                 }
             }
 
-            if self.graph.is_complete() {
-                break;
-            }
-
-            if !failed_stages.is_empty() && self.running_session_count() == 0 {
-                break;
-            }
-
+            // Exit conditions depend on mode
             if self.config.manual_mode {
+                // Manual mode: exit after first batch
                 break;
+            }
+
+            if self.config.watch_mode {
+                // Watch mode: only exit when all stages are terminal
+                if self.all_stages_terminal() {
+                    println!();
+                    println!("All stages are in terminal state (verified/blocked/held).");
+                    break;
+                }
+            } else {
+                // Normal mode: exit on completion or when failed with no running sessions
+                if self.graph.is_complete() {
+                    break;
+                }
+
+                if !failed_stages.is_empty() && self.running_session_count() == 0 {
+                    break;
+                }
             }
 
             std::thread::sleep(self.config.poll_interval);
@@ -310,6 +325,11 @@ impl Orchestrator {
             return Ok(());
         }
 
+        // Skip if stage is held
+        if stage.held {
+            return Ok(());
+        }
+
         let worktree = git::get_or_create_worktree(stage_id, &self.config.repo_root)
             .with_context(|| format!("Failed to get or create worktree for stage: {stage_id}"))?;
 
@@ -340,10 +360,7 @@ impl Orchestrator {
                 .with_context(|| format!("Failed to spawn session for stage: {stage_id}"))?;
 
             // Print confirmation that stage was started
-            println!(
-                "  Started: {} (tmux: {}-{})",
-                stage_id, self.config.tmux_prefix, stage_id
-            );
+            println!("  Started: {stage_id}");
 
             spawned
         } else {
@@ -396,17 +413,13 @@ impl Orchestrator {
                     session_id,
                     usage_percent,
                 } => {
-                    eprintln!(
-                        "Warning: Session '{session_id}' context at {usage_percent:.1}%"
-                    );
+                    eprintln!("Warning: Session '{session_id}' context at {usage_percent:.1}%");
                 }
                 MonitorEvent::SessionContextCritical {
                     session_id,
                     usage_percent,
                 } => {
-                    eprintln!(
-                        "Critical: Session '{session_id}' context at {usage_percent:.1}%"
-                    );
+                    eprintln!("Critical: Session '{session_id}' context at {usage_percent:.1}%");
                 }
                 MonitorEvent::SessionCrashed {
                     session_id,
@@ -454,17 +467,25 @@ impl Orchestrator {
 
     /// Handle session crash
     fn on_session_crashed(&mut self, session_id: &str, stage_id: Option<String>) -> Result<()> {
-        eprintln!("Session '{session_id}' crashed");
-
         if let Some(sid) = stage_id {
             self.active_sessions.remove(&sid);
 
             let mut stage = self.load_stage(&sid)?;
+
+            // Don't override terminal states - stage may have completed before tmux died
+            if matches!(stage.status, StageStatus::Completed | StageStatus::Verified) {
+                // Stage already completed successfully, just clean up
+                return Ok(());
+            }
+
+            eprintln!("Session '{session_id}' crashed for stage '{sid}'");
             stage.status = StageStatus::Blocked;
             stage.close_reason = Some("Session crashed".to_string());
             self.save_stage(&stage)?;
 
             self.graph.mark_blocked(&sid)?;
+        } else {
+            eprintln!("Session '{session_id}' crashed (no stage association)");
         }
 
         Ok(())
@@ -712,7 +733,10 @@ impl Orchestrator {
                     if let Ok(mut stage) = self.load_stage(stage_id) {
                         // Only recover if stage was Executing or Blocked due to crash
                         if matches!(stage.status, StageStatus::Executing | StageStatus::Blocked) {
-                            println!("  Recovering orphaned stage: {} (was {:?})", stage_id, stage.status);
+                            println!(
+                                "  Recovering orphaned stage: {} (was {:?})",
+                                stage_id, stage.status
+                            );
 
                             // Reset stage to Ready
                             stage.status = StageStatus::Ready;
@@ -738,7 +762,11 @@ impl Orchestrator {
                 let _ = std::fs::remove_file(&path);
 
                 // Remove the orphaned signal file
-                let signal_path = self.config.work_dir.join("signals").join(format!("{}.md", session.id));
+                let signal_path = self
+                    .config
+                    .work_dir
+                    .join("signals")
+                    .join(format!("{}.md", session.id));
                 let _ = std::fs::remove_file(&signal_path);
             }
         }
@@ -749,6 +777,39 @@ impl Orchestrator {
     /// Count currently running sessions
     fn running_session_count(&self) -> usize {
         self.active_sessions.len()
+    }
+
+    /// Check if all stages are in a terminal state (for watch mode exit)
+    ///
+    /// Returns true if all stages are Verified, Blocked, Completed, or (Ready + held)
+    fn all_stages_terminal(&self) -> bool {
+        let stages_dir = self.config.work_dir.join("stages");
+        if !stages_dir.exists() {
+            return true;
+        }
+
+        for node in self.graph.all_nodes() {
+            // Check graph status first
+            match node.status {
+                NodeStatus::Completed => continue,
+                NodeStatus::Blocked => continue,
+                NodeStatus::Pending | NodeStatus::Ready | NodeStatus::Executing => {
+                    // Need to check the actual stage file for held status
+                    if let Ok(stage) = self.load_stage(&node.id) {
+                        match stage.status {
+                            StageStatus::Verified | StageStatus::Blocked | StageStatus::Completed => {
+                                continue;
+                            }
+                            StageStatus::Ready | StageStatus::Pending if stage.held => continue,
+                            _ => return false,
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
     }
 
     /// Print a status update showing current stage counts
@@ -835,6 +896,7 @@ mod tests {
             max_parallel_sessions: 2,
             poll_interval: Duration::from_millis(100),
             manual_mode: true,
+            watch_mode: false,
             tmux_prefix: "test".to_string(),
             work_dir: PathBuf::from("/tmp/test-work"),
             repo_root: PathBuf::from("/tmp/test-repo"),
@@ -850,6 +912,7 @@ mod tests {
             dependencies: vec![],
             parallel_group: None,
             acceptance: vec![],
+            setup: vec![],
             files: vec![],
         }];
 
@@ -862,6 +925,7 @@ mod tests {
         assert_eq!(config.max_parallel_sessions, 4);
         assert_eq!(config.poll_interval, Duration::from_secs(5));
         assert!(!config.manual_mode);
+        assert!(!config.watch_mode);
         assert_eq!(config.tmux_prefix, "loom");
     }
 

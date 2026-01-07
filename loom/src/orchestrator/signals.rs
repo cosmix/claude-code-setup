@@ -185,7 +185,9 @@ fn format_signal_content(
     // Add reminder to follow CLAUDE.md rules
     content.push_str("## IMPORTANT: Execution Rules\n\n");
     content.push_str("Follow your `~/.claude/CLAUDE.md` rules. Key reminders:\n");
-    content.push_str("- **Delegate work to subagents** - use Task tool with appropriate agent types\n");
+    content.push_str(
+        "- **Delegate work to subagents** - use Task tool with appropriate agent types\n",
+    );
     content.push_str("- **Use TodoWrite** to plan and track progress\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n\n");

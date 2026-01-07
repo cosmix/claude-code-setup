@@ -129,8 +129,14 @@ pub fn continue_session(
 
     // Spawn tmux session if auto_spawn is enabled
     if config.auto_spawn {
-        session = spawn_session(stage, worktree, &config.spawner_config, session, &signal_path)
-            .context("Failed to spawn tmux session for continuation")?;
+        session = spawn_session(
+            stage,
+            worktree,
+            &config.spawner_config,
+            session,
+            &signal_path,
+        )
+        .context("Failed to spawn tmux session for continuation")?;
     }
 
     // Verify session ID consistency (signal file uses this ID)
@@ -209,8 +215,9 @@ pub fn load_handoff_content(handoff_path: &Path) -> Result<String> {
 fn load_stage(work_dir: &Path, stage_id: &str) -> Result<Stage> {
     let stages_dir = work_dir.join("stages");
 
-    let stage_path = find_stage_file(&stages_dir, stage_id)?
-        .ok_or_else(|| anyhow!("Stage file not found for: {stage_id}. Run 'loom stage create' first."))?;
+    let stage_path = find_stage_file(&stages_dir, stage_id)?.ok_or_else(|| {
+        anyhow!("Stage file not found for: {stage_id}. Run 'loom stage create' first.")
+    })?;
 
     let content = fs::read_to_string(&stage_path)
         .with_context(|| format!("Failed to read stage file: {}", stage_path.display()))?;
