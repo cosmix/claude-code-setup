@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
+use shell_escape::escape;
+use std::borrow::Cow;
 use std::process::Command;
 
 use crate::models::session::Session;
@@ -103,11 +105,11 @@ pub fn spawn_session(
     }
 
     // Build the initial prompt that instructs Claude Code to read the signal file
+    let signal_path_str = signal_path.to_string_lossy();
     let initial_prompt = format!(
-        "Read the signal file at {} and execute the assigned stage work. \
+        "Read the signal file at {signal_path_str} and execute the assigned stage work. \
          This file contains your assignment, tasks, acceptance criteria, \
-         and context files to read.",
-        signal_path.display()
+         and context files to read."
     );
 
     // Derive work_dir from signal_path (signal_path is .work/signals/session-xxx.md)
@@ -117,15 +119,18 @@ pub fn spawn_session(
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| ".work".to_string());
 
-    // Send the claude command with environment variables for hook integration
+    // Set environment variables securely using tmux set-environment
+    // This avoids shell injection by not interpolating values into shell commands
     // These env vars allow the Stop hook to signal stage completion back to loom
-    let claude_command = format!(
-        "export loom_SESSION_ID='{}' loom_STAGE_ID='{}' loom_WORK_DIR='{}'; claude \"{}\"",
-        session.id,
-        stage.id,
-        work_dir,
-        initial_prompt.replace('"', "\\\"")
-    );
+    set_tmux_environment(&session_name, "loom_SESSION_ID", &session.id)?;
+    set_tmux_environment(&session_name, "loom_STAGE_ID", &stage.id)?;
+    set_tmux_environment(&session_name, "loom_WORK_DIR", &work_dir)?;
+
+    // Build the claude command with properly escaped prompt argument
+    // Use shell_escape to safely quote the prompt for shell interpretation
+    let escaped_prompt = escape(Cow::Borrowed(&initial_prompt));
+    let claude_command = format!("claude {escaped_prompt}");
+
     let send_output = Command::new("tmux")
         .args(["send-keys", "-t", &session_name, &claude_command, "Enter"])
         .output()
@@ -149,7 +154,7 @@ pub fn spawn_session(
     if let Some(pid) = pid {
         session.set_pid(pid);
     }
-    session.mark_running();
+    session.try_mark_running()?;
 
     Ok(session)
 }
@@ -199,6 +204,26 @@ fn kill_session_by_name(session_name: &str) -> Result<()> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!("Failed to kill tmux session: {stderr}"));
+    }
+
+    Ok(())
+}
+
+/// Set an environment variable in a tmux session
+///
+/// Uses `tmux set-environment` to securely set environment variables without
+/// shell interpolation, avoiding potential injection vulnerabilities.
+fn set_tmux_environment(session_name: &str, var_name: &str, value: &str) -> Result<()> {
+    let output = Command::new("tmux")
+        .args(["set-environment", "-t", session_name, var_name, value])
+        .output()
+        .context("Failed to set tmux environment variable")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "Failed to set environment variable '{var_name}': {stderr}"
+        ));
     }
 
     Ok(())
@@ -408,5 +433,70 @@ mod tests {
 
         assert_eq!(config.max_parallel_sessions, 8);
         assert_eq!(config.tmux_prefix, "custom");
+    }
+
+    #[test]
+    fn test_shell_escape_special_characters() {
+        use std::borrow::Cow;
+
+        // Test that shell metacharacters are properly escaped
+        let dangerous_input = "test; rm -rf /";
+        let escaped = escape(Cow::Borrowed(dangerous_input));
+        // shell_escape should quote or escape the semicolon
+        assert!(
+            escaped.contains('\'') || escaped.contains('\\'),
+            "Expected escaping for semicolon, got: {escaped}"
+        );
+
+        // Test backticks (command substitution)
+        let backtick_input = "$(whoami)";
+        let escaped = escape(Cow::Borrowed(backtick_input));
+        assert!(
+            escaped.contains('\'') || escaped.contains('\\'),
+            "Expected escaping for command substitution, got: {escaped}"
+        );
+
+        // Test double quotes
+        let quote_input = "test \"quoted\"";
+        let escaped = escape(Cow::Borrowed(quote_input));
+        assert!(
+            escaped.contains('\'') || escaped.contains('\\'),
+            "Expected escaping for double quotes, got: {escaped}"
+        );
+
+        // Test pipe
+        let pipe_input = "test | cat /etc/passwd";
+        let escaped = escape(Cow::Borrowed(pipe_input));
+        assert!(
+            escaped.contains('\'') || escaped.contains('\\'),
+            "Expected escaping for pipe, got: {escaped}"
+        );
+
+        // Safe input should pass through (possibly quoted but not corrupted)
+        let safe_input = "Read the signal file and execute";
+        let escaped = escape(Cow::Borrowed(safe_input));
+        // Should contain the original text
+        assert!(
+            escaped.contains("Read") && escaped.contains("signal"),
+            "Safe input should be preserved, got: {escaped}"
+        );
+    }
+
+    #[test]
+    fn test_shell_escape_preserves_content() {
+        use std::borrow::Cow;
+
+        // Ensure escaping doesn't lose content
+        let input =
+            "Read the signal file at /path/to/signal.md and execute the assigned stage work.";
+        let escaped = escape(Cow::Borrowed(input));
+
+        // The escaped version should contain the essential content
+        // (may be wrapped in quotes)
+        let unquoted = escaped.trim_matches('\'');
+        assert!(
+            unquoted.contains("signal file") || escaped.contains("signal file"),
+            "Content should be preserved after escaping"
+        );
     }
 }

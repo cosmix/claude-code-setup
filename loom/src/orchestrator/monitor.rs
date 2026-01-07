@@ -13,6 +13,7 @@ use crate::models::constants::{CONTEXT_CRITICAL_THRESHOLD, CONTEXT_WARNING_THRES
 use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::{Stage, StageStatus};
 use crate::orchestrator::spawner::session_is_running;
+use crate::parser::frontmatter::extract_yaml_frontmatter;
 
 /// Configuration for the monitor
 #[derive(Debug, Clone)]
@@ -418,29 +419,6 @@ fn parse_session_from_markdown(content: &str) -> Result<Session> {
         .context("Failed to deserialize Session from frontmatter")?;
 
     Ok(session)
-}
-
-/// Extract YAML frontmatter from markdown content
-fn extract_yaml_frontmatter(content: &str) -> Result<serde_yaml::Value> {
-    let lines: Vec<&str> = content.lines().collect();
-
-    if lines.is_empty() || !lines[0].trim().starts_with("---") {
-        anyhow::bail!("No frontmatter delimiter found");
-    }
-
-    let mut end_idx = None;
-    for (idx, line) in lines.iter().enumerate().skip(1) {
-        if line.trim().starts_with("---") {
-            end_idx = Some(idx);
-            break;
-        }
-    }
-
-    let end_idx = end_idx.ok_or_else(|| anyhow::anyhow!("Frontmatter not properly closed"))?;
-
-    let yaml_content = lines[1..end_idx].join("\n");
-
-    serde_yaml::from_str(&yaml_content).context("Failed to parse YAML frontmatter")
 }
 
 #[cfg(test)]
