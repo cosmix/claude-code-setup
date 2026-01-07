@@ -9,9 +9,7 @@
 //! - Valid state machine transitions
 
 use loom::models::stage::{Stage, StageStatus};
-use loom::verify::transitions::{
-    load_stage, save_stage, transition_stage, trigger_dependents,
-};
+use loom::verify::transitions::{load_stage, save_stage, transition_stage, trigger_dependents};
 use std::fs;
 use tempfile::TempDir;
 
@@ -127,7 +125,8 @@ fn test_stage_needs_handoff_transition() {
     stage.status = StageStatus::Executing;
     save_stage(&stage, work_dir).unwrap();
 
-    let needs_handoff = transition_stage("test-stage", StageStatus::NeedsHandoff, work_dir).unwrap();
+    let needs_handoff =
+        transition_stage("test-stage", StageStatus::NeedsHandoff, work_dir).unwrap();
     assert_eq!(needs_handoff.status, StageStatus::NeedsHandoff);
 
     let reloaded = load_stage("test-stage", work_dir).unwrap();
@@ -289,7 +288,10 @@ fn test_blocked_stage_preserves_metadata() {
     let work_dir = temp_dir.path();
     fs::create_dir_all(work_dir.join("stages")).unwrap();
 
-    let mut stage = Stage::new("Complex Stage".to_string(), Some("A complex test stage".to_string()));
+    let mut stage = Stage::new(
+        "Complex Stage".to_string(),
+        Some("A complex test stage".to_string()),
+    );
     stage.id = "complex-stage".to_string();
     stage.status = StageStatus::Executing;
     stage.add_dependency("dep-1".to_string());
@@ -309,7 +311,10 @@ fn test_blocked_stage_preserves_metadata() {
     assert_eq!(blocked.acceptance.len(), 2);
     assert_eq!(blocked.files.len(), 2);
     assert_eq!(blocked.parallel_group, Some("group-1".to_string()));
-    assert_eq!(blocked.description, Some("A complex test stage".to_string()));
+    assert_eq!(
+        blocked.description,
+        Some("A complex test stage".to_string())
+    );
     assert_eq!(blocked.created_at, created_at);
     assert!(blocked.updated_at > created_at);
 }
@@ -320,7 +325,10 @@ fn test_needs_handoff_preserves_stage_context() {
     let work_dir = temp_dir.path();
     fs::create_dir_all(work_dir.join("stages")).unwrap();
 
-    let mut stage = Stage::new("Handoff Stage".to_string(), Some("Needs handoff due to context exhaustion".to_string()));
+    let mut stage = Stage::new(
+        "Handoff Stage".to_string(),
+        Some("Needs handoff due to context exhaustion".to_string()),
+    );
     stage.id = "handoff-stage".to_string();
     stage.status = StageStatus::Executing;
     stage.add_acceptance_criterion("Must complete integration".to_string());
@@ -330,7 +338,8 @@ fn test_needs_handoff_preserves_stage_context() {
 
     save_stage(&stage, work_dir).unwrap();
 
-    let needs_handoff = transition_stage("handoff-stage", StageStatus::NeedsHandoff, work_dir).unwrap();
+    let needs_handoff =
+        transition_stage("handoff-stage", StageStatus::NeedsHandoff, work_dir).unwrap();
     assert_eq!(needs_handoff.status, StageStatus::NeedsHandoff);
     assert_eq!(needs_handoff.worktree, Some("worktree-123".to_string()));
     assert_eq!(needs_handoff.session, Some("session-abc".to_string()));

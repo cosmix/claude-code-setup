@@ -57,10 +57,8 @@ fn test_stage_transition_workflow() {
     assert_eq!(stage3.status, StageStatus::Pending);
 
     // Complete and verify stage 2
-    transition_stage("stage-2", StageStatus::Completed, work_dir)
-        .expect("Should complete stage 2");
-    transition_stage("stage-2", StageStatus::Verified, work_dir)
-        .expect("Should verify stage 2");
+    transition_stage("stage-2", StageStatus::Completed, work_dir).expect("Should complete stage 2");
+    transition_stage("stage-2", StageStatus::Verified, work_dir).expect("Should verify stage 2");
 
     // Trigger dependents - should mark stage 3 as Ready
     let triggered = trigger_dependents("stage-2", work_dir).expect("Should trigger dependents");
@@ -104,8 +102,7 @@ fn test_multiple_dependencies_all_satisfied() {
     assert_eq!(stage3.status, StageStatus::Pending);
 
     // Verify stage 2 - now both dependencies are satisfied
-    transition_stage("stage-2", StageStatus::Verified, work_dir)
-        .expect("Should verify stage 2");
+    transition_stage("stage-2", StageStatus::Verified, work_dir).expect("Should verify stage 2");
 
     let triggered = trigger_dependents("stage-2", work_dir).expect("Should trigger dependents");
     assert_eq!(triggered.len(), 1);
