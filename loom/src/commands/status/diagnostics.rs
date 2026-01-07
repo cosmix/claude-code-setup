@@ -17,17 +17,16 @@ pub fn check_directory_structure(work_dir: &WorkDir) -> Result<usize> {
 
     for (name, path) in required_dirs {
         if !path.exists() {
-            println!(
-                "{} Missing required directory: {}",
-                "ERROR:".red().bold(),
-                name
-            );
-            println!(
-                "  {} Run 'loom init' or manually create .work/{}",
-                "Fix:".yellow(),
-                name
-            );
-            issues += 1;
+            // Auto-create missing directories
+            if let Err(e) = fs::create_dir_all(&path) {
+                println!(
+                    "{} Failed to create missing directory {}: {}",
+                    "ERROR:".red().bold(),
+                    name,
+                    e
+                );
+                issues += 1;
+            }
         }
     }
 

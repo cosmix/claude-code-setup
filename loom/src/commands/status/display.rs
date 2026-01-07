@@ -123,21 +123,51 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
         }
     }
 
-    if !stages.is_empty() {
-        println!("\n{}", "Active Stages".bold());
-        for stage in stages {
-            let status_color = match stage.status {
-                StageStatus::Pending => "pending".yellow(),
-                StageStatus::Ready => "ready".cyan(),
-                StageStatus::Executing => "executing".blue(),
-                StageStatus::WaitingForInput => "waiting-for-input".magenta(),
-                StageStatus::Blocked => "blocked".red(),
-                StageStatus::Completed => "completed".green(),
-                StageStatus::NeedsHandoff => "needs-handoff".yellow(),
-                StageStatus::Verified => "verified".green(),
-            };
-            println!("  {} [{}]", stage.name, status_color);
+    if stages.is_empty() {
+        return Ok(());
+    }
+
+    println!("\n{}", "Active Stages".bold());
+
+    // Group stages by status in logical order
+    let status_order = [
+        (StageStatus::Verified, "✓", "Verified"),
+        (StageStatus::Completed, "●", "Completed"),
+        (StageStatus::Executing, "▶", "Executing"),
+        (StageStatus::Ready, "○", "Ready"),
+        (StageStatus::WaitingForInput, "?", "Waiting for Input"),
+        (StageStatus::NeedsHandoff, "↻", "Needs Handoff"),
+        (StageStatus::Blocked, "✗", "Blocked"),
+        (StageStatus::Pending, "·", "Pending"),
+    ];
+
+    // Find max ID length for alignment
+    let max_id_len = stages.iter().map(|s| s.id.len()).max().unwrap_or(0);
+
+    for (status, icon, label) in status_order {
+        let matching: Vec<_> = stages.iter().filter(|s| s.status == status).collect();
+        if matching.is_empty() {
+            continue;
         }
+
+        let header = format!("{icon} {label} ({})", matching.len());
+        let colored_header = match status {
+            StageStatus::Verified | StageStatus::Completed => header.green(),
+            StageStatus::Executing => header.blue(),
+            StageStatus::Ready => header.cyan(),
+            StageStatus::WaitingForInput => header.magenta(),
+            StageStatus::NeedsHandoff => header.yellow(),
+            StageStatus::Blocked => header.red(),
+            StageStatus::Pending => header.dimmed(),
+        };
+        println!("  {colored_header}");
+
+        for stage in matching {
+            let padded_id = format!("{:width$}", stage.id, width = max_id_len);
+            let held_indicator = if stage.held { " [HELD]".yellow() } else { "".normal() };
+            println!("    {}  {}{}", padded_id.dimmed(), stage.name, held_indicator);
+        }
+        println!();
     }
 
     Ok(())
@@ -158,6 +188,11 @@ fn parse_stage_from_doc(doc: &MarkdownDocument) -> Option<Stage> {
         _ => return None,
     };
 
+    let held = doc
+        .get_frontmatter("held")
+        .map(|s| s == "true")
+        .unwrap_or(false);
+
     Some(Stage {
         id,
         name,
@@ -166,10 +201,12 @@ fn parse_stage_from_doc(doc: &MarkdownDocument) -> Option<Stage> {
         dependencies: Vec::new(),
         parallel_group: None,
         acceptance: Vec::new(),
+        setup: Vec::new(),
         files: Vec::new(),
         plan_id: None,
         worktree: None,
         session: None,
+        held,
         parent_stage: None,
         child_stages: Vec::new(),
         created_at: chrono::Utc::now(),

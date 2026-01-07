@@ -2,7 +2,9 @@ mod diagnostics;
 mod display;
 mod validation;
 
+use crate::commands::graph::build_graph_display;
 use crate::fs::work_dir::WorkDir;
+use crate::verify::transitions::list_all_stages;
 use anyhow::Result;
 use colored::Colorize;
 
@@ -17,7 +19,8 @@ pub fn execute() -> Result<()> {
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
 
-    println!("{}", "loom Status Dashboard".bold().blue());
+    println!();
+    println!("{}", "Loom Status Dashboard".bold().blue());
     println!("{}", "=".repeat(50));
 
     let (runners, runner_count) = load_runners(&work_dir)?;
@@ -53,7 +56,51 @@ pub fn execute() -> Result<()> {
         display_sessions(&work_dir)?;
     }
 
+    // Show execution graph if stages exist
+    if stage_count > 0 {
+        display_execution_graph(&work_dir)?;
+    }
+
     println!();
+    Ok(())
+}
+
+/// Display the execution graph showing stage dependencies
+fn display_execution_graph(work_dir: &WorkDir) -> Result<()> {
+    let stages_dir = work_dir.stages_dir();
+    let work_path = stages_dir.parent().ok_or_else(|| {
+        anyhow::anyhow!("Stages directory has no parent: {}", stages_dir.display())
+    })?;
+
+    let stages = list_all_stages(work_path)?;
+    if stages.is_empty() {
+        return Ok(());
+    }
+
+    println!("\n{}", "Execution Graph".bold());
+    let graph_display = build_graph_display(&stages)?;
+    for line in graph_display.lines() {
+        println!("  {line}");
+    }
+
+    // Print compact legend with colored symbols
+    println!();
+    print!("  {} ", "Legend:".dimmed());
+    print!("{} ", "✓".green().bold());
+    print!("verified  ");
+    print!("{} ", "●".blue().bold());
+    print!("executing  ");
+    print!("{} ", "▶".cyan().bold());
+    print!("ready  ");
+    print!("{} ", "○".white().dimmed());
+    print!("pending  ");
+    print!("{} ", "✔".green());
+    print!("completed  ");
+    print!("{} ", "✗".red().bold());
+    print!("blocked  ");
+    print!("{} ", "⟳".yellow().bold());
+    println!("handoff");
+
     Ok(())
 }
 
