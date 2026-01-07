@@ -13,7 +13,10 @@ pub fn execute(stage_id: String) -> Result<()> {
 
     let mut stage = load_stage(&stage_id, work_dir.root())?;
 
-    if !matches!(stage.status, StageStatus::Blocked | StageStatus::NeedsHandoff) {
+    if !matches!(
+        stage.status,
+        StageStatus::Blocked | StageStatus::NeedsHandoff
+    ) {
         bail!(
             "Stage '{}' has status {:?}. Can only resume stages with status Blocked or NeedsHandoff.",
             stage_id,
