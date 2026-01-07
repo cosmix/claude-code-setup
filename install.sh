@@ -135,6 +135,31 @@ install_claude_md_remote() {
 	ok "CLAUDE.md installed"
 }
 
+install_hooks_remote() {
+	step "downloading hooks"
+
+	local hooks_dir="$CLAUDE_DIR/hooks"
+	mkdir -p "$hooks_dir"
+
+	# Download individual hook scripts
+	local hooks=("ask-user-pre.sh" "ask-user-post.sh" "flux-stop.sh")
+	local downloaded=0
+
+	for hook in "${hooks[@]}"; do
+		if download_file "${GITHUB_RELEASES}/$hook" "$hooks_dir/$hook" 2>/dev/null; then
+			chmod +x "$hooks_dir/$hook"
+			((downloaded++))
+		fi
+	done
+
+	if [[ $downloaded -eq 0 ]]; then
+		warn "failed to download hooks"
+		return 1
+	fi
+
+	ok "$downloaded hooks installed"
+}
+
 check_requirements() {
 	step "checking source files"
 
@@ -248,20 +273,9 @@ install_hooks() {
 		done
 	fi
 
-	# Copy hooks.json template if it exists
-	if [[ -f "$SCRIPT_DIR/.claude/hooks.json" ]]; then
-		cp "$SCRIPT_DIR/.claude/hooks.json" "$hooks_dir/hooks.json.template"
-		info "hooks configuration template saved to $hooks_dir/hooks.json.template"
-	fi
-
 	local count
 	count=$(find "$hooks_dir" -name "*.sh" 2>/dev/null | wc -l | tr -d ' ')
 	ok "$count hooks installed"
-
-	info "configure hooks in Claude Code settings or project .claude.json:"
-	info "  PreToolUse  → ask-user-pre.sh  (notifies when Claude asks questions)"
-	info "  PostToolUse → ask-user-post.sh (resumes after user responds)"
-	info "  Stop        → flux-stop.sh     (signals stage completion)"
 }
 
 install_loom_local() {
@@ -424,11 +438,10 @@ print_summary() {
 	echo -e "  CLAUDE.md    ${DIM}orchestration rules${NC}"
 	echo ""
 	echo -e "${DIM}installed to ~/.local/bin/${NC}"
-	echo -e "  loom         ${DIM}project context manager${NC}"
+	echo -e "  loom         ${DIM}parallel work orchestrator${NC}"
 	echo ""
-	echo -e "${YELLOW}note:${NC} configure hooks in your project's .claude.json"
-	echo -e "      see ~/.claude/hooks/hooks.json.template for example config"
-	echo -e "      hooks enable: stage completion, user question detection"
+	echo -e "${DIM}hooks are auto-configured when you run:${NC}"
+	echo -e "  ${CYAN}loom init${NC} <plan.md>    ${DIM}in your project${NC}"
 	echo ""
 	echo -e "run ${CYAN}claude${NC} to start"
 	echo ""
@@ -444,6 +457,7 @@ main() {
 		install_agents_remote
 		install_skills_remote
 		install_claude_md_remote
+		install_hooks_remote
 		install_loom_remote
 	else
 		check_requirements
