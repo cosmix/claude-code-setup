@@ -13,12 +13,50 @@ use crate::fs::stage_files::{
     compute_stage_depths, find_stage_file, stage_file_path, StageDependencies,
 };
 use crate::models::stage::{Stage, StageStatus};
+use crate::parser::frontmatter::extract_yaml_frontmatter;
 
-/// Transition a stage to a new status
+/// Transition a stage to a new status with validation
 ///
-/// Loads the stage from `.work/stages/{stage_id}.md`, updates its status
-/// using the appropriate Stage method, saves it back to disk, and returns
-/// the updated stage.
+/// Loads the stage from `.work/stages/{stage_id}.md`, validates and updates
+/// its status using validated transition methods, saves it back to disk,
+/// and returns the updated stage.
+///
+/// # Arguments
+/// * `stage_id` - The ID of the stage to transition
+/// * `new_status` - The new status to assign
+/// * `work_dir` - Path to the `.work` directory
+///
+/// # Returns
+/// The updated stage, or an error if the transition is invalid
+///
+/// # Errors
+/// Returns an error if:
+/// - The stage cannot be loaded
+/// - The transition is invalid (e.g., `Verified` -> `Pending`)
+/// - The stage cannot be saved
+pub fn transition_stage(stage_id: &str, new_status: StageStatus, work_dir: &Path) -> Result<Stage> {
+    let mut stage = load_stage(stage_id, work_dir)
+        .with_context(|| format!("Failed to load stage: {stage_id}"))?;
+
+    // Validate and perform the transition
+    stage
+        .try_transition(new_status.clone())
+        .with_context(|| format!("Invalid transition for stage {stage_id}"))?;
+
+    // Handle special case for Completed which sets additional fields
+    if new_status == StageStatus::Completed {
+        stage.completed_at = Some(chrono::Utc::now());
+    }
+
+    save_stage(&stage, work_dir).with_context(|| format!("Failed to save stage: {stage_id}"))?;
+
+    Ok(stage)
+}
+
+/// Transition a stage to a new status without validation (deprecated)
+///
+/// This function performs transitions without validating the state machine.
+/// Use `transition_stage` for validated transitions.
 ///
 /// # Arguments
 /// * `stage_id` - The ID of the stage to transition
@@ -27,10 +65,20 @@ use crate::models::stage::{Stage, StageStatus};
 ///
 /// # Returns
 /// The updated stage
-pub fn transition_stage(stage_id: &str, new_status: StageStatus, work_dir: &Path) -> Result<Stage> {
+#[deprecated(
+    since = "0.2.0",
+    note = "Use transition_stage for validated transitions"
+)]
+#[allow(dead_code)]
+pub fn transition_stage_unchecked(
+    stage_id: &str,
+    new_status: StageStatus,
+    work_dir: &Path,
+) -> Result<Stage> {
     let mut stage = load_stage(stage_id, work_dir)
         .with_context(|| format!("Failed to load stage: {stage_id}"))?;
 
+    #[allow(deprecated)]
     match new_status {
         StageStatus::Ready => stage.mark_ready(),
         StageStatus::Executing => stage.mark_executing(),
@@ -53,7 +101,7 @@ pub fn transition_stage(stage_id: &str, new_status: StageStatus, work_dir: &Path
 ///
 /// Finds all stages that depend on `verified_stage_id` and checks if all
 /// their dependencies are now satisfied (in Verified status). If so, marks
-/// them as Ready.
+/// them as Ready using validated transitions.
 ///
 /// # Arguments
 /// * `verified_stage_id` - The ID of the stage that was just verified
@@ -61,6 +109,10 @@ pub fn transition_stage(stage_id: &str, new_status: StageStatus, work_dir: &Path
 ///
 /// # Returns
 /// List of stage IDs that were transitioned to Ready
+///
+/// # Note
+/// Only stages in `Pending` status are eligible for triggering, which is
+/// a valid transition to `Ready` per the state machine.
 pub fn trigger_dependents(verified_stage_id: &str, work_dir: &Path) -> Result<Vec<String>> {
     let all_stages = list_all_stages(work_dir)?;
     let mut triggered = Vec::new();
@@ -70,12 +122,19 @@ pub fn trigger_dependents(verified_stage_id: &str, work_dir: &Path) -> Result<Ve
             continue;
         }
 
+        // Only Pending stages can be triggered to Ready
         if stage.status != StageStatus::Pending {
             continue;
         }
 
         if are_all_dependencies_satisfied(&stage, work_dir)? {
-            stage.mark_ready();
+            // Use validated transition - Pending -> Ready is always valid
+            stage.try_mark_ready().with_context(|| {
+                format!(
+                    "Failed to transition stage {} from {:?} to Ready",
+                    stage.id, stage.status
+                )
+            })?;
             let stage_id = &stage.id;
             save_stage(&stage, work_dir)
                 .with_context(|| format!("Failed to save triggered stage: {stage_id}"))?;
@@ -340,32 +399,6 @@ fn serialize_stage_to_markdown(stage: &Stage) -> Result<String> {
     }
 
     Ok(content)
-}
-
-/// Extract YAML frontmatter from markdown content
-///
-/// Expects frontmatter delimited by `---` at the start and end.
-fn extract_yaml_frontmatter(content: &str) -> Result<serde_yaml::Value> {
-    let lines: Vec<&str> = content.lines().collect();
-
-    if lines.is_empty() || !lines[0].trim().starts_with("---") {
-        anyhow::bail!("No frontmatter delimiter found at start of content");
-    }
-
-    let mut end_idx = None;
-    for (idx, line) in lines.iter().enumerate().skip(1) {
-        if line.trim().starts_with("---") {
-            end_idx = Some(idx);
-            break;
-        }
-    }
-
-    let end_idx =
-        end_idx.ok_or_else(|| anyhow::anyhow!("Frontmatter not properly closed with ---"))?;
-
-    let yaml_content = lines[1..end_idx].join("\n");
-
-    serde_yaml::from_str(&yaml_content).context("Failed to parse YAML frontmatter")
 }
 
 #[cfg(test)]
@@ -660,5 +693,187 @@ status: Pending
             are_all_dependencies_satisfied(&stage2, work_dir).expect("Should check dependencies");
 
         assert!(!satisfied);
+    }
+
+    // =========================================================================
+    // State transition validation tests
+    // =========================================================================
+
+    #[test]
+    fn test_transition_stage_invalid_verified_to_pending() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Verified);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        let result = transition_stage("stage-1", StageStatus::Pending, work_dir);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("Invalid") || err.contains("transition"),
+            "Error should mention invalid transition: {err}"
+        );
+
+        // Verify stage status was not changed
+        let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
+        assert_eq!(
+            reloaded.status,
+            StageStatus::Verified,
+            "Stage should remain in Verified status"
+        );
+    }
+
+    #[test]
+    fn test_transition_stage_invalid_pending_to_completed() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        let result = transition_stage("stage-1", StageStatus::Completed, work_dir);
+        assert!(result.is_err());
+
+        // Verify stage status was not changed
+        let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
+        assert_eq!(reloaded.status, StageStatus::Pending);
+    }
+
+    #[test]
+    fn test_transition_stage_invalid_ready_to_verified() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Ready);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        let result = transition_stage("stage-1", StageStatus::Verified, work_dir);
+        assert!(result.is_err());
+
+        // Verify stage status was not changed
+        let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
+        assert_eq!(reloaded.status, StageStatus::Ready);
+    }
+
+    #[test]
+    fn test_transition_stage_invalid_completed_to_executing() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Completed);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        let result = transition_stage("stage-1", StageStatus::Executing, work_dir);
+        assert!(result.is_err());
+
+        // Verify stage status was not changed
+        let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
+        assert_eq!(reloaded.status, StageStatus::Completed);
+    }
+
+    #[test]
+    fn test_transition_stage_valid_full_workflow() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        // Create stage in Pending status
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        // Pending -> Ready (valid)
+        let updated =
+            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("Pending->Ready");
+        assert_eq!(updated.status, StageStatus::Ready);
+
+        // Ready -> Executing (valid)
+        let updated = transition_stage("stage-1", StageStatus::Executing, work_dir)
+            .expect("Ready->Executing");
+        assert_eq!(updated.status, StageStatus::Executing);
+
+        // Executing -> Completed (valid)
+        let updated = transition_stage("stage-1", StageStatus::Completed, work_dir)
+            .expect("Executing->Completed");
+        assert_eq!(updated.status, StageStatus::Completed);
+
+        // Completed -> Verified (valid)
+        let updated = transition_stage("stage-1", StageStatus::Verified, work_dir)
+            .expect("Completed->Verified");
+        assert_eq!(updated.status, StageStatus::Verified);
+    }
+
+    #[test]
+    fn test_transition_stage_same_status_is_valid() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Executing);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        // Same status transition should succeed (no-op)
+        let updated = transition_stage("stage-1", StageStatus::Executing, work_dir)
+            .expect("Same status should be valid");
+        assert_eq!(updated.status, StageStatus::Executing);
+    }
+
+    #[test]
+    fn test_transition_stage_blocked_recovery() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        // Create stage in Executing status
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Executing);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        // Executing -> Blocked (valid)
+        let updated = transition_stage("stage-1", StageStatus::Blocked, work_dir)
+            .expect("Executing->Blocked");
+        assert_eq!(updated.status, StageStatus::Blocked);
+
+        // Blocked -> Ready (valid - unblocking)
+        let updated =
+            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("Blocked->Ready");
+        assert_eq!(updated.status, StageStatus::Ready);
+    }
+
+    #[test]
+    fn test_transition_stage_handoff_recovery() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        // Create stage in Executing status
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Executing);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        // Executing -> NeedsHandoff (valid)
+        let updated = transition_stage("stage-1", StageStatus::NeedsHandoff, work_dir)
+            .expect("Executing->NeedsHandoff");
+        assert_eq!(updated.status, StageStatus::NeedsHandoff);
+
+        // NeedsHandoff -> Ready (valid - resuming)
+        let updated =
+            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("NeedsHandoff->Ready");
+        assert_eq!(updated.status, StageStatus::Ready);
+    }
+
+    #[test]
+    fn test_transition_stage_waiting_for_input() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        // Create stage in Executing status
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Executing);
+        save_stage(&stage, work_dir).expect("Should save stage");
+
+        // Executing -> WaitingForInput (valid)
+        let updated = transition_stage("stage-1", StageStatus::WaitingForInput, work_dir)
+            .expect("Executing->WaitingForInput");
+        assert_eq!(updated.status, StageStatus::WaitingForInput);
+
+        // WaitingForInput -> Executing (valid - input received)
+        let updated = transition_stage("stage-1", StageStatus::Executing, work_dir)
+            .expect("WaitingForInput->Executing");
+        assert_eq!(updated.status, StageStatus::Executing);
     }
 }

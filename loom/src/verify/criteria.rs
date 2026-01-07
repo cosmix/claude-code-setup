@@ -1,9 +1,76 @@
+//! Acceptance Criteria Execution Module
+//!
+//! This module executes shell commands defined as acceptance criteria in loom plans.
+//!
+//! # Trust Model
+//!
+//! Plan files (containing acceptance criteria and setup commands) follow the same trust
+//! model as Makefiles, shell scripts, or CI/CD configuration files. They are considered
+//! trusted project artifacts that are:
+//!
+//! - Version controlled alongside application code
+//! - Reviewed as part of the normal code review process
+//! - Authored by project maintainers or approved contributors
+//!
+//! Users should treat plan files with the same caution as any executable script:
+//! do not run plans from untrusted sources without reviewing their contents.
+//!
+//! # Security Controls
+//!
+//! While plan files are trusted, this module implements the following controls to
+//! limit the impact of runaway or misbehaving commands:
+//!
+//! - **Command Timeout**: All commands have a configurable timeout (default 5 minutes)
+//!   to prevent indefinite hangs from blocking the orchestration pipeline.
+//!
+//! - **Explicit Shell Invocation**: Commands are executed via `sh -c` (Unix) or
+//!   `cmd /C` (Windows) with the command passed as a single argument, avoiding
+//!   shell injection through improper argument splitting.
+//!
+//! - **Isolated Working Directory**: Commands can be scoped to a specific worktree
+//!   directory, limiting their filesystem context.
+//!
+//! # Timeout Behavior
+//!
+//! When a command exceeds its timeout:
+//! - The process is terminated (SIGKILL on Unix, TerminateProcess on Windows)
+//! - The criterion is marked as failed with a timeout-specific error message
+//! - Subsequent criteria continue to execute (fail-fast is not the default)
+
 use anyhow::{Context, Result};
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
+use wait_timeout::ChildExt;
 
 use crate::models::stage::Stage;
+
+/// Default timeout for command execution (5 minutes)
+pub const DEFAULT_COMMAND_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Configuration for acceptance criteria execution
+#[derive(Debug, Clone)]
+pub struct CriteriaConfig {
+    /// Maximum time to wait for a single command to complete
+    pub command_timeout: Duration,
+}
+
+impl Default for CriteriaConfig {
+    fn default() -> Self {
+        Self {
+            command_timeout: DEFAULT_COMMAND_TIMEOUT,
+        }
+    }
+}
+
+impl CriteriaConfig {
+    /// Create a new configuration with a custom timeout
+    pub fn with_timeout(timeout: Duration) -> Self {
+        Self {
+            command_timeout: timeout,
+        }
+    }
+}
 
 /// Result of executing a single acceptance criterion (shell command)
 #[derive(Debug, Clone)]
@@ -14,6 +81,8 @@ pub struct CriterionResult {
     pub stderr: String,
     pub exit_code: Option<i32>,
     pub duration: Duration,
+    /// Whether the command was terminated due to timeout
+    pub timed_out: bool,
 }
 
 impl CriterionResult {
@@ -25,6 +94,7 @@ impl CriterionResult {
         stderr: String,
         exit_code: Option<i32>,
         duration: Duration,
+        timed_out: bool,
     ) -> Self {
         Self {
             command,
@@ -33,6 +103,7 @@ impl CriterionResult {
             stderr,
             exit_code,
             duration,
+            timed_out,
         }
     }
 
@@ -43,7 +114,13 @@ impl CriterionResult {
 
     /// Get a summary of the result
     pub fn summary(&self) -> String {
-        let status = if self.success { "PASSED" } else { "FAILED" };
+        let status = if self.timed_out {
+            "TIMEOUT"
+        } else if self.success {
+            "PASSED"
+        } else {
+            "FAILED"
+        };
         let duration_ms = self.duration.as_millis();
         format!(
             "{} - {} ({}ms, exit code: {:?})",
@@ -102,7 +179,15 @@ impl AcceptanceResult {
     }
 }
 
-/// Run all acceptance criteria for a stage
+/// Run all acceptance criteria for a stage with default configuration
+///
+/// This is a convenience wrapper around `run_acceptance_with_config` that uses
+/// the default timeout settings.
+pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<AcceptanceResult> {
+    run_acceptance_with_config(stage, working_dir, &CriteriaConfig::default())
+}
+
+/// Run all acceptance criteria for a stage with custom configuration
 ///
 /// Executes each shell command sequentially and collects results.
 /// Returns AllPassed if all commands exit with code 0, Failed otherwise.
@@ -112,7 +197,14 @@ impl AcceptanceResult {
 ///
 /// If the stage has setup commands defined, they will be prepended to each
 /// criterion command using `&&` to ensure environment preparation runs first.
-pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<AcceptanceResult> {
+///
+/// Each command is subject to the timeout specified in `config`. Commands that
+/// exceed the timeout are terminated and marked as failed.
+pub fn run_acceptance_with_config(
+    stage: &Stage,
+    working_dir: Option<&Path>,
+    config: &CriteriaConfig,
+) -> Result<AcceptanceResult> {
     if stage.acceptance.is_empty() {
         return Ok(AcceptanceResult::AllPassed {
             results: Vec::new(),
@@ -136,14 +228,24 @@ pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<Accep
             None => command.clone(),
         };
 
-        let result = run_single_criterion(&full_command, working_dir)
-            .with_context(|| format!("Failed to execute criterion: {command}"))?;
+        let result =
+            run_single_criterion_with_timeout(&full_command, working_dir, config.command_timeout)
+                .with_context(|| format!("Failed to execute criterion: {command}"))?;
 
         if !result.success {
-            failures.push(format!(
-                "Command '{}' failed with exit code {:?}",
-                command, result.exit_code
-            ));
+            let failure_reason = if result.timed_out {
+                format!(
+                    "Command '{}' timed out after {}s",
+                    command,
+                    config.command_timeout.as_secs()
+                )
+            } else {
+                format!(
+                    "Command '{}' failed with exit code {:?}",
+                    command, result.exit_code
+                )
+            };
+            failures.push(failure_reason);
         }
 
         // Store result with original command for cleaner output
@@ -159,60 +261,142 @@ pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<Accep
     }
 }
 
-/// Run a single acceptance criterion (shell command)
+/// Run a single acceptance criterion (shell command) with default timeout
+///
+/// This is a convenience wrapper around `run_single_criterion_with_timeout` that uses
+/// the default timeout setting.
+pub fn run_single_criterion(command: &str, working_dir: Option<&Path>) -> Result<CriterionResult> {
+    run_single_criterion_with_timeout(command, working_dir, DEFAULT_COMMAND_TIMEOUT)
+}
+
+/// Run a single acceptance criterion (shell command) with specified timeout
 ///
 /// Executes the command using the system shell and captures all output.
 /// Returns a CriterionResult with execution details.
 ///
 /// If `working_dir` is provided, the command will be executed in that directory.
-pub fn run_single_criterion(command: &str, working_dir: Option<&Path>) -> Result<CriterionResult> {
+///
+/// The command will be terminated if it exceeds the specified `timeout` duration.
+/// When this happens, the result will have `timed_out` set to true and `success`
+/// set to false.
+pub fn run_single_criterion_with_timeout(
+    command: &str,
+    working_dir: Option<&Path>,
+    timeout: Duration,
+) -> Result<CriterionResult> {
     let start = Instant::now();
 
-    // Use sh -c on Unix systems to execute the command in a shell
-    let output = if cfg!(target_family = "unix") {
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c")
-            .arg(command)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+    // Spawn the child process using the appropriate shell
+    let mut child = spawn_shell_command(command, working_dir)?;
 
-        if let Some(dir) = working_dir {
-            cmd.current_dir(dir);
-        }
-
-        cmd.output()
-            .with_context(|| format!("Failed to spawn command: {command}"))?
-    } else {
-        // Windows: use cmd /C
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/C")
-            .arg(command)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        if let Some(dir) = working_dir {
-            cmd.current_dir(dir);
-        }
-
-        cmd.output()
-            .with_context(|| format!("Failed to spawn command: {command}"))?
-    };
+    // Wait for completion with timeout
+    let wait_result = child
+        .wait_timeout(timeout)
+        .with_context(|| format!("Failed to wait for command: {command}"))?;
 
     let duration = start.elapsed();
 
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let success = output.status.success();
-    let exit_code = output.status.code();
+    match wait_result {
+        Some(status) => {
+            // Command completed within timeout
+            let (stdout, stderr) = collect_child_output(&mut child)?;
+            let success = status.success();
+            let exit_code = status.code();
 
-    Ok(CriterionResult::new(
-        command.to_string(),
-        success,
-        stdout,
-        stderr,
-        exit_code,
-        duration,
-    ))
+            Ok(CriterionResult::new(
+                command.to_string(),
+                success,
+                stdout,
+                stderr,
+                exit_code,
+                duration,
+                false, // not timed out
+            ))
+        }
+        None => {
+            // Command timed out - kill the process
+            kill_child_process(&mut child);
+
+            // Collect any partial output that was captured
+            let (stdout, stderr) = collect_child_output(&mut child).unwrap_or_default();
+
+            Ok(CriterionResult::new(
+                command.to_string(),
+                false, // failed due to timeout
+                stdout,
+                format!(
+                    "{}\n[Process killed after {}s timeout]",
+                    stderr,
+                    timeout.as_secs()
+                ),
+                None, // no exit code for killed process
+                duration,
+                true, // timed out
+            ))
+        }
+    }
+}
+
+/// Spawn a shell command as a child process
+///
+/// Uses `sh -c` on Unix and `cmd /C` on Windows to execute the command.
+/// The command string is passed as a single argument to avoid shell injection
+/// through improper argument splitting.
+fn spawn_shell_command(command: &str, working_dir: Option<&Path>) -> Result<Child> {
+    let mut cmd = if cfg!(target_family = "unix") {
+        let mut c = Command::new("sh");
+        c.arg("-c").arg(command);
+        c
+    } else {
+        let mut c = Command::new("cmd");
+        c.arg("/C").arg(command);
+        c
+    };
+
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    if let Some(dir) = working_dir {
+        cmd.current_dir(dir);
+    }
+
+    cmd.spawn()
+        .with_context(|| format!("Failed to spawn command: {command}"))
+}
+
+/// Collect stdout and stderr from a child process
+fn collect_child_output(child: &mut Child) -> Result<(String, String)> {
+    let stdout = child
+        .stdout
+        .take()
+        .map(|mut s| {
+            let mut buf = Vec::new();
+            std::io::Read::read_to_end(&mut s, &mut buf).ok();
+            String::from_utf8_lossy(&buf).to_string()
+        })
+        .unwrap_or_default();
+
+    let stderr = child
+        .stderr
+        .take()
+        .map(|mut s| {
+            let mut buf = Vec::new();
+            std::io::Read::read_to_end(&mut s, &mut buf).ok();
+            String::from_utf8_lossy(&buf).to_string()
+        })
+        .unwrap_or_default();
+
+    Ok((stdout, stderr))
+}
+
+/// Terminate a child process
+///
+/// Attempts to kill the process. On Unix, this sends SIGKILL.
+/// On Windows, this calls TerminateProcess.
+fn kill_child_process(child: &mut Child) {
+    // Attempt to kill - ignore errors since the process may have already exited
+    let _ = child.kill();
+    // Wait to reap the zombie process
+    let _ = child.wait();
 }
 
 #[cfg(test)]
@@ -228,6 +412,7 @@ mod tests {
             String::new(),
             Some(0),
             Duration::from_millis(100),
+            false,
         );
 
         assert!(result.passed());
@@ -236,6 +421,7 @@ mod tests {
         assert_eq!(result.stderr, "");
         assert_eq!(result.exit_code, Some(0));
         assert_eq!(result.duration, Duration::from_millis(100));
+        assert!(!result.timed_out);
     }
 
     #[test]
@@ -247,6 +433,7 @@ mod tests {
             "error".to_string(),
             Some(1),
             Duration::from_millis(500),
+            false,
         );
 
         let summary = result.summary();
@@ -254,6 +441,23 @@ mod tests {
         assert!(summary.contains("cargo test"));
         assert!(summary.contains("500ms"));
         assert!(summary.contains("exit code: Some(1)"));
+    }
+
+    #[test]
+    fn test_criterion_result_summary_timeout() {
+        let result = CriterionResult::new(
+            "sleep 1000".to_string(),
+            false,
+            String::new(),
+            "[Process killed after 5s timeout]".to_string(),
+            None,
+            Duration::from_secs(5),
+            true,
+        );
+
+        let summary = result.summary();
+        assert!(summary.contains("TIMEOUT"));
+        assert!(summary.contains("sleep 1000"));
     }
 
     #[test]
@@ -266,6 +470,7 @@ mod tests {
                 String::new(),
                 Some(0),
                 Duration::from_millis(100),
+                false,
             ),
             CriterionResult::new(
                 "test2".to_string(),
@@ -274,6 +479,7 @@ mod tests {
                 String::new(),
                 Some(0),
                 Duration::from_millis(200),
+                false,
             ),
         ];
 
@@ -298,6 +504,7 @@ mod tests {
                 String::new(),
                 Some(0),
                 Duration::from_millis(100),
+                false,
             ),
             CriterionResult::new(
                 "test2".to_string(),
@@ -306,6 +513,7 @@ mod tests {
                 "error".to_string(),
                 Some(1),
                 Duration::from_millis(200),
+                false,
             ),
         ];
 
@@ -336,6 +544,7 @@ mod tests {
         assert_eq!(result.exit_code, Some(0));
         assert!(result.stdout.contains("hello world"));
         assert!(result.duration > Duration::from_nanos(0));
+        assert!(!result.timed_out);
     }
 
     #[test]
@@ -350,6 +559,38 @@ mod tests {
 
         assert!(!result.success);
         assert_eq!(result.exit_code, Some(42));
+        assert!(!result.timed_out);
+    }
+
+    #[test]
+    fn test_run_single_criterion_timeout() {
+        // Only run on Unix - sleep command behavior differs on Windows
+        if cfg!(target_family = "unix") {
+            // Use a very short timeout (100ms) with a command that sleeps for 10 seconds
+            let result =
+                run_single_criterion_with_timeout("sleep 10", None, Duration::from_millis(100))
+                    .unwrap();
+
+            assert!(!result.success);
+            assert!(result.timed_out);
+            assert!(result.exit_code.is_none()); // killed process has no exit code
+            assert!(result.stderr.contains("timeout"));
+            // Duration should be close to the timeout, not 10 seconds
+            assert!(result.duration < Duration::from_secs(1));
+        }
+    }
+
+    #[test]
+    fn test_criteria_config_default() {
+        let config = CriteriaConfig::default();
+        assert_eq!(config.command_timeout, DEFAULT_COMMAND_TIMEOUT);
+        assert_eq!(config.command_timeout, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn test_criteria_config_with_timeout() {
+        let config = CriteriaConfig::with_timeout(Duration::from_secs(60));
+        assert_eq!(config.command_timeout, Duration::from_secs(60));
     }
 
     #[test]
