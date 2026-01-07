@@ -81,14 +81,12 @@ fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<()> {
         })
         .collect();
 
-    let depths = compute_stage_depths(&stage_deps)
-        .context("Failed to compute stage depths")?;
+    let depths = compute_stage_depths(&stage_deps).context("Failed to compute stage depths")?;
 
     // Create stage files
     let stages_dir = work_dir.root().join("stages");
     if !stages_dir.exists() {
-        fs::create_dir_all(&stages_dir)
-            .context("Failed to create stages directory")?;
+        fs::create_dir_all(&stages_dir).context("Failed to create stages directory")?;
     }
 
     for stage_def in &parsed_plan.stages {
@@ -132,10 +130,12 @@ fn create_stage_from_definition(
         dependencies: stage_def.dependencies.clone(),
         parallel_group: stage_def.parallel_group.clone(),
         acceptance: stage_def.acceptance.clone(),
+        setup: stage_def.setup.clone(),
         files: stage_def.files.clone(),
         plan_id: Some(plan_id.to_string()),
         worktree: None,
         session: None,
+        held: false,
         parent_stage: None,
         child_stages: Vec::new(),
         created_at: now,
@@ -214,9 +214,9 @@ fn prune_stale_worktrees(repo_root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Kill any orphaned loom-* tmux sessions from previous runs
+/// Kill any orphaned loom sessions from previous runs
 fn cleanup_orphaned_tmux_sessions() -> Result<()> {
-    println!("Cleaning up orphaned loom tmux sessions...");
+    println!("Cleaning up orphaned loom sessions...");
 
     // List all tmux sessions with loom- prefix
     let output = Command::new("tmux")
@@ -234,12 +234,12 @@ fn cleanup_orphaned_tmux_sessions() -> Result<()> {
         }
         Ok(_) => {
             // tmux returns non-zero when no sessions exist
-            println!("  No tmux sessions to clean up");
+            println!("  No sessions to clean up");
             return Ok(());
         }
         Err(_) => {
             // tmux might not be installed, which is fine
-            println!("  No tmux sessions to clean up");
+            println!("  No sessions to clean up");
             return Ok(());
         }
     };
@@ -273,7 +273,7 @@ fn cleanup_orphaned_tmux_sessions() -> Result<()> {
     }
 
     if killed_count > 0 {
-        println!("  Killed {killed_count} orphaned tmux session(s)");
+        println!("  Killed {killed_count} orphaned session(s)");
     }
 
     Ok(())
