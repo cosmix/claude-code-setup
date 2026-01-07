@@ -136,7 +136,10 @@ fn clean_worktrees(repo_root: &Path) -> Result<bool> {
                     let stderr = String::from_utf8_lossy(&result.stderr);
                     // Don't warn if branch doesn't exist
                     if !stderr.contains("not found") {
-                        eprintln!("  Warning: Failed to delete branch '{branch_name}': {}", stderr.trim());
+                        eprintln!(
+                            "  Warning: Failed to delete branch '{branch_name}': {}",
+                            stderr.trim()
+                        );
                     }
                 }
                 Err(e) => {
@@ -170,11 +173,11 @@ fn clean_worktrees(repo_root: &Path) -> Result<bool> {
     Ok(true)
 }
 
-/// Kill all loom-* tmux sessions
+/// Kill all loom sessions
 ///
 /// Returns true if any sessions were killed
 fn clean_tmux_sessions() -> Result<bool> {
-    println!("Cleaning loom tmux sessions...");
+    println!("Cleaning loom sessions...");
 
     // List all tmux sessions with loom- prefix
     let output = Command::new("tmux")
@@ -192,18 +195,18 @@ fn clean_tmux_sessions() -> Result<bool> {
         }
         Ok(_) => {
             // tmux returns non-zero when no sessions exist
-            println!("  No tmux sessions found");
+            println!("  No sessions found");
             return Ok(false);
         }
         Err(_) => {
             // tmux might not be installed
-            println!("  tmux not available or no sessions");
+            println!("  No sessions found");
             return Ok(false);
         }
     };
 
     if sessions.is_empty() {
-        println!("  No loom tmux sessions found");
+        println!("  No loom sessions found");
         return Ok(false);
     }
 
@@ -232,7 +235,7 @@ fn clean_tmux_sessions() -> Result<bool> {
     }
 
     if killed_count > 0 {
-        println!("  Killed {killed_count} tmux session(s)");
+        println!("  Killed {killed_count} session(s)");
     }
 
     Ok(killed_count > 0)
