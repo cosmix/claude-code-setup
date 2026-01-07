@@ -9,7 +9,9 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-use crate::fs::stage_files::{find_stage_file, StageDependencies, compute_stage_depths, stage_file_path};
+use crate::fs::stage_files::{
+    compute_stage_depths, find_stage_file, stage_file_path, StageDependencies,
+};
 use crate::models::stage::{Stage, StageStatus};
 
 /// Transition a stage to a new status

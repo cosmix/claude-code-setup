@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -105,7 +106,13 @@ impl AcceptanceResult {
 ///
 /// Executes each shell command sequentially and collects results.
 /// Returns AllPassed if all commands exit with code 0, Failed otherwise.
-pub fn run_acceptance(stage: &Stage) -> Result<AcceptanceResult> {
+///
+/// If `working_dir` is provided, commands will be executed in that directory.
+/// This is typically used to run criteria in a worktree directory.
+///
+/// If the stage has setup commands defined, they will be prepended to each
+/// criterion command using `&&` to ensure environment preparation runs first.
+pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<AcceptanceResult> {
     if stage.acceptance.is_empty() {
         return Ok(AcceptanceResult::AllPassed {
             results: Vec::new(),
@@ -115,8 +122,21 @@ pub fn run_acceptance(stage: &Stage) -> Result<AcceptanceResult> {
     let mut results = Vec::new();
     let mut failures = Vec::new();
 
+    // Build setup prefix if setup commands are defined
+    let setup_prefix = if stage.setup.is_empty() {
+        None
+    } else {
+        Some(stage.setup.join(" && "))
+    };
+
     for command in &stage.acceptance {
-        let result = run_single_criterion(command)
+        // Combine setup commands with criterion if setup is defined
+        let full_command = match &setup_prefix {
+            Some(prefix) => format!("{prefix} && {command}"),
+            None => command.clone(),
+        };
+
+        let result = run_single_criterion(&full_command, working_dir)
             .with_context(|| format!("Failed to execute criterion: {command}"))?;
 
         if !result.success {
@@ -126,7 +146,10 @@ pub fn run_acceptance(stage: &Stage) -> Result<AcceptanceResult> {
             ));
         }
 
-        results.push(result);
+        // Store result with original command for cleaner output
+        let mut result_with_original = result;
+        result_with_original.command = command.clone();
+        results.push(result_with_original);
     }
 
     if failures.is_empty() {
@@ -140,26 +163,38 @@ pub fn run_acceptance(stage: &Stage) -> Result<AcceptanceResult> {
 ///
 /// Executes the command using the system shell and captures all output.
 /// Returns a CriterionResult with execution details.
-pub fn run_single_criterion(command: &str) -> Result<CriterionResult> {
+///
+/// If `working_dir` is provided, the command will be executed in that directory.
+pub fn run_single_criterion(command: &str, working_dir: Option<&Path>) -> Result<CriterionResult> {
     let start = Instant::now();
 
     // Use sh -c on Unix systems to execute the command in a shell
     let output = if cfg!(target_family = "unix") {
-        Command::new("sh")
-            .arg("-c")
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
             .arg(command)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+            .stderr(Stdio::piped());
+
+        if let Some(dir) = working_dir {
+            cmd.current_dir(dir);
+        }
+
+        cmd.output()
             .with_context(|| format!("Failed to spawn command: {command}"))?
     } else {
         // Windows: use cmd /C
-        Command::new("cmd")
-            .arg("/C")
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C")
             .arg(command)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
+            .stderr(Stdio::piped());
+
+        if let Some(dir) = working_dir {
+            cmd.current_dir(dir);
+        }
+
+        cmd.output()
             .with_context(|| format!("Failed to spawn command: {command}"))?
     };
 
@@ -295,7 +330,7 @@ mod tests {
             "echo hello world"
         };
 
-        let result = run_single_criterion(command).unwrap();
+        let result = run_single_criterion(command, None).unwrap();
 
         assert!(result.success);
         assert_eq!(result.exit_code, Some(0));
@@ -311,7 +346,7 @@ mod tests {
             "exit /b 42"
         };
 
-        let result = run_single_criterion(command).unwrap();
+        let result = run_single_criterion(command, None).unwrap();
 
         assert!(!result.success);
         assert_eq!(result.exit_code, Some(42));
@@ -322,7 +357,7 @@ mod tests {
         use crate::models::stage::Stage;
 
         let stage = Stage::new("test".to_string(), None);
-        let result = run_acceptance(&stage).unwrap();
+        let result = run_acceptance(&stage, None).unwrap();
 
         assert!(result.all_passed());
         assert_eq!(result.results().len(), 0);
@@ -341,7 +376,7 @@ mod tests {
         stage.add_acceptance_criterion(command.to_string());
         stage.add_acceptance_criterion(command.to_string());
 
-        let result = run_acceptance(&stage).unwrap();
+        let result = run_acceptance(&stage, None).unwrap();
 
         assert!(result.all_passed());
         assert_eq!(result.results().len(), 2);
@@ -363,12 +398,107 @@ mod tests {
             stage.add_acceptance_criterion("exit /b 1".to_string());
         }
 
-        let result = run_acceptance(&stage).unwrap();
+        let result = run_acceptance(&stage, None).unwrap();
 
         assert!(!result.all_passed());
         assert_eq!(result.results().len(), 2);
         assert_eq!(result.passed_count(), 1);
         assert_eq!(result.failed_count(), 1);
         assert_eq!(result.failures().len(), 1);
+    }
+
+    #[test]
+    fn test_run_single_criterion_with_working_dir() {
+        use std::path::PathBuf;
+
+        // Create temp dir and verify command runs in it
+        let temp_dir = std::env::temp_dir();
+        let command = if cfg!(target_family = "unix") {
+            "pwd"
+        } else {
+            "cd"
+        };
+
+        let result = run_single_criterion(command, Some(&temp_dir)).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.exit_code, Some(0));
+        // The output should contain the temp directory path
+        let canonical_temp = temp_dir.canonicalize().unwrap_or(temp_dir.clone());
+        let stdout_path = PathBuf::from(result.stdout.trim());
+        let canonical_stdout = stdout_path.canonicalize().unwrap_or(stdout_path);
+        assert_eq!(canonical_stdout, canonical_temp);
+    }
+
+    #[test]
+    fn test_run_acceptance_with_setup_commands() {
+        use crate::models::stage::Stage;
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Setup creates an environment variable, criterion checks it exists
+            stage.setup.push("export TEST_VAR=hello".to_string());
+            stage.add_acceptance_criterion("test -n \"$TEST_VAR\"".to_string());
+        } else {
+            // Windows: set var and check it
+            stage.setup.push("set TEST_VAR=hello".to_string());
+            stage.add_acceptance_criterion(
+                "if defined TEST_VAR (exit /b 0) else (exit /b 1)".to_string(),
+            );
+        }
+
+        let result = run_acceptance(&stage, None).unwrap();
+
+        assert!(result.all_passed());
+        assert_eq!(result.passed_count(), 1);
+        // Verify the result stores original command, not the combined one
+        assert!(!result.results()[0].command.contains("export"));
+    }
+
+    #[test]
+    fn test_run_acceptance_setup_failure_fails_criterion() {
+        use crate::models::stage::Stage;
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Setup command that fails
+            stage.setup.push("false".to_string());
+            stage.add_acceptance_criterion("true".to_string());
+        } else {
+            stage.setup.push("exit /b 1".to_string());
+            stage.add_acceptance_criterion("exit /b 0".to_string());
+        }
+
+        let result = run_acceptance(&stage, None).unwrap();
+
+        // Even though the criterion itself would pass, setup failure causes failure
+        assert!(!result.all_passed());
+        assert_eq!(result.failed_count(), 1);
+    }
+
+    #[test]
+    fn test_run_acceptance_multiple_setup_commands() {
+        use crate::models::stage::Stage;
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Multiple setup commands chained
+            stage.setup.push("export A=1".to_string());
+            stage.setup.push("export B=2".to_string());
+            stage.add_acceptance_criterion("test -n \"$A\" && test -n \"$B\"".to_string());
+        } else {
+            stage.setup.push("set A=1".to_string());
+            stage.setup.push("set B=2".to_string());
+            stage.add_acceptance_criterion(
+                "if defined A if defined B (exit /b 0) else (exit /b 1)".to_string(),
+            );
+        }
+
+        let result = run_acceptance(&stage, None).unwrap();
+
+        assert!(result.all_passed());
     }
 }

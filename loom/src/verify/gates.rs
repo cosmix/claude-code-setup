@@ -16,15 +16,13 @@ pub enum GateDecision {
 }
 
 /// Configuration for approval gates.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct GateConfig {
     /// If true, automatically approve all gates without prompting
     pub auto_approve: bool,
     /// Optional timeout for interactive prompts (currently not enforced)
     pub timeout: Option<Duration>,
 }
-
 
 impl GateConfig {
     /// Create a new gate configuration
@@ -175,8 +173,6 @@ fn prompt_rejection_reason() -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
-    
 
     fn create_test_stage() -> Stage {
         let mut stage = Stage::new(
