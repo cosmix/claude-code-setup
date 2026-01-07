@@ -1,11 +1,13 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use loom::commands::{
     attach, clean, graph, init, merge, resume, run, self_update, sessions, stage, status, verify,
     worktree_cmd,
 };
+use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use loom::validation::{clap_description_validator, clap_id_validator};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Parser)]
 #[command(name = "loom")]
@@ -18,10 +20,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize .work/ directory with optional plan
+    /// Initialize .work/ directory from a plan
     Init {
         /// Path to the plan file
-        plan_path: Option<String>,
+        plan_path: String,
 
         /// Clean up stale resources before initialization
         /// (removes old .work/, prunes worktrees, kills orphaned tmux sessions)
@@ -50,6 +52,10 @@ enum Commands {
         /// Run orchestrator in foreground (not recommended)
         #[arg(long)]
         foreground: bool,
+
+        /// Watch mode: continuously spawn ready stages until all are terminal
+        #[arg(short, long)]
+        watch: bool,
     },
 
     /// Show dashboard with context health
@@ -60,6 +66,10 @@ enum Commands {
         /// Stage ID to verify (alphanumeric, dash, underscore only; max 128 characters)
         #[arg(value_parser = clap_id_validator)]
         stage_id: String,
+
+        /// Skip acceptance criteria checks and go straight to approval
+        #[arg(long, short)]
+        force: bool,
     },
 
     /// Resume work on a stage
@@ -134,6 +144,22 @@ enum Commands {
         /// Remove only .work/ state directory
         #[arg(long)]
         state: bool,
+    },
+
+    /// Generate shell completion script
+    Completions {
+        /// Shell to generate completions for (bash, zsh, fish)
+        shell: String,
+    },
+
+    /// Internal: Dynamic completion helper (invoked by shell)
+    #[command(hide = true)]
+    Complete {
+        /// Shell type
+        shell: String,
+        /// Command line arguments being completed
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 }
 
@@ -224,6 +250,20 @@ enum StageCommands {
         #[arg(value_parser = clap_id_validator)]
         stage_id: String,
     },
+
+    /// Hold a stage (prevent auto-execution even when ready)
+    Hold {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+    },
+
+    /// Release a held stage (allow auto-execution)
+    Release {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -237,6 +277,14 @@ enum AttachCommands {
         /// Detach other clients from sessions before attaching
         #[arg(long, short)]
         detach: bool,
+
+        /// Use legacy window-per-session mode instead of tiled panes
+        #[arg(long)]
+        windows: bool,
+
+        /// Layout for tiled view: tiled (default), horizontal, vertical
+        #[arg(long, value_name = "LAYOUT", default_value = "tiled")]
+        layout: String,
     },
 
     /// List all attachable sessions
@@ -247,28 +295,37 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { plan_path, clean } => init::execute(plan_path.map(PathBuf::from), clean),
+        Commands::Init { plan_path, clean } => init::execute(Some(PathBuf::from(plan_path)), clean),
         Commands::Run {
             stage,
             manual,
             max_parallel,
             attach,
             foreground,
+            watch,
         } => {
             if attach {
                 run::attach_orchestrator()
             } else if foreground {
-                run::execute(stage, manual, max_parallel)
+                run::execute(stage, manual, max_parallel, watch)
             } else {
-                run::execute_background(stage, manual, max_parallel)
+                run::execute_background(stage, manual, max_parallel, watch)
             }
         }
         Commands::Status => status::execute(),
-        Commands::Verify { stage_id } => verify::execute(stage_id),
+        Commands::Verify { stage_id, force } => verify::execute(stage_id, force),
         Commands::Resume { stage_id } => resume::execute(stage_id),
         Commands::Merge { stage_id, force } => merge::execute(stage_id, force),
         Commands::Attach { command, target } => match (command, target) {
-            (Some(AttachCommands::All { gui, detach }), _) => attach::execute_all(gui, detach),
+            (
+                Some(AttachCommands::All {
+                    gui,
+                    detach,
+                    windows,
+                    layout,
+                }),
+                _,
+            ) => attach::execute_all(gui, detach, windows, layout),
             (Some(AttachCommands::List), _) => attach::list(),
             (None, Some(target)) => attach::execute(target),
             (None, None) => attach::list(),
@@ -292,9 +349,15 @@ fn main() -> Result<()> {
                 no_verify,
             } => stage::complete(stage_id, session, no_verify),
             StageCommands::Block { stage_id, reason } => stage::block(stage_id, reason),
-            StageCommands::Reset { stage_id, hard, kill_session } => stage::reset(stage_id, hard, kill_session),
+            StageCommands::Reset {
+                stage_id,
+                hard,
+                kill_session,
+            } => stage::reset(stage_id, hard, kill_session),
             StageCommands::Waiting { stage_id } => stage::waiting(stage_id),
             StageCommands::Resume { stage_id } => stage::resume_from_waiting(stage_id),
+            StageCommands::Hold { stage_id } => stage::hold(stage_id),
+            StageCommands::Release { stage_id } => stage::release(stage_id),
         },
         Commands::SelfUpdate => self_update::execute(),
         Commands::Clean {
@@ -303,5 +366,15 @@ fn main() -> Result<()> {
             sessions,
             state,
         } => clean::execute(all, worktrees, sessions, state),
+        Commands::Completions { shell } => {
+            let shell = Shell::from_str(&shell)?;
+            let mut cmd = Cli::command();
+            generate_completions(&mut cmd, shell);
+            Ok(())
+        }
+        Commands::Complete { shell, args } => {
+            let ctx = CompletionContext::from_args(&shell, &args);
+            complete_dynamic(&ctx)
+        }
     }
 }
