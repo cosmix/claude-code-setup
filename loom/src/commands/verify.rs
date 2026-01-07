@@ -1,19 +1,25 @@
 use crate::fs::work_dir::WorkDir;
 use crate::models::stage::StageStatus;
+use crate::parser::markdown::MarkdownDocument;
 use crate::verify::transitions::load_stage;
 use crate::verify::{
-    human_gate, run_acceptance, transition_stage, trigger_dependents, AcceptanceResult,
-    GateConfig, GateDecision,
+    human_gate, run_acceptance, transition_stage, trigger_dependents, AcceptanceResult, GateConfig,
+    GateDecision,
 };
 use anyhow::{bail, Context, Result};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Run acceptance criteria and prompt for human approval
-/// Usage: loom verify <stage_id>
-pub fn execute(stage_id: String) -> Result<()> {
+/// Usage: loom verify <stage_id> [--force]
+pub fn execute(stage_id: String, force: bool) -> Result<()> {
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
 
     println!("Verifying stage: {stage_id}");
+    if force {
+        println!("  (force mode: skipping acceptance criteria)");
+    }
     println!();
 
     let stage = load_stage(&stage_id, work_dir.root())
@@ -26,31 +32,45 @@ pub fn execute(stage_id: String) -> Result<()> {
         );
     }
 
-    println!("Running acceptance criteria...");
-    println!();
+    // Skip acceptance criteria if --force is set
+    if !force {
+        // Resolve worktree path from stage's worktree field
+        let working_dir: Option<PathBuf> = stage
+            .worktree
+            .as_ref()
+            .map(|w| PathBuf::from(".worktrees").join(w))
+            .filter(|p| p.exists());
 
-    let acceptance_result = run_acceptance(&stage)
-        .with_context(|| format!("Failed to run acceptance criteria for stage '{stage_id}'"))?;
-
-    display_acceptance_results(&acceptance_result);
-
-    if !acceptance_result.all_passed() {
-        println!();
-        println!("Verification FAILED: Not all acceptance criteria passed.");
-        println!();
-        println!("Failed criteria:");
-        for failure in acceptance_result.failures() {
-            println!("  - {failure}");
+        println!("Running acceptance criteria...");
+        if let Some(ref dir) = working_dir {
+            println!("  (working directory: {})", dir.display());
         }
-        bail!("Verification failed due to failing acceptance criteria");
+        println!();
+
+        let acceptance_result = run_acceptance(&stage, working_dir.as_deref())
+            .with_context(|| format!("Failed to run acceptance criteria for stage '{stage_id}'"))?;
+
+        display_acceptance_results(&acceptance_result);
+
+        if !acceptance_result.all_passed() {
+            println!();
+            println!("Verification FAILED: Not all acceptance criteria passed.");
+            println!();
+            println!("Failed criteria:");
+            for failure in acceptance_result.failures() {
+                println!("  - {failure}");
+            }
+            println!();
+            println!("Tip: Use 'loom verify --force {stage_id}' to skip criteria checks.");
+            bail!("Verification failed due to failing acceptance criteria");
+        }
+
+        println!();
+        println!("All acceptance criteria passed!");
     }
 
-    println!();
-    println!("All acceptance criteria passed!");
-
     let config = GateConfig::new();
-    let decision = human_gate(&stage, &config)
-        .context("Failed to execute human approval gate")?;
+    let decision = human_gate(&stage, &config).context("Failed to execute human approval gate")?;
 
     match decision {
         GateDecision::Approved => {
@@ -59,6 +79,9 @@ pub fn execute(stage_id: String) -> Result<()> {
 
             transition_stage(&stage_id, StageStatus::Verified, work_dir.root())
                 .with_context(|| format!("Failed to transition stage '{stage_id}' to Verified"))?;
+
+            // Clean up session files for this verified stage
+            cleanup_sessions_for_stage(&stage_id, work_dir.root());
 
             let triggered = trigger_dependents(&stage_id, work_dir.root())
                 .context("Failed to trigger dependent stages")?;
@@ -106,5 +129,77 @@ fn display_acceptance_results(result: &AcceptanceResult) {
 
     for criterion_result in result.results() {
         println!("  {}", criterion_result.summary());
+    }
+}
+
+/// Clean up session files associated with a verified stage
+///
+/// When a stage is verified, the tmux sessions are already gone.
+/// This removes the session and signal files from `.work/` to keep status clean.
+fn cleanup_sessions_for_stage(stage_id: &str, work_dir: &Path) {
+    let sessions_dir = work_dir.join("sessions");
+    let signals_dir = work_dir.join("signals");
+
+    if !sessions_dir.exists() {
+        return;
+    }
+
+    // Find and remove sessions associated with this stage
+    let entries = match fs::read_dir(&sessions_dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("md") {
+            continue;
+        }
+
+        // Read and parse the session file to check if it belongs to this stage
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        let doc = match MarkdownDocument::parse(&content) {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+
+        // Check if this session belongs to the verified stage
+        let session_stage_id = doc.get_frontmatter("stage_id");
+        if session_stage_id.map(|s| s.as_str()) != Some(stage_id) {
+            continue;
+        }
+
+        // Get the session ID for signal cleanup
+        let session_id = doc.get_frontmatter("id").cloned();
+
+        // Remove the session file
+        if let Err(e) = fs::remove_file(&path) {
+            eprintln!(
+                "Warning: failed to remove session file '{}': {e}",
+                path.display()
+            );
+        } else {
+            println!(
+                "  Cleaned up session: {}",
+                path.file_stem().unwrap_or_default().to_string_lossy()
+            );
+        }
+
+        // Remove the associated signal file if it exists
+        if let Some(sid) = session_id {
+            let signal_path = signals_dir.join(format!("{sid}.md"));
+            if signal_path.exists() {
+                if let Err(e) = fs::remove_file(&signal_path) {
+                    eprintln!(
+                        "Warning: failed to remove signal file '{}': {e}",
+                        signal_path.display()
+                    );
+                }
+            }
+        }
     }
 }
