@@ -10,10 +10,14 @@ pub struct Stage {
     pub dependencies: Vec<String>,
     pub parallel_group: Option<String>,
     pub acceptance: Vec<String>,
+    #[serde(default)]
+    pub setup: Vec<String>,
     pub files: Vec<String>,
     pub plan_id: Option<String>,
     pub worktree: Option<String>,
     pub session: Option<String>,
+    #[serde(default)]
+    pub held: bool,
     pub parent_stage: Option<String>,
     pub child_stages: Vec<String>,
     pub created_at: DateTime<Utc>,
@@ -49,10 +53,12 @@ impl Stage {
             dependencies: Vec::new(),
             parallel_group: None,
             acceptance: Vec::new(),
+            setup: Vec::new(),
             files: Vec::new(),
             plan_id: None,
             worktree: None,
             session: None,
+            held: false,
             parent_stage: None,
             child_stages: Vec::new(),
             created_at: now,
@@ -159,5 +165,19 @@ impl Stage {
     pub fn mark_waiting_for_input(&mut self) {
         self.status = StageStatus::WaitingForInput;
         self.updated_at = Utc::now();
+    }
+
+    pub fn hold(&mut self) {
+        if !self.held {
+            self.held = true;
+            self.updated_at = Utc::now();
+        }
+    }
+
+    pub fn release(&mut self) {
+        if self.held {
+            self.held = false;
+            self.updated_at = Utc::now();
+        }
     }
 }
