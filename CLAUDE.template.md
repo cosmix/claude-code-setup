@@ -133,6 +133,155 @@ IMPORTANT: REFACTOR if exceeded.
 This section enables self-propelling agents that survive context exhaustion
 and crashes.
 
+### Creating Flux Plans
+
+Plans define parallelizable work with dependencies. All stages, metadata, and
+the execution graph are contained in a **single markdown file**.
+
+**Location:** `doc/plans/PLAN-XXXX-description.md`
+
+#### Plan File Structure
+
+````markdown
+# PLAN: [Descriptive Title]
+
+## Overview
+[What this plan accomplishes - 2-3 sentences]
+
+## Current State
+[Analysis of existing code, problems to solve]
+
+## Proposed Changes
+[Detailed description of the implementation approach]
+
+## Stages
+
+### Stage 1: [Name]
+[Detailed description of what this stage accomplishes]
+
+**Files:** `src/path/*.ext`
+
+**Acceptance Criteria:**
+- [ ] Tests pass
+- [ ] No lint errors
+
+### Stage 2: [Name]
+[Description - depends on Stage 1]
+
+---
+
+<!-- FLUX METADATA - Do not edit manually -->
+
+```yaml
+flux:
+  version: 1
+  stages:
+    - id: stage-1-short-id
+      name: "Stage 1 Name"
+      description: "What this stage does"
+      dependencies: []
+      acceptance:
+        - "pytest tests/test_stage1.py"
+        - "ruff check src/"
+      files:
+        - "src/module/*.py"
+
+    - id: stage-2-short-id
+      name: "Stage 2 Name"
+      description: "Builds on stage 1"
+      dependencies: ["stage-1-short-id"]
+      parallel_group: "core"
+      acceptance:
+        - "pytest tests/"
+      files:
+        - "src/other/*.py"
+```
+
+<!-- END FLUX METADATA -->
+````
+
+#### Stage Definition Schema
+
+| Field            | Required | Description                                       |
+| ---------------- | -------- | ------------------------------------------------- |
+| `id`             | Yes      | Unique identifier (alphanumeric, dash, underscore)|
+| `name`           | Yes      | Human-readable stage name                         |
+| `description`    | No       | What this stage accomplishes                      |
+| `dependencies`   | Yes      | Array of stage IDs that must complete first       |
+| `parallel_group` | No       | Stages in same group can run simultaneously       |
+| `acceptance`     | No       | Shell commands that must pass (exit 0)            |
+| `files`          | No       | Glob patterns for files this stage modifies       |
+
+**Note:** Use `dependencies: []` for stages with no dependencies.
+
+#### Dependency Graph Rules
+
+1. **No circular dependencies** - A cannot depend on B if B depends on A
+2. **Stages without dependencies start immediately** - They become `Ready`
+3. **Dependent stages wait** - Stay `Pending` until all deps are `Verified`
+4. **Parallel groups** - Same group + satisfied deps = run together
+
+#### Example: Parallel Execution
+
+```yaml
+flux:
+  version: 1
+  stages:
+    # These two have no deps - run in PARALLEL
+    - id: setup-database
+      name: "Database Setup"
+      dependencies: []
+      parallel_group: "infrastructure"
+
+    - id: setup-cache
+      name: "Cache Setup"
+      dependencies: []
+      parallel_group: "infrastructure"
+
+    # This waits for BOTH above to complete
+    - id: integration
+      name: "Integration Layer"
+      dependencies: ["setup-database", "setup-cache"]
+```
+
+Execution flow:
+
+```text
+[setup-database] ──┬──► [integration]
+[setup-cache]   ───┘
+     └── parallel ──┘        └── sequential
+```
+
+#### Acceptance Criteria Best Practices
+
+```yaml
+acceptance:
+  # Run specific tests
+  - "pytest tests/test_feature.py -v"
+
+  # Check imports work
+  - "python -c 'from mymodule import NewClass'"
+
+  # Linting
+  - "ruff check src/feature/"
+
+  # Type checking
+  - "mypy src/feature/"
+
+  # Build verification
+  - "cargo build --release"
+  - "cargo test --lib"
+```
+
+#### Workflow
+
+1. **Create plan:** Write `doc/plans/PLAN-001-feature.md` with full structure
+2. **Initialize:** `flux init doc/plans/PLAN-001-feature.md`
+3. **Execute:** `flux run` (spawns parallel sessions for ready stages)
+4. **Monitor:** `flux status` or `flux attach <stage-id>`
+5. **Verify:** `flux verify <stage-id>` (runs acceptance criteria)
+6. **Merge:** `flux merge <stage-id>` (merges completed stage to main)
+
 ### The Signal Principle
 
 > **"If you have a signal, answer it."**
