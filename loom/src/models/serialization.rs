@@ -27,7 +27,11 @@ pub trait MarkdownSerializable: Sized {
     ///
     /// The output includes YAML frontmatter delimited by `---` and
     /// structured markdown sections for human readability.
-    fn to_markdown(&self) -> String;
+    ///
+    /// # Returns
+    /// * `Ok(String)` - The serialized markdown content
+    /// * `Err` - If serialization fails
+    fn to_markdown(&self) -> Result<String>;
 
     /// Load an instance from a file path.
     ///
@@ -54,7 +58,7 @@ pub trait MarkdownSerializable: Sized {
     /// * `Ok(())` - Successfully written
     /// * `Err` - If writing fails
     fn save(&self, path: &Path) -> Result<()> {
-        let content = self.to_markdown();
+        let content = self.to_markdown()?;
 
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)
@@ -71,8 +75,8 @@ impl MarkdownSerializable for Runner {
         runner_from_markdown(content)
     }
 
-    fn to_markdown(&self) -> String {
-        runner_to_markdown(self).expect("Runner serialization should not fail")
+    fn to_markdown(&self) -> Result<String> {
+        runner_to_markdown(self)
     }
 }
 
@@ -81,8 +85,8 @@ impl MarkdownSerializable for Track {
         track_from_markdown(content)
     }
 
-    fn to_markdown(&self) -> String {
-        track_to_markdown(self).expect("Track serialization should not fail")
+    fn to_markdown(&self) -> Result<String> {
+        track_to_markdown(self)
     }
 }
 
@@ -97,7 +101,7 @@ mod tests {
     fn test_runner_roundtrip() {
         let runner = Runner::new("test-runner".to_string(), "developer".to_string());
 
-        let markdown = runner.to_markdown();
+        let markdown = runner.to_markdown().expect("Should serialize runner");
         let parsed = Runner::from_markdown(&markdown).expect("Should parse runner markdown");
 
         assert_eq!(parsed.name, runner.name);
@@ -112,7 +116,7 @@ mod tests {
             Some("A test track description".to_string()),
         );
 
-        let markdown = track.to_markdown();
+        let markdown = track.to_markdown().expect("Should serialize track");
         let parsed = Track::from_markdown(&markdown).expect("Should parse track markdown");
 
         assert_eq!(parsed.name, track.name);
