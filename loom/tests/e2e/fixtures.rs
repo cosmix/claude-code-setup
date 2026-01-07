@@ -364,7 +364,8 @@ mod tests {
         let content = simple_sequential_plan();
         let path = PathBuf::from("test-plan.md");
 
-        let parsed = parse_plan_content(&content, &path).expect("Should parse simple sequential plan");
+        let parsed =
+            parse_plan_content(&content, &path).expect("Should parse simple sequential plan");
 
         assert_eq!(parsed.name, "Simple Sequential Test");
         assert_eq!(parsed.stages.len(), 2);
@@ -386,8 +387,14 @@ mod tests {
         assert_eq!(parsed.stages[1].id, "stage-2");
         assert_eq!(parsed.stages[2].id, "stage-3");
 
-        assert_eq!(parsed.stages[1].parallel_group, Some("parallel-group-1".to_string()));
-        assert_eq!(parsed.stages[2].parallel_group, Some("parallel-group-1".to_string()));
+        assert_eq!(
+            parsed.stages[1].parallel_group,
+            Some("parallel-group-1".to_string())
+        );
+        assert_eq!(
+            parsed.stages[2].parallel_group,
+            Some("parallel-group-1".to_string())
+        );
 
         assert_eq!(parsed.stages[1].dependencies, vec!["stage-1"]);
         assert_eq!(parsed.stages[2].dependencies, vec!["stage-1"]);

@@ -4,9 +4,7 @@
 //! dependency patterns like diamond and fan-out/fan-in.
 
 use loom::models::stage::{Stage, StageStatus};
-use loom::verify::transitions::{
-    load_stage, save_stage, transition_stage, trigger_dependents,
-};
+use loom::verify::transitions::{load_stage, save_stage, transition_stage, trigger_dependents};
 use tempfile::TempDir;
 
 #[test]
@@ -50,7 +48,11 @@ fn test_parallel_stages_triggered_together() {
     assert_eq!(triggered.len(), 3);
     assert_eq!(
         triggered,
-        vec!["stage-a".to_string(), "stage-b".to_string(), "stage-c".to_string()]
+        vec![
+            "stage-a".to_string(),
+            "stage-b".to_string(),
+            "stage-c".to_string()
+        ]
     );
 
     // Verify all became Ready simultaneously
@@ -207,7 +209,11 @@ fn test_fan_out_fan_in() {
     save_stage(&stage_a, work_dir).unwrap();
 
     // B, C, D all depend on A
-    for (name, id) in [("Stage B", "stage-b"), ("Stage C", "stage-c"), ("Stage D", "stage-d")] {
+    for (name, id) in [
+        ("Stage B", "stage-b"),
+        ("Stage C", "stage-c"),
+        ("Stage D", "stage-d"),
+    ] {
         let mut stage = Stage::new(name.to_string(), None);
         stage.id = id.to_string();
         stage.status = StageStatus::Pending;
@@ -230,7 +236,11 @@ fn test_fan_out_fan_in() {
     assert_eq!(triggered.len(), 3);
     assert_eq!(
         triggered,
-        vec!["stage-b".to_string(), "stage-c".to_string(), "stage-d".to_string()]
+        vec![
+            "stage-b".to_string(),
+            "stage-c".to_string(),
+            "stage-d".to_string()
+        ]
     );
 
     for id in ["stage-b", "stage-c", "stage-d"] {

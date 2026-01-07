@@ -82,8 +82,7 @@ pub fn create_stage_file(work_dir: &Path, stage: &Stage) -> Result<()> {
 
     let stage_path = stages_dir.join(format!("{}.md", stage.id));
 
-    let yaml =
-        serde_yaml::to_string(stage).context("Failed to serialize stage to YAML")?;
+    let yaml = serde_yaml::to_string(stage).context("Failed to serialize stage to YAML")?;
 
     let mut content = String::new();
     content.push_str("---\n");
@@ -135,8 +134,7 @@ pub fn create_session_file(work_dir: &Path, session: &Session) -> Result<()> {
 
     let session_path = sessions_dir.join(format!("{}.md", session.id));
 
-    let yaml = serde_yaml::to_string(session)
-        .context("Failed to serialize session to YAML")?;
+    let yaml = serde_yaml::to_string(session).context("Failed to serialize session to YAML")?;
 
     let content = format!(
         "---\n{yaml}---\n\n# Session: {}\n\n## Details\n\n- **Status**: {:?}\n- **Stage**: {}\n- **Tmux**: {}\n- **Context**: {:.1}%\n",
@@ -147,12 +145,8 @@ pub fn create_session_file(work_dir: &Path, session: &Session) -> Result<()> {
         session.context_health()
     );
 
-    std::fs::write(&session_path, content).with_context(|| {
-        format!(
-            "Failed to write session file: {}",
-            session_path.display()
-        )
-    })?;
+    std::fs::write(&session_path, content)
+        .with_context(|| format!("Failed to write session file: {}", session_path.display()))?;
 
     Ok(())
 }
@@ -164,9 +158,8 @@ pub fn create_signal_file(work_dir: &Path, session_id: &str, content: &str) -> R
 
     let signal_path = signals_dir.join(format!("{session_id}.md"));
 
-    std::fs::write(&signal_path, content).with_context(|| {
-        format!("Failed to write signal file: {}", signal_path.display())
-    })?;
+    std::fs::write(&signal_path, content)
+        .with_context(|| format!("Failed to write signal file: {}", signal_path.display()))?;
 
     Ok(())
 }
@@ -341,8 +334,7 @@ loom:
 <!-- END loom METADATA -->
 "#;
 
-        let plan_path =
-            init_loom_with_plan(temp.path(), plan_content).expect("Should init loom");
+        let plan_path = init_loom_with_plan(temp.path(), plan_content).expect("Should init loom");
 
         assert!(plan_path.exists(), "Plan file should exist");
 
@@ -363,7 +355,10 @@ loom:
         let temp = TempDir::new().expect("Should create temp dir");
         let work_dir = temp.path();
 
-        let mut stage = Stage::new("Test Stage".to_string(), Some("Test description".to_string()));
+        let mut stage = Stage::new(
+            "Test Stage".to_string(),
+            Some("Test description".to_string()),
+        );
         stage.id = "test-stage-1".to_string();
         stage.status = StageStatus::Ready;
         stage.add_dependency("dep-1".to_string());

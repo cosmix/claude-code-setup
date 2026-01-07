@@ -135,7 +135,15 @@ fn test_signal_not_created_for_pending_stages() {
 
     let session_ready = create_test_session("session-ready", "stage-ready");
     let worktree_ready = create_test_worktree("stage-ready");
-    generate_signal(&session_ready, &stage2, &worktree_ready, &[], None, &work_dir).unwrap();
+    generate_signal(
+        &session_ready,
+        &stage2,
+        &worktree_ready,
+        &[],
+        None,
+        &work_dir,
+    )
+    .unwrap();
 
     let signals = list_signals(&work_dir).unwrap();
 
@@ -294,9 +302,7 @@ fn test_signal_default_tasks_when_none_provided() {
 
     generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
 
-    let signal_path = work_dir
-        .join("signals")
-        .join("session-default-tasks.md");
+    let signal_path = work_dir.join("signals").join("session-default-tasks.md");
     let content = fs::read_to_string(&signal_path).unwrap();
 
     assert!(content.contains("## Immediate Tasks"));

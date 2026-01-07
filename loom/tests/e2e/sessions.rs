@@ -151,10 +151,7 @@ fn test_session_context_exhausted_threshold() {
     assert!(!session.is_context_exhausted());
 
     session.update_context(150_000);
-    assert_eq!(
-        150_000_f32 / 200_000_f32,
-        CONTEXT_WARNING_THRESHOLD
-    );
+    assert_eq!(150_000_f32 / 200_000_f32, CONTEXT_WARNING_THRESHOLD);
     assert!(session.is_context_exhausted());
 
     session.update_context(170_000);
@@ -180,10 +177,7 @@ fn test_session_tmux_assignment() {
     assert!(session.tmux_session.is_none());
 
     session.set_tmux_session("loom-session-123".to_string());
-    assert_eq!(
-        session.tmux_session,
-        Some("loom-session-123".to_string())
-    );
+    assert_eq!(session.tmux_session, Some("loom-session-123".to_string()));
 }
 
 #[test]
@@ -221,8 +215,7 @@ fn test_session_serialization_roundtrip() {
     session.mark_running();
     session.update_context(125_000);
 
-    std::fs::create_dir_all(file_path.parent().unwrap())
-        .expect("Should create sessions directory");
+    std::fs::create_dir_all(file_path.parent().unwrap()).expect("Should create sessions directory");
 
     let json = serde_json::to_string_pretty(&session).expect("Should serialize to JSON");
     std::fs::write(&file_path, json).expect("Should write file");
@@ -381,7 +374,10 @@ fn test_session_status_equality() {
     assert_eq!(SessionStatus::Paused, SessionStatus::Paused);
     assert_eq!(SessionStatus::Completed, SessionStatus::Completed);
     assert_eq!(SessionStatus::Crashed, SessionStatus::Crashed);
-    assert_eq!(SessionStatus::ContextExhausted, SessionStatus::ContextExhausted);
+    assert_eq!(
+        SessionStatus::ContextExhausted,
+        SessionStatus::ContextExhausted
+    );
 
     assert_ne!(SessionStatus::Spawning, SessionStatus::Running);
     assert_ne!(SessionStatus::Running, SessionStatus::Paused);

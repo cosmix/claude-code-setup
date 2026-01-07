@@ -1,12 +1,14 @@
 //! E2E tests for context exhaustion detection and handoff automation
 
-use loom::handoff::detector::{check_context_threshold, context_usage_percent, should_handoff, ContextLevel};
+use loom::handoff::detector::{
+    check_context_threshold, context_usage_percent, should_handoff, ContextLevel,
+};
 use loom::handoff::generator::{generate_handoff, HandoffContent};
 use loom::models::constants::{CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_LIMIT};
 use loom::models::session::{Session, SessionStatus};
 use loom::models::stage::{Stage, StageStatus};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn test_context_threshold_detection() {
@@ -82,7 +84,10 @@ fn test_handoff_generation() {
     session.context_tokens = 160_000; // 80% usage
 
     // Create associated stage
-    let stage = Stage::new("test-feature".to_string(), Some("Test feature implementation".to_string()));
+    let stage = Stage::new(
+        "test-feature".to_string(),
+        Some("Test feature implementation".to_string()),
+    );
 
     // Generate handoff content
     let content = HandoffContent::new(session.id.clone(), stage.id.clone())
@@ -92,9 +97,10 @@ fn test_handoff_generation() {
             "Created initial module structure in src/test_feature.rs:1-50".to_string(),
             "Implemented core logic in src/test_feature.rs:51-120".to_string(),
         ])
-        .with_decisions(vec![
-            ("Use Result<T, E> for error handling".to_string(), "Follows Rust best practices".to_string()),
-        ])
+        .with_decisions(vec![(
+            "Use Result<T, E> for error handling".to_string(),
+            "Follows Rust best practices".to_string(),
+        )])
         .with_current_branch(Some("feat-test-feature".to_string()))
         .with_test_status(Some("2 passing, 1 pending".to_string()))
         .with_files_modified(vec![
@@ -106,12 +112,12 @@ fn test_handoff_generation() {
             "Add documentation to src/test_feature.rs:1-10".to_string(),
         ])
         .with_learnings(vec![
-            "Module uses async/await pattern throughout".to_string(),
+            "Module uses async/await pattern throughout".to_string()
         ]);
 
     // Generate handoff
-    let handoff_path = generate_handoff(&session, &stage, content, work_dir)
-        .expect("Should generate handoff");
+    let handoff_path =
+        generate_handoff(&session, &stage, content, work_dir).expect("Should generate handoff");
 
     // Verify handoff file was created
     assert!(handoff_path.exists());
@@ -122,8 +128,7 @@ fn test_handoff_generation() {
     assert!(handoff_path.starts_with(work_dir.join("handoffs")));
 
     // Read and verify handoff contents
-    let content = fs::read_to_string(&handoff_path)
-        .expect("Should read handoff file");
+    let content = fs::read_to_string(&handoff_path).expect("Should read handoff file");
 
     // Verify required fields are present
     assert!(content.contains(&format!("# Handoff: {}", stage.id)));
@@ -144,8 +149,8 @@ fn test_handoff_file_naming() {
     let stage = Stage::new("naming-test".to_string(), None);
 
     // Generate first handoff
-    let content1 = HandoffContent::new(session.id.clone(), stage.id.clone())
-        .with_context_percent(75.0);
+    let content1 =
+        HandoffContent::new(session.id.clone(), stage.id.clone()).with_context_percent(75.0);
 
     let handoff_path1 = generate_handoff(&session, &stage, content1, work_dir)
         .expect("Should generate first handoff");
@@ -153,8 +158,8 @@ fn test_handoff_file_naming() {
     assert!(handoff_path1.to_string_lossy().contains("handoff-001.md"));
 
     // Generate second handoff
-    let content2 = HandoffContent::new(session.id.clone(), stage.id.clone())
-        .with_context_percent(80.0);
+    let content2 =
+        HandoffContent::new(session.id.clone(), stage.id.clone()).with_context_percent(80.0);
 
     let handoff_path2 = generate_handoff(&session, &stage, content2, work_dir)
         .expect("Should generate second handoff");
@@ -162,8 +167,8 @@ fn test_handoff_file_naming() {
     assert!(handoff_path2.to_string_lossy().contains("handoff-002.md"));
 
     // Generate third handoff
-    let content3 = HandoffContent::new(session.id.clone(), stage.id.clone())
-        .with_context_percent(85.0);
+    let content3 =
+        HandoffContent::new(session.id.clone(), stage.id.clone()).with_context_percent(85.0);
 
     let handoff_path3 = generate_handoff(&session, &stage, content3, work_dir)
         .expect("Should generate third handoff");
@@ -202,7 +207,10 @@ fn test_handoff_includes_required_fields() {
     let work_dir = temp_dir.path();
 
     let session = Session::new();
-    let mut stage = Stage::new("required-fields-test".to_string(), Some("Testing required fields".to_string()));
+    let mut stage = Stage::new(
+        "required-fields-test".to_string(),
+        Some("Testing required fields".to_string()),
+    );
     stage.id = "stage-required-001".to_string();
 
     let content = HandoffContent::new(session.id.clone(), stage.id.clone())
@@ -210,11 +218,10 @@ fn test_handoff_includes_required_fields() {
         .with_goals("Test all required fields".to_string())
         .with_plan_id(Some("plan-abc-123".to_string()));
 
-    let handoff_path = generate_handoff(&session, &stage, content, work_dir)
-        .expect("Should generate handoff");
+    let handoff_path =
+        generate_handoff(&session, &stage, content, work_dir).expect("Should generate handoff");
 
-    let handoff_content = fs::read_to_string(&handoff_path)
-        .expect("Should read handoff");
+    let handoff_content = fs::read_to_string(&handoff_path).expect("Should read handoff");
 
     // Verify metadata section
     assert!(handoff_content.contains("## Metadata"));
@@ -301,7 +308,11 @@ fn test_handoff_content_builder_chain() {
         .with_current_branch(Some("test-branch".to_string()))
         .with_test_status(Some("all passing".to_string()))
         .with_files_modified(vec!["file1.rs".to_string(), "file2.rs".to_string()])
-        .with_next_steps(vec!["Step 1".to_string(), "Step 2".to_string(), "Step 3".to_string()])
+        .with_next_steps(vec![
+            "Step 1".to_string(),
+            "Step 2".to_string(),
+            "Step 3".to_string(),
+        ])
         .with_learnings(vec!["Learning 1".to_string()])
         .with_plan_id(Some("plan-xyz".to_string()));
 
@@ -331,11 +342,11 @@ fn test_multiple_stages_different_handoffs() {
     let stage2 = Stage::new("feature-b".to_string(), None);
 
     // Generate handoffs for each
-    let content1 = HandoffContent::new(session.id.clone(), stage1.id.clone())
-        .with_context_percent(75.0);
+    let content1 =
+        HandoffContent::new(session.id.clone(), stage1.id.clone()).with_context_percent(75.0);
 
-    let content2 = HandoffContent::new(session.id.clone(), stage2.id.clone())
-        .with_context_percent(80.0);
+    let content2 =
+        HandoffContent::new(session.id.clone(), stage2.id.clone()).with_context_percent(80.0);
 
     let handoff1 = generate_handoff(&session, &stage1, content1, work_dir)
         .expect("Should generate handoff for stage 1");
@@ -416,8 +427,7 @@ fn test_handoff_empty_fields() {
     let handoff_path = generate_handoff(&session, &stage, content, work_dir)
         .expect("Should generate minimal handoff");
 
-    let handoff_content = fs::read_to_string(&handoff_path)
-        .expect("Should read handoff");
+    let handoff_content = fs::read_to_string(&handoff_path).expect("Should read handoff");
 
     // Verify it handles empty fields gracefully
     assert!(handoff_content.contains("No goals specified"));
