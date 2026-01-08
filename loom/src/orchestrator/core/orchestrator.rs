@@ -98,6 +98,9 @@ impl Orchestrator {
             println!("Recovered {recovered} orphaned session(s) - stages reset to Ready");
         }
 
+        // After recovery, ensure ready status is updated for all stages
+        self.graph.refresh_ready_status();
+
         let mut total_sessions_spawned = 0;
         let mut completed_stages = Vec::new();
         let mut failed_stages = Vec::new();
@@ -180,7 +183,15 @@ impl Orchestrator {
                     break;
                 }
 
-                if !failed_stages.is_empty() && self.running_session_count() == 0 {
+                // Check if there are ready stages waiting - don't exit if there are
+                let ready_stages = self.graph.ready_stages();
+                let has_ready_stages = !ready_stages.is_empty();
+
+                // Only exit on failure if no sessions are running AND no stages are ready to start
+                if !failed_stages.is_empty()
+                    && self.running_session_count() == 0
+                    && !has_ready_stages
+                {
                     break;
                 }
             }

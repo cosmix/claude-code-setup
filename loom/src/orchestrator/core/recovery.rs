@@ -156,8 +156,9 @@ impl Recovery for Orchestrator {
                             // Update graph - first ensure it's not in a terminal state
                             if let Some(node) = self.graph.get_node(stage_id) {
                                 if node.status != NodeStatus::Completed {
-                                    // Mark as ready in graph
-                                    self.graph.mark_ready(stage_id)?;
+                                    // Try to mark as ready in graph
+                                    // This will fail if dependencies aren't satisfied, which is OK
+                                    let _ = self.graph.mark_ready(stage_id);
                                 }
                             }
 
