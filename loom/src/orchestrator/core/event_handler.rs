@@ -1,6 +1,7 @@
 //! Event handling - processing monitor events and session lifecycle
 
 use anyhow::Result;
+use std::io::{self, Write};
 
 use crate::models::stage::StageStatus;
 use crate::orchestrator::monitor::MonitorEvent;
@@ -9,6 +10,14 @@ use crate::orchestrator::spawner::kill_session;
 
 use super::persistence::Persistence;
 use super::Orchestrator;
+
+/// Clear the current line (status line) before printing a message.
+/// This prevents output from being mangled when the status line is being updated.
+fn clear_status_line() {
+    // \r moves cursor to start of line, \x1B[K clears from cursor to end of line
+    print!("\r\x1B[K");
+    let _ = io::stdout().flush();
+}
 
 /// Trait for handling monitor events
 pub(super) trait EventHandler: Persistence {
@@ -33,6 +42,7 @@ impl EventHandler for Orchestrator {
                     self.on_stage_completed(&stage_id)?;
                 }
                 MonitorEvent::StageBlocked { stage_id, reason } => {
+                    clear_status_line();
                     eprintln!("Stage '{stage_id}' blocked: {reason}");
                     self.graph.mark_blocked(&stage_id)?;
                 }
@@ -40,12 +50,14 @@ impl EventHandler for Orchestrator {
                     session_id,
                     usage_percent,
                 } => {
+                    clear_status_line();
                     eprintln!("Warning: Session '{session_id}' context at {usage_percent:.1}%");
                 }
                 MonitorEvent::SessionContextCritical {
                     session_id,
                     usage_percent,
                 } => {
+                    clear_status_line();
                     eprintln!("Critical: Session '{session_id}' context at {usage_percent:.1}%");
                 }
                 MonitorEvent::SessionCrashed {
@@ -64,6 +76,7 @@ impl EventHandler for Orchestrator {
                     stage_id,
                     session_id,
                 } => {
+                    clear_status_line();
                     if let Some(sid) = session_id {
                         eprintln!("Stage '{stage_id}' (session '{sid}') is waiting for user input");
                     } else {
@@ -71,6 +84,7 @@ impl EventHandler for Orchestrator {
                     }
                 }
                 MonitorEvent::StageResumedExecution { stage_id } => {
+                    clear_status_line();
                     eprintln!("Stage '{stage_id}' resumed execution after user input");
                 }
             }
@@ -92,6 +106,12 @@ impl EventHandler for Orchestrator {
     }
 
     fn on_session_crashed(&mut self, session_id: &str, stage_id: Option<String>) -> Result<()> {
+        // Check if we've already reported this crash to avoid duplicate messages
+        if self.reported_crashes.contains(session_id) {
+            return Ok(());
+        }
+        self.reported_crashes.insert(session_id.to_string());
+
         if let Some(sid) = stage_id {
             self.active_sessions.remove(&sid);
 
@@ -103,6 +123,7 @@ impl EventHandler for Orchestrator {
                 return Ok(());
             }
 
+            clear_status_line();
             eprintln!("Session '{session_id}' crashed for stage '{sid}'");
             stage.status = StageStatus::Blocked;
             stage.close_reason = Some("Session crashed".to_string());
@@ -110,6 +131,7 @@ impl EventHandler for Orchestrator {
 
             self.graph.mark_blocked(&sid)?;
         } else {
+            clear_status_line();
             eprintln!("Session '{session_id}' crashed (no stage association)");
         }
 
@@ -117,6 +139,7 @@ impl EventHandler for Orchestrator {
     }
 
     fn on_needs_handoff(&mut self, session_id: &str, stage_id: &str) -> Result<()> {
+        clear_status_line();
         eprintln!("Session '{session_id}' needs handoff for stage '{stage_id}'");
 
         let mut stage = self.load_stage(stage_id)?;

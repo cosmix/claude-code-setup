@@ -12,6 +12,14 @@ use crate::plan::graph::NodeStatus;
 use super::persistence::Persistence;
 use super::Orchestrator;
 
+/// Clear the current line (status line) before printing a message.
+/// This prevents output from being mangled when the status line is being updated.
+fn clear_status_line() {
+    // \r moves cursor to start of line, \x1B[K clears from cursor to end of line
+    print!("\r\x1B[K");
+    let _ = io::stdout().flush();
+}
+
 /// Trait for recovery operations
 pub(super) trait Recovery: Persistence {
     /// Sync the execution graph with existing stage file statuses.
@@ -122,8 +130,9 @@ impl Recovery for Orchestrator {
                             stage.status,
                             StageStatus::Executing | StageStatus::NeedsHandoff | StageStatus::Blocked
                         ) {
-                            println!(
-                                "  Recovering orphaned stage: {} (was {:?})",
+                            clear_status_line();
+                            eprintln!(
+                                "Recovering orphaned stage: {} (was {:?})",
                                 stage_id, stage.status
                             );
 

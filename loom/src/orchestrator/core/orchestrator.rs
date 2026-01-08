@@ -1,7 +1,7 @@
 //! Main Orchestrator struct and public interface
 
 use anyhow::{bail, Context, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -54,6 +54,8 @@ pub struct Orchestrator {
     pub(super) active_sessions: HashMap<String, Session>,
     pub(super) active_worktrees: HashMap<String, Worktree>,
     pub(super) monitor: Monitor,
+    /// Track reported crashes to avoid duplicate messages
+    pub(super) reported_crashes: HashSet<String>,
 }
 
 impl Orchestrator {
@@ -73,6 +75,7 @@ impl Orchestrator {
             active_sessions: HashMap::new(),
             active_worktrees: HashMap::new(),
             monitor,
+            reported_crashes: HashSet::new(),
         }
     }
 
