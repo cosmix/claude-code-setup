@@ -1,0 +1,12 @@
+pub mod commands;
+pub mod completions;
+pub mod fs;
+pub mod git;
+pub mod handoff;
+pub mod models;
+pub mod orchestrator;
+pub mod parser;
+pub mod plan;
+pub mod utils;
+pub mod validation;
+pub mod verify;
