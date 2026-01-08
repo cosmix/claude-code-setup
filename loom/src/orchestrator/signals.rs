@@ -182,8 +182,15 @@ fn format_signal_content(
 
     content.push_str(&format!("# Signal: {}\n\n", session.id));
 
+    // Worktree context - self-contained signal
+    content.push_str("## Worktree Context\n\n");
+    content.push_str("You are in an **isolated git worktree**. This signal contains everything you need:\n\n");
+    content.push_str("- **Your stage assignment and acceptance criteria are below** - this file is self-contained\n");
+    content.push_str("- **Access `.work/` via symlink** for handoffs and structure map\n");
+    content.push_str("- **Commit to your worktree branch** - it will be merged after verification\n\n");
+
     // Add reminder to follow CLAUDE.md rules
-    content.push_str("## IMPORTANT: Execution Rules\n\n");
+    content.push_str("## Execution Rules\n\n");
     content.push_str("Follow your `~/.claude/CLAUDE.md` rules. Key reminders:\n");
     content.push_str(
         "- **Delegate work to subagents** - use Task tool with appropriate agent types\n",
@@ -196,7 +203,7 @@ fn format_signal_content(
     content.push_str(&format!("- **Session**: {}\n", session.id));
     content.push_str(&format!("- **Stage**: {}\n", stage.id));
     if let Some(plan_id) = &stage.plan_id {
-        content.push_str(&format!("- **Plan**: {plan_id}\n"));
+        content.push_str(&format!("- **Plan**: {plan_id} (reference only - content embedded below)\n"));
     }
     content.push_str(&format!("- **Worktree**: {}\n", worktree.path.display()));
     content.push_str(&format!("- **Branch**: {}\n", worktree.branch));
@@ -231,17 +238,15 @@ fn format_signal_content(
     }
 
     content.push_str("## Context Restoration\n\n");
-    content.push_str(&format!(
-        "- `.work/stages/{}.md` - Stage definition\n",
-        stage.id
-    ));
+    content.push_str("The `.work/` directory is accessible via symlink. Available resources:\n\n");
     if let Some(handoff) = handoff_file {
         content.push_str(&format!(
-            "- `.work/handoffs/{handoff}.md` - Previous handoff\n"
+            "- `.work/handoffs/{handoff}.md` - **READ THIS FIRST** - Previous session handoff\n"
         ));
     }
+    content.push_str("- `.work/structure.md` - Codebase structure map (if exists)\n");
     for file in &stage.files {
-        content.push_str(&format!("- `{file}` - Relevant code\n"));
+        content.push_str(&format!("- `{file}` - Relevant code to modify\n"));
     }
     content.push('\n');
 
@@ -374,7 +379,10 @@ fn parse_signal_content(session_id: &str, content: &str) -> Result<SignalContent
                 if let Some(file) = trimmed.strip_prefix("- `") {
                     if let Some(f) = file
                         .strip_suffix("` - Stage definition")
+                        .or_else(|| file.strip_suffix("` - **READ THIS FIRST** - Previous session handoff"))
                         .or_else(|| file.strip_suffix("` - Previous handoff"))
+                        .or_else(|| file.strip_suffix("` - Codebase structure map (if exists)"))
+                        .or_else(|| file.strip_suffix("` - Relevant code to modify"))
                         .or_else(|| file.strip_suffix("` - Relevant code"))
                         .or_else(|| file.strip_suffix('`'))
                     {
@@ -531,6 +539,8 @@ mod tests {
         let content = format_signal_content(&session, &stage, &worktree, &[], None);
 
         assert!(content.contains("# Signal: session-test-123"));
+        assert!(content.contains("## Worktree Context"));
+        assert!(content.contains("This signal contains everything you need"));
         assert!(content.contains("## Target"));
         assert!(content.contains("## Assignment"));
         assert!(content.contains("## Immediate Tasks"));
