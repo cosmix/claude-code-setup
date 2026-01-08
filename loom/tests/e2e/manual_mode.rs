@@ -110,7 +110,7 @@ fn test_signal_file_format() {
     assert!(signal_content
         .context_files
         .iter()
-        .any(|f| f.contains("stages/stage-2.md")));
+        .any(|f| f.contains("structure.md")));
 
     assert_eq!(signal_content.files_to_modify.len(), 2);
     assert!(signal_content
@@ -184,7 +184,7 @@ fn test_signal_includes_context_restoration() {
     let content = fs::read_to_string(&signal_path).unwrap();
 
     assert!(content.contains("## Context Restoration"));
-    assert!(content.contains(".work/stages/stage-context.md"));
+    assert!(content.contains(".work/structure.md"));
     assert!(content.contains("src/orchestrator/*.rs"));
     assert!(content.contains("src/models/stage.rs"));
 }

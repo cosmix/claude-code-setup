@@ -345,7 +345,11 @@ fn parse_signal_content(session_id: &str, content: &str) -> Result<SignalContent
                 if let Some(id) = trimmed.strip_prefix("- **Stage**: ") {
                     stage_id = id.to_string();
                 } else if let Some(pid) = trimmed.strip_prefix("- **Plan**: ") {
-                    plan_id = Some(pid.to_string());
+                    // Strip the "(reference only - content embedded below)" suffix if present
+                    let clean_pid = pid
+                        .strip_suffix(" (reference only - content embedded below)")
+                        .unwrap_or(pid);
+                    plan_id = Some(clean_pid.to_string());
                 }
             }
             "Assignment" => {
