@@ -149,7 +149,7 @@ impl ExecutionGraph {
     }
 
     /// Update which stages are ready (all deps satisfied)
-    fn update_ready_status(&mut self) {
+    pub fn update_ready_status(&mut self) {
         for node in self.nodes.values_mut() {
             if node.status == NodeStatus::Pending && node.dependencies.is_empty() {
                 node.status = NodeStatus::Ready;
@@ -172,6 +172,11 @@ impl ExecutionGraph {
                 }
             }
         }
+    }
+
+    /// Force update of ready status for all nodes (useful after recovery)
+    pub fn refresh_ready_status(&mut self) {
+        self.update_ready_status();
     }
 
     /// Get all stages that are ready to execute
