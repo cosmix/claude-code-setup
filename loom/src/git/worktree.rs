@@ -7,7 +7,6 @@ use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::fs::permissions::create_worktree_settings;
 use crate::models::worktree::Worktree;
 
 /// Create a new worktree for a stage
@@ -64,10 +63,11 @@ pub fn create_worktree(stage_id: &str, repo_root: &Path) -> Result<Worktree> {
     // Create symlink to main .work/ directory
     ensure_work_symlink(&worktree_path, repo_root)?;
 
-    // Set up .claude/ directory for worktree with worktree-specific permissions
-    // We create a real directory (not symlink) and:
-    // 1. Symlink CLAUDE.md from main repo for instruction inheritance
-    // 2. Generate worktree-specific settings.local.json with parent traversal permissions
+    // Set up .claude/ directory for worktree
+    // We create a real directory and symlink both CLAUDE.md and settings.local.json
+    // from main repo. This ensures:
+    // 1. Instructions (CLAUDE.md) are shared
+    // 2. Permissions (settings.local.json) are shared - approvals propagate across sessions
     let main_claude_dir = repo_root.join(".claude");
     let worktree_claude_dir = worktree_path.join(".claude");
 
@@ -91,9 +91,21 @@ pub fn create_worktree(stage_id: &str, repo_root: &Path) -> Result<Worktree> {
                 .with_context(|| "Failed to create CLAUDE.md symlink in worktree")?;
         }
 
-        // Generate worktree-specific settings.local.json with parent traversal permissions
-        create_worktree_settings(&worktree_path)
-            .with_context(|| "Failed to create worktree settings.local.json")?;
+        // Symlink settings.local.json from main repo so permissions are shared
+        // This means tool approvals (e.g., "go vet") propagate across all sessions
+        let main_settings = main_claude_dir.join("settings.local.json");
+        if main_settings.exists() {
+            let worktree_settings = worktree_claude_dir.join("settings.local.json");
+            let relative_settings = Path::new("../../../.claude/settings.local.json");
+
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(relative_settings, &worktree_settings)
+                .with_context(|| "Failed to create settings.local.json symlink in worktree")?;
+
+            #[cfg(windows)]
+            std::os::windows::fs::symlink_file(relative_settings, &worktree_settings)
+                .with_context(|| "Failed to create settings.local.json symlink in worktree")?;
+        }
     }
 
     let mut worktree = Worktree::new(stage_id.to_string(), worktree_path, branch_name);

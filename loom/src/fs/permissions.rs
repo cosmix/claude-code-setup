@@ -9,8 +9,18 @@ use std::fs;
 use std::path::Path;
 
 /// Loom permissions for the MAIN REPO context
-/// .work/ is within repo root so no explicit Read/Write permissions needed
+/// Includes worktree permissions so settings.local.json can be symlinked to worktrees
+/// and all sessions share the same permission file (approvals propagate)
 pub const LOOM_PERMISSIONS: &[&str] = &[
+    // Read/write access via symlink path (for worktree sessions via symlink)
+    "Read(.work/**)",
+    "Write(.work/**)",
+    // Read/write access via parent traversal (for worktree sessions via direct path)
+    "Read(../../.work/**)",
+    "Write(../../.work/**)",
+    // Read access to CLAUDE.md files (subagents need to read these explicitly)
+    "Read(.claude/**)",
+    "Read(~/.claude/**)",
     // Loom CLI commands (use :* for prefix matching)
     "Bash(loom:*)",
     // Tmux for session management
@@ -266,6 +276,78 @@ pub fn create_worktree_settings(worktree_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Add worktrees directory to Claude Code's global trusted directories
+///
+/// This modifies `~/.claude.json` to include the repo's `.worktrees/` path
+/// in `trustedDirectories`, preventing the "trust this folder?" prompt
+/// when spawning sessions in worktrees.
+pub fn add_worktrees_to_global_trust(repo_root: &Path) -> Result<()> {
+    let home_dir = dirs::home_dir().context("Failed to determine home directory")?;
+    let global_settings_path = home_dir.join(".claude.json");
+
+    // Compute canonical path to worktrees directory
+    let worktrees_dir = repo_root.join(".worktrees");
+    let worktrees_path = worktrees_dir
+        .canonicalize()
+        .unwrap_or_else(|_| worktrees_dir.clone())
+        .to_string_lossy()
+        .to_string();
+
+    // Load existing settings or create new
+    let mut settings: Value = if global_settings_path.exists() {
+        let content = fs::read_to_string(&global_settings_path)
+            .with_context(|| format!("Failed to read {}", global_settings_path.display()))?;
+
+        serde_json::from_str(&content).with_context(|| {
+            format!(
+                "Failed to parse {} as JSON",
+                global_settings_path.display()
+            )
+        })?
+    } else {
+        json!({})
+    };
+
+    // Ensure settings is an object
+    let settings_obj = settings
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("~/.claude.json must be a JSON object"))?;
+
+    // Get or create trustedDirectories array
+    let trusted_dirs = settings_obj
+        .entry("trustedDirectories")
+        .or_insert_with(|| json!([]));
+
+    let trusted_arr = trusted_dirs
+        .as_array_mut()
+        .ok_or_else(|| anyhow::anyhow!("trustedDirectories must be a JSON array"))?;
+
+    // Check if path is already trusted (either exact match or parent is trusted)
+    let already_trusted = trusted_arr.iter().any(|v| {
+        v.as_str()
+            .map(|s| worktrees_path.starts_with(s) || s == worktrees_path)
+            .unwrap_or(false)
+    });
+
+    if already_trusted {
+        return Ok(());
+    }
+
+    // Add worktrees path to trusted directories
+    trusted_arr.push(json!(worktrees_path));
+
+    // Write back
+    let content = serde_json::to_string_pretty(&settings)
+        .context("Failed to serialize global settings to JSON")?;
+
+    fs::write(&global_settings_path, content)
+        .with_context(|| format!("Failed to write {}", global_settings_path.display()))?;
+
+    println!("  Added {worktrees_path} to trusted directories");
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,25 +446,26 @@ mod tests {
 
     #[test]
     fn test_loom_permissions_constant() {
-        // Main repo only needs CLI permissions (.work/ is within repo root)
+        // Main repo includes all permissions (shared with worktrees via symlink)
         assert!(LOOM_PERMISSIONS.contains(&"Bash(loom:*)"));
         assert!(LOOM_PERMISSIONS.contains(&"Bash(tmux:*)"));
-        // Main repo should NOT have parent traversal permissions
-        assert!(!LOOM_PERMISSIONS.iter().any(|p| p.contains("../../")));
+        // Now includes worktree permissions so settings can be symlinked
+        assert!(LOOM_PERMISSIONS.contains(&"Read(.work/**)"));
+        assert!(LOOM_PERMISSIONS.contains(&"Write(.work/**)"));
+        assert!(LOOM_PERMISSIONS.contains(&"Read(../../.work/**)"));
+        assert!(LOOM_PERMISSIONS.contains(&"Write(../../.work/**)"));
     }
 
     #[test]
     fn test_worktree_permissions_constant() {
-        // Worktree needs .work/** via symlink (how Claude sees the paths)
+        // Worktree permissions should match main repo permissions
+        // (since settings.local.json is now symlinked from main)
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.work/**)"));
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Write(.work/**)"));
-        // Worktree also needs parent traversal for direct access
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(../../.work/**)"));
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Write(../../.work/**)"));
-        // Worktree needs CLAUDE.md access for subagents
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.claude/**)"));
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(~/.claude/**)"));
-        // Worktree also needs CLI permissions
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Bash(loom:*)"));
         assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Bash(tmux:*)"));
     }

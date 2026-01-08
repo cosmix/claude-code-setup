@@ -1,4 +1,4 @@
-use crate::fs::permissions::ensure_loom_permissions;
+use crate::fs::permissions::{add_worktrees_to_global_trust, ensure_loom_permissions};
 use crate::fs::stage_files::{compute_stage_depths, stage_file_path, StageDependencies};
 use crate::fs::work_dir::WorkDir;
 use crate::models::stage::{Stage, StageStatus};
@@ -34,6 +34,10 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
 
     // Ensure Claude Code permissions are configured for loom directories
     ensure_loom_permissions(&repo_root)?;
+
+    // Add .worktrees/ to Claude Code's global trusted directories
+    // This prevents the "trust this folder?" prompt when spawning worktree sessions
+    add_worktrees_to_global_trust(&repo_root)?;
 
     if let Some(path) = plan_path {
         initialize_with_plan(&work_dir, &path)?;
