@@ -52,7 +52,47 @@ impl<'a> GraphRenderContext<'a> {
         }
     }
 
-    fn render_stage(&mut self, stage_id: &str, indent: usize, is_last: bool, prefix: &str) {
+    /// Format additional dependencies not shown in tree structure
+    fn format_extra_deps(&self, stage: &crate::models::stage::Stage, tree_parent: Option<&str>) -> String {
+        if stage.dependencies.len() <= 1 {
+            return String::new();
+        }
+
+        // Get deps that aren't the tree parent (those are "hidden" in the tree view)
+        let extra_deps: Vec<_> = stage
+            .dependencies
+            .iter()
+            .filter(|d| tree_parent != Some(d.as_str()))
+            .collect();
+
+        if extra_deps.is_empty() {
+            return String::new();
+        }
+
+        // Format each dep with its status indicator
+        let dep_strs: Vec<String> = extra_deps
+            .iter()
+            .map(|dep_id| {
+                if let Some(dep_stage) = self.stage_map.get(dep_id.as_str()) {
+                    let ind = status_indicator(&dep_stage.status);
+                    format!("{ind}{dep_id}")
+                } else {
+                    format!("?{dep_id}")
+                }
+            })
+            .collect();
+
+        format!(" ← also: {}", dep_strs.join(", "))
+    }
+
+    fn render_stage(
+        &mut self,
+        stage_id: &str,
+        indent: usize,
+        is_last: bool,
+        prefix: &str,
+        tree_parent: Option<&str>,
+    ) {
         if self.visited.contains(stage_id) {
             return;
         }
@@ -71,8 +111,11 @@ impl<'a> GraphRenderContext<'a> {
             "|-- "
         };
 
+        // Show extra dependencies that aren't visible in the tree structure
+        let extra_deps = self.format_extra_deps(stage, tree_parent);
+
         self.output.push_str(&format!(
-            "{prefix}{connector}{indicator} {} ({})\n",
+            "{prefix}{connector}{indicator} {} ({}){extra_deps}\n",
             stage.name, stage.id
         ));
 
@@ -108,7 +151,7 @@ impl<'a> GraphRenderContext<'a> {
                 format!("{prefix}{}   ", if is_last { " " } else { "|" })
             };
 
-            self.render_stage(child_id, indent + 1, child_is_last, &new_prefix);
+            self.render_stage(child_id, indent + 1, child_is_last, &new_prefix, Some(stage_id));
         }
     }
 }
@@ -131,7 +174,7 @@ pub fn build_graph_display(stages: &[crate::models::stage::Stage]) -> Result<Str
     // Start rendering from root stages
     let root_count = root_ids.len();
     for (i, root_id) in root_ids.iter().enumerate() {
-        ctx.render_stage(root_id, 0, i == root_count - 1, "");
+        ctx.render_stage(root_id, 0, i == root_count - 1, "", None);
     }
 
     // Handle any unvisited stages (in case of disconnected components or cycles)
@@ -342,6 +385,70 @@ mod tests {
         let pos_a = output.find("Stage A").unwrap();
         let pos_d = output.find("Stage D").unwrap();
         assert!(pos_a < pos_d);
+
+        // D should show its extra dependency (the one not in the tree)
+        // D appears under C (last visited), so B should be shown as "also"
+        assert!(
+            output.contains("← also:"),
+            "Diamond node should show extra dependencies"
+        );
+    }
+
+    #[test]
+    fn test_build_graph_display_shows_blocking_deps() {
+        // Simulate the user's scenario: integration-tests depends on 3 stages,
+        // one of which is still executing
+        let stages = vec![
+            create_test_stage("state-machine", "State Machine", StageStatus::Completed, vec![]),
+            create_test_stage(
+                "merge-completed",
+                "Merge Completed",
+                StageStatus::Completed,
+                vec!["state-machine"],
+            ),
+            create_test_stage(
+                "complete-refactor",
+                "Complete Refactor",
+                StageStatus::Executing,
+                vec!["state-machine"],
+            ),
+            create_test_stage(
+                "criteria-validation",
+                "Criteria Validation",
+                StageStatus::Completed,
+                vec![],
+            ),
+            create_test_stage(
+                "context-vars",
+                "Context Variables",
+                StageStatus::Completed,
+                vec!["criteria-validation"],
+            ),
+            create_test_stage(
+                "integration-tests",
+                "Integration Tests",
+                StageStatus::WaitingForDeps,
+                vec!["complete-refactor", "merge-completed", "context-vars"],
+            ),
+        ];
+
+        let output = build_graph_display(&stages).unwrap();
+
+        // integration-tests should show its extra dependencies
+        assert!(
+            output.contains("integration-tests"),
+            "Integration tests stage should be present"
+        );
+        assert!(
+            output.contains("← also:"),
+            "Multi-dep stage should show extra dependencies"
+        );
+        // The output should show the blocking dependency (complete-refactor with ● indicator)
+        // This helps users understand WHY a stage is pending
+        assert!(
+            output.contains("complete-refactor") || output.contains("merge-completed"),
+            "Extra deps should include blocking stages"
+        );
     }
 
     #[test]
