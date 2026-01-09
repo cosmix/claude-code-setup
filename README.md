@@ -1,5 +1,7 @@
 # Loom
+# Loom
 
+Loom is a self-propelling agent orchestration system for Claude Code.
 Loom is a self-propelling agent orchestration system for Claude Code.
 It combines a state management CLI, specialized AI agents, and reusable skills
 to create workflows that survive context exhaustion, session crashes, and
@@ -225,60 +227,6 @@ With orchestration rules, Claude will:
    files
 4. Each agent loads relevant skills (python, refactoring, testing)
 5. Results merge back without exhausting main context
-
-## System Requirements
-
-### Linux: File Descriptor Limits
-
-Running multiple concurrent Claude Code sessions requires sufficient file descriptors. The default limit (`ulimit -n 1024`) is too low.
-
-**Check your current limit:**
-
-```bash
-ulimit -n
-```
-
-**Increase temporarily (current session):**
-
-```bash
-ulimit -n 65536
-```
-
-**Increase permanently** - add to `~/.bashrc` or `~/.zshrc`:
-
-```bash
-ulimit -n 65536
-```
-
-**Or system-wide** - add to `/etc/security/limits.conf`:
-
-```
-*               soft    nofile          65536
-*               hard    nofile          65536
-```
-
-Then log out and back in.
-
-### Terminal Detection
-
-loom automatically detects and uses your system's terminal emulator. Supported terminals (in order of detection):
-
-1. `$TERMINAL` environment variable
-2. GNOME default terminal (via gsettings)
-3. `xdg-terminal-exec` (XDG standard)
-4. Direct detection: kitty, alacritty, gnome-terminal, konsole, xfce4-terminal, xterm
-
-For best results, ensure one of these is installed and accessible in your PATH.
-
-### Verifying System Readiness
-
-```bash
-# Check file descriptor limit
-ulimit -n  # Should be >= 65536
-
-# Check loom CLI
-loom --version
-```
 
 ## Installation
 
