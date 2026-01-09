@@ -84,6 +84,54 @@ impl TerminalBackend for NativeBackend {
         Ok(session)
     }
 
+    fn spawn_merge_session(
+        &self,
+        stage: &Stage,
+        session: Session,
+        signal_path: &Path,
+        repo_root: &Path,
+    ) -> Result<Session> {
+        let repo_root_str = repo_root.to_str().ok_or_else(|| {
+            anyhow::anyhow!(
+                "Repository path contains invalid UTF-8: {}",
+                repo_root.display()
+            )
+        })?;
+
+        // Build the title for the merge session window
+        let title = format!("loom-merge-{}", stage.id);
+
+        // Build the initial prompt for Claude merge session
+        let signal_path_str = signal_path.to_string_lossy();
+        let initial_prompt = format!(
+            "Read the merge signal file at {signal_path_str} and resolve the merge conflicts. \
+             This file contains the conflicting files, merge context, and resolution instructions."
+        );
+
+        // Escape the prompt for shell
+        let escaped_prompt = escape(Cow::Borrowed(&initial_prompt));
+
+        // Build the command to run in the terminal
+        let claude_cmd = format!("exec claude {escaped_prompt}");
+
+        // Spawn the terminal in the main repository (not worktree)
+        let pid = spawn_in_terminal(
+            &self.terminal_cmd,
+            &title,
+            Path::new(repo_root_str),
+            &claude_cmd,
+        )?;
+
+        // Update the session with spawn info
+        let mut session = session;
+        // For merge sessions, we don't set worktree_path (it runs in main repo)
+        session.assign_to_stage(stage.id.clone());
+        session.set_pid(pid);
+        session.try_mark_running()?;
+
+        Ok(session)
+    }
+
     fn kill_session(&self, session: &Session) -> Result<()> {
         // First, try to close the window by title (more reliable for all terminals).
         // The title is set to "loom-{stage_id}" when spawning.

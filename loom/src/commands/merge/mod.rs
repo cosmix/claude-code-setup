@@ -1,9 +1,30 @@
-//! Merge completed stage worktree back to main
+//! Merge recovery command for failed/interrupted merge sessions
 //!
 //! Usage: loom merge <stage_id> [--force]
 //!
-//! This module is organized into submodules:
-//! - `execute`: Main merge execution logic
+//! ## Purpose
+//!
+//! The `loom merge` command is primarily a **recovery command** for handling merge
+//! failures and interruptions. When a stage reaches Verified status, loom automatically
+//! attempts to merge it. If that auto-merge encounters conflicts, a Claude Code session
+//! is spawned to resolve them.
+//!
+//! Use `loom merge` when:
+//! - The auto-merge conflict resolution session was interrupted or terminated
+//! - A previous merge attempt failed and needs to be retried
+//! - You want to manually trigger a merge for a completed stage
+//!
+//! ## Workflow
+//!
+//! 1. Stage reaches Verified status
+//! 2. Orchestrator auto-attempts merge
+//! 3. If conflicts detected: CC session spawns in main repo to resolve
+//! 4. If CC session terminates before completion: stage stays in "Conflict" state
+//! 5. User runs `loom merge <stage>` to restart the conflict resolution session
+//!
+//! ## Module Organization
+//!
+//! - `execute`: Main merge/recovery execution logic
 //! - `validation`: Pre-merge validation and safety checks
 //! - `helpers`: Git utility functions for merge operations
 
