@@ -28,7 +28,7 @@ fn test_parallel_stages_triggered_together() {
     ] {
         let mut stage = Stage::new(name.to_string(), None);
         stage.id = id.to_string();
-        stage.status = StageStatus::Pending;
+        stage.status = StageStatus::WaitingForDeps;
         stage.add_dependency("foundation".to_string());
         stage.parallel_group = Some("parallel".to_string());
         save_stage(&stage, work_dir).unwrap();
@@ -40,7 +40,7 @@ fn test_parallel_stages_triggered_together() {
 
     for id in ["stage-a", "stage-b", "stage-c"] {
         let stage = load_stage(id, work_dir).unwrap();
-        assert_eq!(stage.status, StageStatus::Pending);
+        assert_eq!(stage.status, StageStatus::WaitingForDeps);
     }
 
     // Trigger dependents
@@ -59,7 +59,7 @@ fn test_parallel_stages_triggered_together() {
     // Verify all became Ready simultaneously
     for id in ["stage-a", "stage-b", "stage-c"] {
         let stage = load_stage(id, work_dir).unwrap();
-        assert_eq!(stage.status, StageStatus::Ready);
+        assert_eq!(stage.status, StageStatus::Queued);
         assert_eq!(stage.parallel_group, Some("parallel".to_string()));
     }
 }
@@ -80,7 +80,7 @@ fn test_parallel_group_isolation() {
     for (name, id) in [("Frontend A", "frontend-a"), ("Frontend B", "frontend-b")] {
         let mut stage = Stage::new(name.to_string(), None);
         stage.id = id.to_string();
-        stage.status = StageStatus::Pending;
+        stage.status = StageStatus::WaitingForDeps;
         stage.add_dependency("foundation".to_string());
         stage.parallel_group = Some("frontend".to_string());
         save_stage(&stage, work_dir).unwrap();
@@ -90,7 +90,7 @@ fn test_parallel_group_isolation() {
     for (name, id) in [("Backend C", "backend-c"), ("Backend D", "backend-d")] {
         let mut stage = Stage::new(name.to_string(), None);
         stage.id = id.to_string();
-        stage.status = StageStatus::Pending;
+        stage.status = StageStatus::WaitingForDeps;
         stage.add_dependency("foundation".to_string());
         stage.parallel_group = Some("backend".to_string());
         save_stage(&stage, work_dir).unwrap();
@@ -104,7 +104,7 @@ fn test_parallel_group_isolation() {
     // Verify all 4 stages become Ready
     for id in ["frontend-a", "frontend-b", "backend-c", "backend-d"] {
         let stage = load_stage(id, work_dir).unwrap();
-        assert_eq!(stage.status, StageStatus::Ready);
+        assert_eq!(stage.status, StageStatus::Queued);
     }
 
     // Verify stages have correct parallel_group assignments
@@ -137,21 +137,21 @@ fn test_diamond_dependency_pattern() {
     // B (depends on A)
     let mut stage_b = Stage::new("Stage B".to_string(), None);
     stage_b.id = "stage-b".to_string();
-    stage_b.status = StageStatus::Pending;
+    stage_b.status = StageStatus::WaitingForDeps;
     stage_b.add_dependency("stage-a".to_string());
     save_stage(&stage_b, work_dir).unwrap();
 
     // C (depends on A)
     let mut stage_c = Stage::new("Stage C".to_string(), None);
     stage_c.id = "stage-c".to_string();
-    stage_c.status = StageStatus::Pending;
+    stage_c.status = StageStatus::WaitingForDeps;
     stage_c.add_dependency("stage-a".to_string());
     save_stage(&stage_c, work_dir).unwrap();
 
     // D (depends on B and C)
     let mut stage_d = Stage::new("Stage D".to_string(), None);
     stage_d.id = "stage-d".to_string();
-    stage_d.status = StageStatus::Pending;
+    stage_d.status = StageStatus::WaitingForDeps;
     stage_d.add_dependency("stage-b".to_string());
     stage_d.add_dependency("stage-c".to_string());
     save_stage(&stage_d, work_dir).unwrap();
@@ -165,14 +165,14 @@ fn test_diamond_dependency_pattern() {
 
     // Verify B and C become Ready
     let stage_b = load_stage("stage-b", work_dir).unwrap();
-    assert_eq!(stage_b.status, StageStatus::Ready);
+    assert_eq!(stage_b.status, StageStatus::Queued);
 
     let stage_c = load_stage("stage-c", work_dir).unwrap();
-    assert_eq!(stage_c.status, StageStatus::Ready);
+    assert_eq!(stage_c.status, StageStatus::Queued);
 
     // D should still be Pending
     let stage_d = load_stage("stage-d", work_dir).unwrap();
-    assert_eq!(stage_d.status, StageStatus::Pending);
+    assert_eq!(stage_d.status, StageStatus::WaitingForDeps);
 
     // Complete B only
     complete_stage("stage-b", work_dir).unwrap();
@@ -182,7 +182,7 @@ fn test_diamond_dependency_pattern() {
 
     // Verify D is still Pending (C not done)
     let stage_d = load_stage("stage-d", work_dir).unwrap();
-    assert_eq!(stage_d.status, StageStatus::Pending);
+    assert_eq!(stage_d.status, StageStatus::WaitingForDeps);
 
     // Complete C
     complete_stage("stage-c", work_dir).unwrap();
@@ -193,7 +193,7 @@ fn test_diamond_dependency_pattern() {
 
     // Verify D becomes Ready
     let stage_d = load_stage("stage-d", work_dir).unwrap();
-    assert_eq!(stage_d.status, StageStatus::Ready);
+    assert_eq!(stage_d.status, StageStatus::Queued);
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn test_fan_out_fan_in() {
     ] {
         let mut stage = Stage::new(name.to_string(), None);
         stage.id = id.to_string();
-        stage.status = StageStatus::Pending;
+        stage.status = StageStatus::WaitingForDeps;
         stage.add_dependency("stage-a".to_string());
         save_stage(&stage, work_dir).unwrap();
     }
@@ -225,7 +225,7 @@ fn test_fan_out_fan_in() {
     // E depends on B, C, and D
     let mut stage_e = Stage::new("Stage E".to_string(), None);
     stage_e.id = "stage-e".to_string();
-    stage_e.status = StageStatus::Pending;
+    stage_e.status = StageStatus::WaitingForDeps;
     stage_e.add_dependency("stage-b".to_string());
     stage_e.add_dependency("stage-c".to_string());
     stage_e.add_dependency("stage-d".to_string());
@@ -246,12 +246,12 @@ fn test_fan_out_fan_in() {
 
     for id in ["stage-b", "stage-c", "stage-d"] {
         let stage = load_stage(id, work_dir).unwrap();
-        assert_eq!(stage.status, StageStatus::Ready);
+        assert_eq!(stage.status, StageStatus::Queued);
     }
 
     // E should still be Pending
     let stage_e = load_stage("stage-e", work_dir).unwrap();
-    assert_eq!(stage_e.status, StageStatus::Pending);
+    assert_eq!(stage_e.status, StageStatus::WaitingForDeps);
 
     // Complete B and C
     for id in ["stage-b", "stage-c"] {
@@ -262,7 +262,7 @@ fn test_fan_out_fan_in() {
 
     // Verify E still Pending (D not done)
     let stage_e = load_stage("stage-e", work_dir).unwrap();
-    assert_eq!(stage_e.status, StageStatus::Pending);
+    assert_eq!(stage_e.status, StageStatus::WaitingForDeps);
 
     // Complete D
     complete_stage("stage-d", work_dir).unwrap();
@@ -273,7 +273,7 @@ fn test_fan_out_fan_in() {
 
     // Verify E becomes Ready
     let stage_e = load_stage("stage-e", work_dir).unwrap();
-    assert_eq!(stage_e.status, StageStatus::Ready);
+    assert_eq!(stage_e.status, StageStatus::Queued);
 }
 
 #[test]

@@ -55,7 +55,7 @@ fn test_blocked_stage_does_not_trigger_dependents() {
 
     let mut stage_b = Stage::new("Stage B".to_string(), None);
     stage_b.id = "stage-b".to_string();
-    stage_b.status = StageStatus::Pending;
+    stage_b.status = StageStatus::WaitingForDeps;
     stage_b.add_dependency("stage-a".to_string());
     save_stage(&stage_b, work_dir).unwrap();
 
@@ -63,7 +63,7 @@ fn test_blocked_stage_does_not_trigger_dependents() {
     assert!(triggered.is_empty());
 
     let stage_b = load_stage("stage-b", work_dir).unwrap();
-    assert_eq!(stage_b.status, StageStatus::Pending);
+    assert_eq!(stage_b.status, StageStatus::WaitingForDeps);
 }
 
 #[test]
@@ -80,8 +80,8 @@ fn test_stage_reset_to_ready() {
     save_stage(&stage, work_dir).unwrap();
 
     // Blocked can only transition to Ready (per state machine)
-    let reset = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(reset.status, StageStatus::Ready);
+    let reset = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(reset.status, StageStatus::Queued);
     assert_eq!(reset.dependencies.len(), 2);
     assert!(reset.dependencies.contains(&"dep-1".to_string()));
     assert!(reset.dependencies.contains(&"dep-2".to_string()));
@@ -105,12 +105,12 @@ fn test_stage_reset_to_ready_when_deps_verified() {
     save_stage(&stage_b, work_dir).unwrap();
 
     // Blocked can only transition to Ready (per state machine)
-    let reset_ready = transition_stage("stage-b", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(reset_ready.status, StageStatus::Ready);
+    let reset_ready = transition_stage("stage-b", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(reset_ready.status, StageStatus::Queued);
 
     // Stage B is already Ready, so triggering dependents won't add it again
     let stage_b = load_stage("stage-b", work_dir).unwrap();
-    assert_eq!(stage_b.status, StageStatus::Ready);
+    assert_eq!(stage_b.status, StageStatus::Queued);
 }
 
 #[test]
@@ -145,8 +145,8 @@ fn test_resume_from_needs_handoff_to_executing() {
     save_stage(&stage, work_dir).unwrap();
 
     // NeedsHandoff must first go to Ready, then Executing (per state machine)
-    let ready = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(ready.status, StageStatus::Ready);
+    let ready = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(ready.status, StageStatus::Queued);
 
     let resumed = transition_stage("test-stage", StageStatus::Executing, work_dir).unwrap();
     assert_eq!(resumed.status, StageStatus::Executing);
@@ -169,8 +169,8 @@ fn test_resume_from_blocked_to_executing() {
     save_stage(&stage, work_dir).unwrap();
 
     // Blocked must first go to Ready, then Executing (per state machine)
-    let ready = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(ready.status, StageStatus::Ready);
+    let ready = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(ready.status, StageStatus::Queued);
 
     let resumed = transition_stage("test-stage", StageStatus::Executing, work_dir).unwrap();
     assert_eq!(resumed.status, StageStatus::Executing);
@@ -189,13 +189,13 @@ fn test_stage_state_machine_valid_transitions() {
     let mut stage = Stage::new("Test Stage".to_string(), None);
     stage.id = "test-stage".to_string();
 
-    stage.status = StageStatus::Pending;
+    stage.status = StageStatus::WaitingForDeps;
     save_stage(&stage, work_dir).unwrap();
     let loaded = load_stage("test-stage", work_dir).unwrap();
-    assert_eq!(loaded.status, StageStatus::Pending);
+    assert_eq!(loaded.status, StageStatus::WaitingForDeps);
 
-    let stage = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(stage.status, StageStatus::Ready);
+    let stage = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(stage.status, StageStatus::Queued);
 
     let stage = transition_stage("test-stage", StageStatus::Executing, work_dir).unwrap();
     assert_eq!(stage.status, StageStatus::Executing);
@@ -224,8 +224,8 @@ fn test_stage_state_machine_blocked_path() {
     assert_eq!(stage.status, StageStatus::Blocked);
 
     // Blocked -> Ready (per state machine, Blocked can only go to Ready)
-    let stage = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(stage.status, StageStatus::Ready);
+    let stage = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(stage.status, StageStatus::Queued);
 
     // Ready -> Executing
     let stage = transition_stage("test-stage", StageStatus::Executing, work_dir).unwrap();
@@ -248,8 +248,8 @@ fn test_stage_state_machine_needs_handoff_path() {
     assert_eq!(stage.status, StageStatus::NeedsHandoff);
 
     // NeedsHandoff -> Ready (per state machine, NeedsHandoff can only go to Ready)
-    let stage = transition_stage("test-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(stage.status, StageStatus::Ready);
+    let stage = transition_stage("test-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(stage.status, StageStatus::Queued);
 
     // Ready -> Executing
     let stage = transition_stage("test-stage", StageStatus::Executing, work_dir).unwrap();
@@ -273,7 +273,7 @@ fn test_multiple_blocked_stages_with_dependencies() {
     stage_b.add_dependency("stage-a".to_string());
     save_stage(&stage_b, work_dir).unwrap();
 
-    let mut stage_c = create_test_stage("stage-c", "Stage C", StageStatus::Pending);
+    let mut stage_c = create_test_stage("stage-c", "Stage C", StageStatus::WaitingForDeps);
     stage_c.add_dependency("stage-b".to_string());
     save_stage(&stage_c, work_dir).unwrap();
 
@@ -284,7 +284,7 @@ fn test_multiple_blocked_stages_with_dependencies() {
     assert!(triggered.is_empty());
 
     // Blocked -> Ready (per state machine)
-    transition_stage("stage-a", StageStatus::Ready, work_dir).unwrap();
+    transition_stage("stage-a", StageStatus::Queued, work_dir).unwrap();
     transition_stage("stage-a", StageStatus::Executing, work_dir).unwrap();
     transition_stage("stage-a", StageStatus::Completed, work_dir).unwrap();
     transition_stage("stage-a", StageStatus::Verified, work_dir).unwrap();
@@ -374,7 +374,7 @@ fn test_cascading_failure_does_not_propagate() {
     stage_2.add_dependency("stage-1".to_string());
     save_stage(&stage_2, work_dir).unwrap();
 
-    let mut stage_3 = create_test_stage("stage-3", "Stage 3", StageStatus::Pending);
+    let mut stage_3 = create_test_stage("stage-3", "Stage 3", StageStatus::WaitingForDeps);
     stage_3.add_dependency("stage-2".to_string());
     save_stage(&stage_3, work_dir).unwrap();
 
@@ -385,7 +385,7 @@ fn test_cascading_failure_does_not_propagate() {
     assert!(triggered.is_empty());
 
     let stage_3 = load_stage("stage-3", work_dir).unwrap();
-    assert_eq!(stage_3.status, StageStatus::Pending);
+    assert_eq!(stage_3.status, StageStatus::WaitingForDeps);
 }
 
 #[test]
@@ -401,8 +401,8 @@ fn test_recovery_workflow_blocked_to_completion() {
     assert_eq!(blocked.status, StageStatus::Blocked);
 
     // Blocked -> Ready (per state machine, Blocked can only go to Ready)
-    let ready = transition_stage("recovery-stage", StageStatus::Ready, work_dir).unwrap();
-    assert_eq!(ready.status, StageStatus::Ready);
+    let ready = transition_stage("recovery-stage", StageStatus::Queued, work_dir).unwrap();
+    assert_eq!(ready.status, StageStatus::Queued);
 
     let executing = transition_stage("recovery-stage", StageStatus::Executing, work_dir).unwrap();
     assert_eq!(executing.status, StageStatus::Executing);
@@ -424,15 +424,15 @@ fn test_parallel_stages_one_blocked_one_succeeds() {
     let stage_1 = create_test_stage("stage-1", "Stage 1", StageStatus::Verified);
     save_stage(&stage_1, work_dir).unwrap();
 
-    let mut stage_2a = create_test_stage("stage-2a", "Stage 2A", StageStatus::Pending);
+    let mut stage_2a = create_test_stage("stage-2a", "Stage 2A", StageStatus::WaitingForDeps);
     stage_2a.add_dependency("stage-1".to_string());
     save_stage(&stage_2a, work_dir).unwrap();
 
-    let mut stage_2b = create_test_stage("stage-2b", "Stage 2B", StageStatus::Pending);
+    let mut stage_2b = create_test_stage("stage-2b", "Stage 2B", StageStatus::WaitingForDeps);
     stage_2b.add_dependency("stage-1".to_string());
     save_stage(&stage_2b, work_dir).unwrap();
 
-    let mut stage_3 = create_test_stage("stage-3", "Stage 3", StageStatus::Pending);
+    let mut stage_3 = create_test_stage("stage-3", "Stage 3", StageStatus::WaitingForDeps);
     stage_3.add_dependency("stage-2a".to_string());
     stage_3.add_dependency("stage-2b".to_string());
     save_stage(&stage_3, work_dir).unwrap();
@@ -452,5 +452,5 @@ fn test_parallel_stages_one_blocked_one_succeeds() {
     assert!(triggered.is_empty());
 
     let stage_3 = load_stage("stage-3", work_dir).unwrap();
-    assert_eq!(stage_3.status, StageStatus::Pending);
+    assert_eq!(stage_3.status, StageStatus::WaitingForDeps);
 }

@@ -27,13 +27,34 @@ pub struct StageNode {
     pub status: NodeStatus,
 }
 
-/// Status of a node in the graph
+/// Status of a node in the execution graph.
+///
+/// Mirrors StageStatus but only includes states relevant to scheduling:
+/// - `WaitingForDeps` - Dependencies not yet satisfied
+/// - `Queued` - Dependencies satisfied, ready to execute
+/// - `Executing` - Currently running
+/// - `Completed` - Done (includes Verified stages)
+/// - `Blocked` - Hit an error
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeStatus {
-    Pending,
-    Ready,
+    /// Waiting for upstream dependencies to complete.
+    #[serde(rename = "waiting-for-deps", alias = "pending")]
+    WaitingForDeps,
+
+    /// Dependencies satisfied; queued for execution.
+    #[serde(rename = "queued", alias = "ready")]
+    Queued,
+
+    /// Currently executing in a session.
+    #[serde(rename = "executing")]
     Executing,
+
+    /// Successfully completed.
+    #[serde(rename = "completed")]
     Completed,
+
+    /// Blocked due to error.
+    #[serde(rename = "blocked")]
     Blocked,
 }
 
@@ -51,7 +72,7 @@ impl ExecutionGraph {
                 name: stage.name.clone(),
                 dependencies: stage.dependencies.clone(),
                 parallel_group: stage.parallel_group.clone(),
-                status: NodeStatus::Pending,
+                status: NodeStatus::WaitingForDeps,
             };
             nodes.insert(stage.id.clone(), node);
 
@@ -151,8 +172,8 @@ impl ExecutionGraph {
     /// Update which stages are ready (all deps satisfied)
     pub fn update_ready_status(&mut self) {
         for node in self.nodes.values_mut() {
-            if node.status == NodeStatus::Pending && node.dependencies.is_empty() {
-                node.status = NodeStatus::Ready;
+            if node.status == NodeStatus::WaitingForDeps && node.dependencies.is_empty() {
+                node.status = NodeStatus::Queued;
             }
         }
 
@@ -165,10 +186,10 @@ impl ExecutionGraph {
             .collect();
 
         for node in self.nodes.values_mut() {
-            if node.status == NodeStatus::Pending {
+            if node.status == NodeStatus::WaitingForDeps {
                 let deps_satisfied = node.dependencies.iter().all(|d| completed.contains(d));
                 if deps_satisfied {
-                    node.status = NodeStatus::Ready;
+                    node.status = NodeStatus::Queued;
                 }
             }
         }
@@ -183,7 +204,7 @@ impl ExecutionGraph {
     pub fn ready_stages(&self) -> Vec<&StageNode> {
         self.nodes
             .values()
-            .filter(|n| n.status == NodeStatus::Ready)
+            .filter(|n| n.status == NodeStatus::Queued)
             .collect()
     }
 
@@ -207,7 +228,7 @@ impl ExecutionGraph {
             .get_mut(stage_id)
             .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
 
-        if node.status != NodeStatus::Ready {
+        if node.status != NodeStatus::Queued {
             bail!(
                 "Stage '{}' is not ready (status: {:?})",
                 stage_id,
@@ -240,7 +261,7 @@ impl ExecutionGraph {
             .filter(|id| {
                 self.nodes
                     .get(id)
-                    .is_some_and(|n| n.status == NodeStatus::Ready)
+                    .is_some_and(|n| n.status == NodeStatus::Queued)
             })
             .collect();
 
@@ -257,11 +278,11 @@ impl ExecutionGraph {
         Ok(())
     }
 
-    /// Mark a stage as ready for execution.
+    /// Mark a stage as queued for execution.
     ///
-    /// Used to reset orphaned/blocked stages back to ready state.
+    /// Used to reset orphaned/blocked stages back to queued state.
     /// Only succeeds if all dependencies are completed.
-    pub fn mark_ready(&mut self, stage_id: &str) -> Result<()> {
+    pub fn mark_queued(&mut self, stage_id: &str) -> Result<()> {
         // First check dependencies
         let deps = {
             let node = self
@@ -290,7 +311,7 @@ impl ExecutionGraph {
             .nodes
             .get_mut(stage_id)
             .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
-        node.status = NodeStatus::Ready;
+        node.status = NodeStatus::Queued;
         Ok(())
     }
 
@@ -432,7 +453,7 @@ mod tests {
         let newly_ready = graph.mark_completed("a").unwrap();
 
         assert_eq!(newly_ready, vec!["b"]);
-        assert_eq!(graph.get_node("b").unwrap().status, NodeStatus::Ready);
+        assert_eq!(graph.get_node("b").unwrap().status, NodeStatus::Queued);
     }
 
     #[test]

@@ -27,32 +27,32 @@ fn test_sequential_plan_stage_order() {
     // Create stage 1 (no dependencies)
     let mut stage1 = Stage::new("Stage 1".to_string(), Some("First stage".to_string()));
     stage1.id = "stage-1".to_string();
-    stage1.status = StageStatus::Ready;
+    stage1.status = StageStatus::Queued;
     save_stage(&stage1, work_dir).expect("Should save stage 1");
 
     // Create stage 2 (depends on stage 1)
     let mut stage2 = Stage::new("Stage 2".to_string(), Some("Second stage".to_string()));
     stage2.id = "stage-2".to_string();
-    stage2.status = StageStatus::Pending;
+    stage2.status = StageStatus::WaitingForDeps;
     stage2.add_dependency("stage-1".to_string());
     save_stage(&stage2, work_dir).expect("Should save stage 2");
 
     // Create stage 3 (depends on stage 2)
     let mut stage3 = Stage::new("Stage 3".to_string(), Some("Third stage".to_string()));
     stage3.id = "stage-3".to_string();
-    stage3.status = StageStatus::Pending;
+    stage3.status = StageStatus::WaitingForDeps;
     stage3.add_dependency("stage-2".to_string());
     save_stage(&stage3, work_dir).expect("Should save stage 3");
 
     // Verify initial states
     let loaded_stage1 = load_stage("stage-1", work_dir).expect("Should load stage 1");
-    assert_eq!(loaded_stage1.status, StageStatus::Ready);
+    assert_eq!(loaded_stage1.status, StageStatus::Queued);
 
     let loaded_stage2 = load_stage("stage-2", work_dir).expect("Should load stage 2");
-    assert_eq!(loaded_stage2.status, StageStatus::Pending);
+    assert_eq!(loaded_stage2.status, StageStatus::WaitingForDeps);
 
     let loaded_stage3 = load_stage("stage-3", work_dir).expect("Should load stage 3");
-    assert_eq!(loaded_stage3.status, StageStatus::Pending);
+    assert_eq!(loaded_stage3.status, StageStatus::WaitingForDeps);
 
     // Complete and verify stage 1
     complete_stage("stage-1", work_dir).expect("Should complete stage 1");
@@ -67,11 +67,11 @@ fn test_sequential_plan_stage_order() {
 
     // Verify stage 2 is now Ready
     let loaded_stage2 = load_stage("stage-2", work_dir).expect("Should load stage 2");
-    assert_eq!(loaded_stage2.status, StageStatus::Ready);
+    assert_eq!(loaded_stage2.status, StageStatus::Queued);
 
     // Verify stage 3 is still Pending
     let loaded_stage3 = load_stage("stage-3", work_dir).expect("Should load stage 3");
-    assert_eq!(loaded_stage3.status, StageStatus::Pending);
+    assert_eq!(loaded_stage3.status, StageStatus::WaitingForDeps);
 }
 
 /// Test full completion of a sequential plan
@@ -89,20 +89,20 @@ fn test_sequential_plan_full_completion() {
     // Create stage 1 (no dependencies)
     let mut stage1 = Stage::new("Stage 1".to_string(), Some("First stage".to_string()));
     stage1.id = "stage-1".to_string();
-    stage1.status = StageStatus::Ready;
+    stage1.status = StageStatus::Queued;
     save_stage(&stage1, work_dir).expect("Should save stage 1");
 
     // Create stage 2 (depends on stage 1)
     let mut stage2 = Stage::new("Stage 2".to_string(), Some("Second stage".to_string()));
     stage2.id = "stage-2".to_string();
-    stage2.status = StageStatus::Pending;
+    stage2.status = StageStatus::WaitingForDeps;
     stage2.add_dependency("stage-1".to_string());
     save_stage(&stage2, work_dir).expect("Should save stage 2");
 
     // Create stage 3 (depends on stage 2)
     let mut stage3 = Stage::new("Stage 3".to_string(), Some("Third stage".to_string()));
     stage3.id = "stage-3".to_string();
-    stage3.status = StageStatus::Pending;
+    stage3.status = StageStatus::WaitingForDeps;
     stage3.add_dependency("stage-2".to_string());
     save_stage(&stage3, work_dir).expect("Should save stage 3");
 
@@ -113,10 +113,10 @@ fn test_sequential_plan_full_completion() {
 
     // Verify stage 2 is Ready, stage 3 still Pending
     let loaded_stage2 = load_stage("stage-2", work_dir).expect("Should load stage 2");
-    assert_eq!(loaded_stage2.status, StageStatus::Ready);
+    assert_eq!(loaded_stage2.status, StageStatus::Queued);
 
     let loaded_stage3 = load_stage("stage-3", work_dir).expect("Should load stage 3");
-    assert_eq!(loaded_stage3.status, StageStatus::Pending);
+    assert_eq!(loaded_stage3.status, StageStatus::WaitingForDeps);
 
     // Complete stage 2
     complete_stage("stage-2", work_dir).expect("Should complete stage 2");
@@ -125,7 +125,7 @@ fn test_sequential_plan_full_completion() {
 
     // Verify stage 3 is now Ready
     let loaded_stage3 = load_stage("stage-3", work_dir).expect("Should load stage 3");
-    assert_eq!(loaded_stage3.status, StageStatus::Ready);
+    assert_eq!(loaded_stage3.status, StageStatus::Queued);
 
     // Complete stage 3
     complete_stage("stage-3", work_dir).expect("Should complete stage 3");
@@ -161,27 +161,27 @@ fn test_dependency_chain_respected() {
     // Create stage 1 (no dependencies)
     let mut stage1 = Stage::new("Stage A".to_string(), Some("First stage".to_string()));
     stage1.id = "stage-a".to_string();
-    stage1.status = StageStatus::Ready;
+    stage1.status = StageStatus::Queued;
     save_stage(&stage1, work_dir).expect("Should save stage A");
 
     // Create stage 2 (depends on stage 1)
     let mut stage2 = Stage::new("Stage B".to_string(), Some("Second stage".to_string()));
     stage2.id = "stage-b".to_string();
-    stage2.status = StageStatus::Pending;
+    stage2.status = StageStatus::WaitingForDeps;
     stage2.add_dependency("stage-a".to_string());
     save_stage(&stage2, work_dir).expect("Should save stage B");
 
     // Create stage 3 (depends on stage 2)
     let mut stage3 = Stage::new("Stage C".to_string(), Some("Third stage".to_string()));
     stage3.id = "stage-c".to_string();
-    stage3.status = StageStatus::Pending;
+    stage3.status = StageStatus::WaitingForDeps;
     stage3.add_dependency("stage-b".to_string());
     save_stage(&stage3, work_dir).expect("Should save stage C");
 
     // Create stage 4 (depends on stage 3)
     let mut stage4 = Stage::new("Stage D".to_string(), Some("Fourth stage".to_string()));
     stage4.id = "stage-d".to_string();
-    stage4.status = StageStatus::Pending;
+    stage4.status = StageStatus::WaitingForDeps;
     stage4.add_dependency("stage-c".to_string());
     save_stage(&stage4, work_dir).expect("Should save stage D");
 
@@ -195,13 +195,13 @@ fn test_dependency_chain_respected() {
 
     // Verify only stage B is Ready, C and D still Pending
     let loaded_stage_b = load_stage("stage-b", work_dir).expect("Should load stage B");
-    assert_eq!(loaded_stage_b.status, StageStatus::Ready);
+    assert_eq!(loaded_stage_b.status, StageStatus::Queued);
 
     let loaded_stage_c = load_stage("stage-c", work_dir).expect("Should load stage C");
-    assert_eq!(loaded_stage_c.status, StageStatus::Pending);
+    assert_eq!(loaded_stage_c.status, StageStatus::WaitingForDeps);
 
     let loaded_stage_d = load_stage("stage-d", work_dir).expect("Should load stage D");
-    assert_eq!(loaded_stage_d.status, StageStatus::Pending);
+    assert_eq!(loaded_stage_d.status, StageStatus::WaitingForDeps);
 
     // Complete stage B
     complete_stage("stage-b", work_dir).expect("Should complete stage B");
@@ -213,10 +213,10 @@ fn test_dependency_chain_respected() {
 
     // Verify only stage C is Ready, D still Pending
     let loaded_stage_c = load_stage("stage-c", work_dir).expect("Should load stage C");
-    assert_eq!(loaded_stage_c.status, StageStatus::Ready);
+    assert_eq!(loaded_stage_c.status, StageStatus::Queued);
 
     let loaded_stage_d = load_stage("stage-d", work_dir).expect("Should load stage D");
-    assert_eq!(loaded_stage_d.status, StageStatus::Pending);
+    assert_eq!(loaded_stage_d.status, StageStatus::WaitingForDeps);
 
     // Complete stage C
     complete_stage("stage-c", work_dir).expect("Should complete stage C");
@@ -228,7 +228,7 @@ fn test_dependency_chain_respected() {
 
     // Verify stage D is now Ready
     let loaded_stage_d = load_stage("stage-d", work_dir).expect("Should load stage D");
-    assert_eq!(loaded_stage_d.status, StageStatus::Ready);
+    assert_eq!(loaded_stage_d.status, StageStatus::Queued);
 }
 
 /// Test that stage completion updates timestamps
@@ -246,7 +246,7 @@ fn test_stage_completion_updates_timestamp() {
     // Create stage 1
     let mut stage1 = Stage::new("Stage 1".to_string(), Some("Test stage".to_string()));
     stage1.id = "stage-1".to_string();
-    stage1.status = StageStatus::Ready;
+    stage1.status = StageStatus::Queued;
     let created_at = stage1.created_at;
     let initial_updated_at = stage1.updated_at;
 

@@ -80,13 +80,13 @@ pub fn transition_stage_unchecked(
 
     #[allow(deprecated)]
     match new_status {
-        StageStatus::Ready => stage.mark_ready(),
+        StageStatus::Queued => stage.mark_queued(),
         StageStatus::Executing => stage.mark_executing(),
         StageStatus::WaitingForInput => stage.mark_waiting_for_input(),
         StageStatus::Verified => stage.mark_verified(),
         StageStatus::NeedsHandoff => stage.mark_needs_handoff(),
         StageStatus::Completed => stage.complete(None),
-        StageStatus::Pending | StageStatus::Blocked => {
+        StageStatus::WaitingForDeps | StageStatus::Blocked => {
             stage.status = new_status;
             stage.updated_at = chrono::Utc::now();
         }
@@ -123,13 +123,13 @@ pub fn trigger_dependents(verified_stage_id: &str, work_dir: &Path) -> Result<Ve
         }
 
         // Only Pending stages can be triggered to Ready
-        if stage.status != StageStatus::Pending {
+        if stage.status != StageStatus::WaitingForDeps {
             continue;
         }
 
         if are_all_dependencies_satisfied(&stage, work_dir)? {
             // Use validated transition - Pending -> Ready is always valid
-            stage.try_mark_ready().with_context(|| {
+            stage.try_mark_queued().with_context(|| {
                 format!(
                     "Failed to transition stage {} from {:?} to Ready",
                     stage.id, stage.status
@@ -418,7 +418,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::WaitingForDeps);
 
         save_stage(&stage, work_dir).expect("Should save stage");
 
@@ -445,16 +445,16 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::WaitingForDeps);
         save_stage(&stage, work_dir).expect("Should save stage");
 
-        let updated = transition_stage("stage-1", StageStatus::Ready, work_dir)
+        let updated = transition_stage("stage-1", StageStatus::Queued, work_dir)
             .expect("Should transition stage");
 
-        assert_eq!(updated.status, StageStatus::Ready);
+        assert_eq!(updated.status, StageStatus::Queued);
 
         let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
-        assert_eq!(reloaded.status, StageStatus::Ready);
+        assert_eq!(reloaded.status, StageStatus::Queued);
     }
 
     #[test]
@@ -476,8 +476,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Pending);
-        let stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Ready);
+        let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::WaitingForDeps);
+        let stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Queued);
         let stage3 = create_test_stage("stage-3", "Stage 3", StageStatus::Verified);
 
         save_stage(&stage1, work_dir).expect("Should save stage 1");
@@ -511,7 +511,7 @@ mod tests {
         let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Verified);
         save_stage(&stage1, work_dir).expect("Should save stage 1");
 
-        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Pending);
+        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::WaitingForDeps);
         stage2.add_dependency("stage-1".to_string());
         save_stage(&stage2, work_dir).expect("Should save stage 2");
 
@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(triggered[0], "stage-2");
 
         let reloaded = load_stage("stage-2", work_dir).expect("Should reload stage 2");
-        assert_eq!(reloaded.status, StageStatus::Ready);
+        assert_eq!(reloaded.status, StageStatus::Queued);
     }
 
     #[test]
@@ -532,10 +532,10 @@ mod tests {
         let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Verified);
         save_stage(&stage1, work_dir).expect("Should save stage 1");
 
-        let stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Pending);
+        let stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::WaitingForDeps);
         save_stage(&stage2, work_dir).expect("Should save stage 2");
 
-        let mut stage3 = create_test_stage("stage-3", "Stage 3", StageStatus::Pending);
+        let mut stage3 = create_test_stage("stage-3", "Stage 3", StageStatus::WaitingForDeps);
         stage3.add_dependency("stage-1".to_string());
         stage3.add_dependency("stage-2".to_string());
         save_stage(&stage3, work_dir).expect("Should save stage 3");
@@ -551,7 +551,7 @@ mod tests {
         assert_eq!(triggered[0], "stage-3");
 
         let reloaded = load_stage("stage-3", work_dir).expect("Should reload stage 3");
-        assert_eq!(reloaded.status, StageStatus::Ready);
+        assert_eq!(reloaded.status, StageStatus::Queued);
     }
 
     #[test]
@@ -575,7 +575,7 @@ mod tests {
         let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Verified);
         save_stage(&stage1, work_dir).expect("Should save stage 1");
 
-        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Ready);
+        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Queued);
         stage2.add_dependency("stage-1".to_string());
         save_stage(&stage2, work_dir).expect("Should save stage 2");
 
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_serialize_and_parse_roundtrip() {
-        let mut stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        let mut stage = create_test_stage("stage-1", "Test Stage", StageStatus::WaitingForDeps);
         stage.add_dependency("stage-0".to_string());
         stage.add_acceptance_criterion("Criterion 1".to_string());
         stage.add_acceptance_criterion("Criterion 2".to_string());
@@ -653,7 +653,7 @@ status: Pending
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage = create_test_stage("stage-1", "Stage 1", StageStatus::Pending);
+        let stage = create_test_stage("stage-1", "Stage 1", StageStatus::WaitingForDeps);
 
         let satisfied =
             are_all_dependencies_satisfied(&stage, work_dir).expect("Should check dependencies");
@@ -669,7 +669,7 @@ status: Pending
         let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Verified);
         save_stage(&stage1, work_dir).expect("Should save stage 1");
 
-        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Pending);
+        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::WaitingForDeps);
         stage2.add_dependency("stage-1".to_string());
 
         let satisfied =
@@ -683,10 +683,10 @@ status: Pending
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::Pending);
+        let stage1 = create_test_stage("stage-1", "Stage 1", StageStatus::WaitingForDeps);
         save_stage(&stage1, work_dir).expect("Should save stage 1");
 
-        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::Pending);
+        let mut stage2 = create_test_stage("stage-2", "Stage 2", StageStatus::WaitingForDeps);
         stage2.add_dependency("stage-1".to_string());
 
         let satisfied =
@@ -707,7 +707,7 @@ status: Pending
         let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Verified);
         save_stage(&stage, work_dir).expect("Should save stage");
 
-        let result = transition_stage("stage-1", StageStatus::Pending, work_dir);
+        let result = transition_stage("stage-1", StageStatus::WaitingForDeps, work_dir);
         assert!(result.is_err());
 
         let err = result.unwrap_err().to_string();
@@ -730,7 +730,7 @@ status: Pending
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::WaitingForDeps);
         save_stage(&stage, work_dir).expect("Should save stage");
 
         let result = transition_stage("stage-1", StageStatus::Completed, work_dir);
@@ -738,7 +738,7 @@ status: Pending
 
         // Verify stage status was not changed
         let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
-        assert_eq!(reloaded.status, StageStatus::Pending);
+        assert_eq!(reloaded.status, StageStatus::WaitingForDeps);
     }
 
     #[test]
@@ -746,7 +746,7 @@ status: Pending
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Ready);
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Queued);
         save_stage(&stage, work_dir).expect("Should save stage");
 
         let result = transition_stage("stage-1", StageStatus::Verified, work_dir);
@@ -754,7 +754,7 @@ status: Pending
 
         // Verify stage status was not changed
         let reloaded = load_stage("stage-1", work_dir).expect("Should reload stage");
-        assert_eq!(reloaded.status, StageStatus::Ready);
+        assert_eq!(reloaded.status, StageStatus::Queued);
     }
 
     #[test]
@@ -779,13 +779,13 @@ status: Pending
         let work_dir = temp_dir.path();
 
         // Create stage in Pending status
-        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::Pending);
+        let stage = create_test_stage("stage-1", "Test Stage", StageStatus::WaitingForDeps);
         save_stage(&stage, work_dir).expect("Should save stage");
 
         // Pending -> Ready (valid)
         let updated =
-            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("Pending->Ready");
-        assert_eq!(updated.status, StageStatus::Ready);
+            transition_stage("stage-1", StageStatus::Queued, work_dir).expect("Pending->Ready");
+        assert_eq!(updated.status, StageStatus::Queued);
 
         // Ready -> Executing (valid)
         let updated = transition_stage("stage-1", StageStatus::Executing, work_dir)
@@ -833,8 +833,8 @@ status: Pending
 
         // Blocked -> Ready (valid - unblocking)
         let updated =
-            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("Blocked->Ready");
-        assert_eq!(updated.status, StageStatus::Ready);
+            transition_stage("stage-1", StageStatus::Queued, work_dir).expect("Blocked->Ready");
+        assert_eq!(updated.status, StageStatus::Queued);
     }
 
     #[test]
@@ -853,8 +853,8 @@ status: Pending
 
         // NeedsHandoff -> Ready (valid - resuming)
         let updated =
-            transition_stage("stage-1", StageStatus::Ready, work_dir).expect("NeedsHandoff->Ready");
-        assert_eq!(updated.status, StageStatus::Ready);
+            transition_stage("stage-1", StageStatus::Queued, work_dir).expect("NeedsHandoff->Ready");
+        assert_eq!(updated.status, StageStatus::Queued);
     }
 
     #[test]

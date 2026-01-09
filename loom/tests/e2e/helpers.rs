@@ -375,7 +375,7 @@ loom:
             Some("Test description".to_string()),
         );
         stage.id = "test-stage-1".to_string();
-        stage.status = StageStatus::Ready;
+        stage.status = StageStatus::Queued;
         stage.add_dependency("dep-1".to_string());
         stage.add_acceptance_criterion("Tests pass".to_string());
 
