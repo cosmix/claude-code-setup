@@ -56,6 +56,10 @@ enum Commands {
         /// Watch mode: continuously spawn ready stages until all are terminal
         #[arg(short, long)]
         watch: bool,
+
+        /// Auto-merge completed stages to target branch
+        #[arg(long)]
+        auto_merge: bool,
     },
 
     /// Show dashboard with context health
@@ -313,13 +317,14 @@ fn main() -> Result<()> {
             attach,
             foreground,
             watch,
+            auto_merge,
         } => {
             if attach {
                 attach::execute_logs()
             } else if foreground {
-                run::execute(stage, manual, max_parallel, watch)
+                run::execute(stage, manual, max_parallel, watch, auto_merge)
             } else {
-                run::execute_background(stage, manual, max_parallel, watch)
+                run::execute_background(stage, manual, max_parallel, watch, auto_merge)
             }
         }
         Commands::Status => status::execute(),

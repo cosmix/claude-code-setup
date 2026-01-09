@@ -484,10 +484,10 @@ mod tests {
     fn create_test_plan(dir: &Path, stages: Vec<StageDefinition>) -> PathBuf {
         let metadata = LoomMetadata {
             loom: LoomConfig {
-            version: 1,
-            auto_merge: None,
-            stages,
-        },
+                version: 1,
+                auto_merge: None,
+                stages,
+            },
         };
 
         let yaml = serde_yaml::to_string(&metadata).unwrap();
