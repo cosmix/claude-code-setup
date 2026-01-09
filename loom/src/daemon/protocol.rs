@@ -3,6 +3,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
+use crate::models::worktree::WorktreeStatus;
+
 /// Client request to daemon
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
@@ -43,6 +45,7 @@ pub struct StageInfo {
     pub name: String,
     pub session_pid: Option<u32>,
     pub started_at: DateTime<Utc>,
+    pub worktree_status: Option<WorktreeStatus>,
 }
 
 /// Write a length-prefixed JSON message to a stream.
@@ -103,6 +106,7 @@ pub fn read_message<T: for<'de> Deserialize<'de>, R: Read>(stream: &mut R) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::worktree::WorktreeStatus;
     use std::io::Cursor;
 
     #[test]
@@ -146,6 +150,7 @@ mod tests {
                 name: "Test Stage".to_string(),
                 session_pid: Some(12345),
                 started_at: Utc::now(),
+                worktree_status: Some(WorktreeStatus::Active),
             }],
             stages_pending: vec!["stage-2".to_string()],
             stages_completed: vec!["stage-0".to_string()],
