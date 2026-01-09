@@ -26,6 +26,10 @@ serde_json = "1.0.149"
 clap_complete = "4"
 shell-escape = "0.1.5"
 wait-timeout = "0.2.1"
+daemonize = "0.5.0"
+libc = "0.2.180"
+ctrlc = "3.5.1"
+which = "8.0.0"
 
 [dev-dependencies]
 serial_test = "3.3.1"
