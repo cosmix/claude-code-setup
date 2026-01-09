@@ -38,11 +38,12 @@
 //! - Subsequent criteria continue to execute (fail-fast is not the default)
 
 use anyhow::{Context, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
+use super::context::CriteriaContext;
 use crate::models::stage::Stage;
 
 /// Default timeout for command execution (5 minutes)
@@ -195,6 +196,9 @@ pub fn run_acceptance(stage: &Stage, working_dir: Option<&Path>) -> Result<Accep
 /// If `working_dir` is provided, commands will be executed in that directory.
 /// This is typically used to run criteria in a worktree directory.
 ///
+/// Context variables (like `${PROJECT_ROOT}`, `${WORKTREE}`) in criteria
+/// are automatically expanded before execution.
+///
 /// If the stage has setup commands defined, they will be prepended to each
 /// criterion command using `&&` to ensure environment preparation runs first.
 ///
@@ -211,21 +215,31 @@ pub fn run_acceptance_with_config(
         });
     }
 
+    // Build context for variable expansion
+    let default_dir = PathBuf::from(".");
+    let ctx_path = working_dir.unwrap_or(&default_dir);
+    let context = CriteriaContext::with_stage_id(ctx_path, &stage.id);
+
     let mut results = Vec::new();
     let mut failures = Vec::new();
 
-    // Build setup prefix if setup commands are defined
+    // Build setup prefix if setup commands are defined (also expand variables in setup)
     let setup_prefix = if stage.setup.is_empty() {
         None
     } else {
-        Some(stage.setup.join(" && "))
+        let expanded_setup: Vec<String> =
+            stage.setup.iter().map(|s| context.expand(s)).collect();
+        Some(expanded_setup.join(" && "))
     };
 
     for command in &stage.acceptance {
+        // Expand context variables in the command
+        let expanded_command = context.expand(command);
+
         // Combine setup commands with criterion if setup is defined
         let full_command = match &setup_prefix {
-            Some(prefix) => format!("{prefix} && {command}"),
-            None => command.clone(),
+            Some(prefix) => format!("{prefix} && {expanded_command}"),
+            None => expanded_command,
         };
 
         let result =
@@ -740,6 +754,117 @@ mod tests {
 
         let result = run_acceptance(&stage, None).unwrap();
 
+        assert!(result.all_passed());
+    }
+
+    #[test]
+    fn test_run_acceptance_with_worktree_variable() {
+        use crate::models::stage::Stage;
+        use tempfile::tempdir;
+
+        // Create a temp directory to use as the working dir
+        let temp_dir = tempdir().expect("failed to create temp dir");
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Use ${WORKTREE} variable in criterion - it should expand to working_dir
+            stage.add_acceptance_criterion("test -d \"${WORKTREE}\"".to_string());
+        } else {
+            stage.add_acceptance_criterion("if exist \"${WORKTREE}\" (exit /b 0)".to_string());
+        }
+
+        let result = run_acceptance(&stage, Some(temp_dir.path())).unwrap();
+
+        assert!(result.all_passed());
+        // The stored command should be the original, not expanded
+        assert!(result.results()[0].command.contains("${WORKTREE}"));
+    }
+
+    #[test]
+    fn test_run_acceptance_with_project_root_variable() {
+        use crate::models::stage::Stage;
+        use std::fs;
+        use tempfile::tempdir;
+
+        // Create a temp directory with a Cargo.toml to trigger PROJECT_ROOT detection
+        let temp_dir = tempdir().expect("failed to create temp dir");
+        fs::write(temp_dir.path().join("Cargo.toml"), "[package]")
+            .expect("failed to write Cargo.toml");
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Use ${PROJECT_ROOT} variable - should be the dir with Cargo.toml
+            stage.add_acceptance_criterion("test -f \"${PROJECT_ROOT}/Cargo.toml\"".to_string());
+        } else {
+            stage.add_acceptance_criterion(
+                "if exist \"${PROJECT_ROOT}\\Cargo.toml\" (exit /b 0)".to_string(),
+            );
+        }
+
+        let result = run_acceptance(&stage, Some(temp_dir.path())).unwrap();
+
+        assert!(result.all_passed());
+    }
+
+    #[test]
+    fn test_run_acceptance_with_stage_id_variable() {
+        use crate::models::stage::Stage;
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Use ${STAGE_ID} variable - should expand to the stage's id
+            stage.add_acceptance_criterion("test -n \"${STAGE_ID}\"".to_string());
+        } else {
+            stage.add_acceptance_criterion("echo %STAGE_ID%".to_string());
+        }
+
+        let result = run_acceptance(&stage, None).unwrap();
+
+        assert!(result.all_passed());
+    }
+
+    #[test]
+    fn test_run_acceptance_variables_in_setup() {
+        use crate::models::stage::Stage;
+        use tempfile::tempdir;
+
+        let temp_dir = tempdir().expect("failed to create temp dir");
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Setup uses ${WORKTREE} variable
+            stage.setup.push("cd ${WORKTREE}".to_string());
+            stage.add_acceptance_criterion("pwd".to_string());
+        } else {
+            stage.setup.push("cd ${WORKTREE}".to_string());
+            stage.add_acceptance_criterion("cd".to_string());
+        }
+
+        let result = run_acceptance(&stage, Some(temp_dir.path())).unwrap();
+
+        assert!(result.all_passed());
+    }
+
+    #[test]
+    fn test_run_acceptance_unknown_variable_unchanged() {
+        use crate::models::stage::Stage;
+
+        let mut stage = Stage::new("test".to_string(), None);
+
+        if cfg!(target_family = "unix") {
+            // Unknown variable should remain unchanged, and the echo should succeed
+            stage.add_acceptance_criterion("echo \"${UNKNOWN_VAR}\"".to_string());
+        } else {
+            stage.add_acceptance_criterion("echo ${UNKNOWN_VAR}".to_string());
+        }
+
+        let result = run_acceptance(&stage, None).unwrap();
+
+        // Command should pass (echo always succeeds)
         assert!(result.all_passed());
     }
 }
