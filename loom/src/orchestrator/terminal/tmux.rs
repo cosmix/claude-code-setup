@@ -152,9 +152,9 @@ impl TerminalBackend for TmuxBackend {
         signal_path: &Path,
         repo_root: &Path,
     ) -> Result<Session> {
-        // For merge sessions, use a different naming convention
+        // Use a distinct prefix for merge sessions
         let session_name = format!("{}-merge-{}", self.prefix, stage.id);
-        let repo_root_str = repo_root.to_str().ok_or_else(|| {
+        let repo_path = repo_root.to_str().ok_or_else(|| {
             anyhow!(
                 "Repository path contains invalid UTF-8: {}",
                 repo_root.display()
@@ -164,18 +164,11 @@ impl TerminalBackend for TmuxBackend {
         // Check if session already exists (zombie-aware check)
         ensure_session_fresh(&session_name)?;
 
-        // Create tmux session in detached mode in the main repository (not worktree)
+        // Create tmux session in detached mode with main repository as working directory
         let create_output = Command::new("tmux")
-            .args([
-                "new-session",
-                "-d",
-                "-s",
-                &session_name,
-                "-c",
-                repo_root_str,
-            ])
+            .args(["new-session", "-d", "-s", &session_name, "-c", repo_path])
             .output()
-            .context("Failed to create tmux merge session")?;
+            .context("Failed to create tmux session for merge")?;
 
         if !create_output.status.success() {
             let stderr = String::from_utf8_lossy(&create_output.stderr);
@@ -194,7 +187,7 @@ impl TerminalBackend for TmuxBackend {
         let log_path = log_dir.join(format!("merge-{}.log", stage.id));
         enable_pane_logging(&session_name, &log_path)?;
 
-        // Build the initial prompt for merge session
+        // Build the initial prompt for merge resolution
         let signal_path_str = signal_path.to_string_lossy();
         let initial_prompt = format!(
             "Read the merge signal file at {signal_path_str} and resolve the merge conflicts. \
@@ -208,7 +201,7 @@ impl TerminalBackend for TmuxBackend {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| ".work".to_string());
 
-        // Set environment variables
+        // Set environment variables - include merge-specific variables
         set_tmux_environment(&session_name, "loom_SESSION_ID", &session.id)?;
         set_tmux_environment(&session_name, "loom_STAGE_ID", &stage.id)?;
         set_tmux_environment(&session_name, "loom_WORK_DIR", &work_dir)?;
@@ -220,16 +213,16 @@ impl TerminalBackend for TmuxBackend {
 
         if let Err(e) = send_keys_debounced(&session_name, &claude_command, TMUX_DEBOUNCE_MS) {
             let _ = kill_session_by_name(&session_name);
-            return Err(anyhow!("Failed to send 'claude' command: {e}"));
+            return Err(anyhow!("Failed to send 'claude' command for merge: {e}"));
         }
 
         // Get the PID
         let pid = get_tmux_session_pid(&session_name)?;
 
         // Update session
+        // Note: For merge sessions, we don't set worktree_path since we're in the main repo
         let mut session = session;
         session.set_tmux_session(session_name.clone());
-        // For merge sessions, we don't set worktree_path (it runs in main repo)
         session.assign_to_stage(stage.id.clone());
         if let Some(pid) = pid {
             session.set_pid(pid);

@@ -123,8 +123,8 @@ impl TerminalBackend for NativeBackend {
         )?;
 
         // Update the session with spawn info
+        // Note: For merge sessions, we don't set worktree_path since we're in the main repo
         let mut session = session;
-        // For merge sessions, we don't set worktree_path (it runs in main repo)
         session.assign_to_stage(stage.id.clone());
         session.set_pid(pid);
         session.try_mark_running()?;

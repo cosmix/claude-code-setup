@@ -11,8 +11,8 @@ use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 
 use crate::git::{
-    cleanup_merged_branches, conflict_resolution_instructions, current_branch, ensure_work_symlink,
-    merge_stage, remove_worktree, MergeResult,
+    cleanup_merged_branches, conflict_resolution_instructions, current_branch, default_branch,
+    ensure_work_symlink, merge_stage, remove_worktree, MergeResult,
 };
 use crate::models::session::Session;
 use crate::models::stage::StageStatus;
