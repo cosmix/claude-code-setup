@@ -321,7 +321,7 @@ pub fn reset(stage_id: String, hard: bool, kill_session: bool) -> Result<()> {
     }
 
     let mut stage = load_stage(&stage_id, work_dir)?;
-    stage.status = StageStatus::Pending;
+    stage.status = StageStatus::WaitingForDeps;
     stage.completed_at = None;
     stage.close_reason = None;
     stage.updated_at = chrono::Utc::now();
@@ -343,7 +343,7 @@ pub fn ready(stage_id: String) -> Result<()> {
     let work_dir = Path::new(".work");
 
     let mut stage = load_stage(&stage_id, work_dir)?;
-    stage.try_mark_ready()?;
+    stage.try_mark_queued()?;
     save_stage(&stage, work_dir)?;
 
     println!("Stage '{stage_id}' marked as ready");
@@ -654,7 +654,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let stage = create_test_stage("test-stage", StageStatus::Ready);
+        let stage = create_test_stage("test-stage", StageStatus::Queued);
         save_test_stage(&work_dir_path, &stage);
 
         let original_dir = std::env::current_dir().unwrap();
@@ -692,7 +692,7 @@ last_active: "2024-01-01T00:00:00Z"
         assert!(result.is_ok(), "reset() failed: {:?}", result.err());
 
         let loaded_stage = load_stage("test-stage", &work_dir_path).unwrap();
-        assert_eq!(loaded_stage.status, StageStatus::Pending);
+        assert_eq!(loaded_stage.status, StageStatus::WaitingForDeps);
         assert_eq!(loaded_stage.completed_at, None);
         assert_eq!(loaded_stage.close_reason, None);
     }
@@ -726,7 +726,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let stage = create_test_stage("test-stage", StageStatus::Pending);
+        let stage = create_test_stage("test-stage", StageStatus::WaitingForDeps);
         save_test_stage(&work_dir_path, &stage);
 
         let original_dir = std::env::current_dir().unwrap();
@@ -739,7 +739,7 @@ last_active: "2024-01-01T00:00:00Z"
         assert!(result.is_ok());
 
         let loaded_stage = load_stage("test-stage", &work_dir_path).unwrap();
-        assert_eq!(loaded_stage.status, StageStatus::Ready);
+        assert_eq!(loaded_stage.status, StageStatus::Queued);
     }
 
     #[test]
@@ -748,7 +748,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let stage = create_test_stage("test-stage", StageStatus::Ready);
+        let stage = create_test_stage("test-stage", StageStatus::Queued);
         save_test_stage(&work_dir_path, &stage);
 
         let original_dir = std::env::current_dir().unwrap();
@@ -770,7 +770,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let mut stage = create_test_stage("test-stage", StageStatus::Ready);
+        let mut stage = create_test_stage("test-stage", StageStatus::Queued);
         stage.held = true;
         save_test_stage(&work_dir_path, &stage);
 
@@ -815,7 +815,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let stage = create_test_stage("test-stage", StageStatus::Ready);
+        let stage = create_test_stage("test-stage", StageStatus::Queued);
         save_test_stage(&work_dir_path, &stage);
 
         let original_dir = std::env::current_dir().unwrap();
@@ -828,7 +828,7 @@ last_active: "2024-01-01T00:00:00Z"
         assert!(result.is_ok());
 
         let loaded_stage = load_stage("test-stage", &work_dir_path).unwrap();
-        assert_eq!(loaded_stage.status, StageStatus::Ready);
+        assert_eq!(loaded_stage.status, StageStatus::Queued);
     }
 
     #[test]

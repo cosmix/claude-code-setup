@@ -357,7 +357,7 @@ last_active: "2024-01-01T00:00:00Z"
         let temp_dir = setup_work_dir();
         let work_dir_path = temp_dir.path().join(".work");
 
-        let stage = create_test_stage("test-stage", StageStatus::Ready);
+        let stage = create_test_stage("test-stage", StageStatus::Queued);
         save_test_stage(&work_dir_path, &stage);
 
         let original_dir = std::env::current_dir().unwrap();

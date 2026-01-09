@@ -138,11 +138,11 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
         (StageStatus::Verified, "✓", "Verified"),
         (StageStatus::Completed, "●", "Completed"),
         (StageStatus::Executing, "▶", "Executing"),
-        (StageStatus::Ready, "○", "Ready"),
+        (StageStatus::Queued, "○", "Ready"),
         (StageStatus::WaitingForInput, "?", "Waiting for Input"),
         (StageStatus::NeedsHandoff, "↻", "Needs Handoff"),
         (StageStatus::Blocked, "✗", "Blocked"),
-        (StageStatus::Pending, "·", "Pending"),
+        (StageStatus::WaitingForDeps, "·", "Pending"),
     ];
 
     // Find max ID length for alignment
@@ -158,11 +158,11 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
         let colored_header = match status {
             StageStatus::Verified | StageStatus::Completed => header.green(),
             StageStatus::Executing => header.blue(),
-            StageStatus::Ready => header.cyan(),
+            StageStatus::Queued => header.cyan(),
             StageStatus::WaitingForInput => header.magenta(),
             StageStatus::NeedsHandoff => header.yellow(),
             StageStatus::Blocked => header.red(),
-            StageStatus::Pending => header.dimmed(),
+            StageStatus::WaitingForDeps => header.dimmed(),
         };
         println!("  {colored_header}");
 
@@ -191,8 +191,8 @@ fn parse_stage_from_doc(doc: &MarkdownDocument) -> Option<Stage> {
     let name = doc.get_frontmatter(frontmatter::NAME)?.clone();
     let status_str = doc.get_frontmatter(frontmatter::STATUS)?;
     let status = match status_str.as_str() {
-        "pending" => StageStatus::Pending,
-        "ready" => StageStatus::Ready,
+        "pending" => StageStatus::WaitingForDeps,
+        "ready" => StageStatus::Queued,
         "executing" => StageStatus::Executing,
         "blocked" => StageStatus::Blocked,
         "completed" => StageStatus::Completed,

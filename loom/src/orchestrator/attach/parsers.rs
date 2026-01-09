@@ -111,8 +111,8 @@ pub fn stage_from_markdown(content: &str) -> Result<Stage> {
         .ok_or_else(|| anyhow!("Missing 'status' in stage frontmatter"))?;
 
     let status = match status_str.as_str() {
-        "pending" => StageStatus::Pending,
-        "ready" => StageStatus::Ready,
+        "pending" => StageStatus::WaitingForDeps,
+        "ready" => StageStatus::Queued,
         "executing" => StageStatus::Executing,
         "blocked" => StageStatus::Blocked,
         "completed" => StageStatus::Completed,

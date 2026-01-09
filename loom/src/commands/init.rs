@@ -121,9 +121,9 @@ fn create_stage_from_definition(
 
     // Determine initial status: Ready if no dependencies, Pending otherwise
     let status = if stage_def.dependencies.is_empty() {
-        StageStatus::Ready
+        StageStatus::Queued
     } else {
-        StageStatus::Pending
+        StageStatus::WaitingForDeps
     };
 
     Stage {
@@ -398,7 +398,7 @@ mod tests {
 
         assert_eq!(stage.id, "stage-1");
         assert_eq!(stage.name, "Stage 1");
-        assert_eq!(stage.status, StageStatus::Ready); // No deps = Ready
+        assert_eq!(stage.status, StageStatus::Queued); // No deps = Ready
         assert_eq!(stage.plan_id, Some("plan-001".to_string()));
         assert_eq!(stage.dependencies.len(), 0);
         assert_eq!(stage.acceptance.len(), 1);
@@ -420,7 +420,7 @@ mod tests {
         let stage = create_stage_from_definition(&stage_def, "plan-002");
 
         assert_eq!(stage.id, "stage-2");
-        assert_eq!(stage.status, StageStatus::Pending); // Has deps = Pending
+        assert_eq!(stage.status, StageStatus::WaitingForDeps); // Has deps = Pending
         assert_eq!(stage.dependencies, vec!["stage-1".to_string()]);
         assert_eq!(stage.parallel_group, Some("core".to_string()));
     }
@@ -431,7 +431,7 @@ mod tests {
             id: "test-stage".to_string(),
             name: "Test Stage".to_string(),
             description: None,
-            status: StageStatus::Ready,
+            status: StageStatus::Queued,
             dependencies: vec![],
             parallel_group: None,
             acceptance: vec![],
@@ -453,7 +453,7 @@ mod tests {
 
         assert!(content.starts_with("---\n"));
         assert!(content.contains("# Stage: Test Stage"));
-        assert!(content.contains("**Status**: Ready"));
+        assert!(content.contains("**Status**: Queued"));
     }
 
     #[test]

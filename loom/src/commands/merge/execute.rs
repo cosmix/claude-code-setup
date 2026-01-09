@@ -7,7 +7,7 @@ use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 
 use crate::git::{
-    cleanup_merged_branches, conflict_resolution_instructions, default_branch, ensure_work_symlink,
+    cleanup_merged_branches, conflict_resolution_instructions, current_branch, ensure_work_symlink,
     merge_stage, remove_worktree, MergeResult,
 };
 use crate::models::stage::StageStatus;
@@ -102,9 +102,9 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
         })?;
     }
 
-    // Determine target branch
-    let target_branch = default_branch(&repo_root)
-        .with_context(|| "Failed to detect default branch (main/master)")?;
+    // Determine target branch - merge to the current branch of the main repo
+    let target_branch = current_branch(&repo_root)
+        .with_context(|| "Failed to get current branch")?;
     println!("Target branch: {target_branch}");
 
     // Ensure .work is in .gitignore to prevent merge conflicts

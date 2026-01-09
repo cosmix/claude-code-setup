@@ -13,8 +13,8 @@ fn status_indicator(status: &StageStatus) -> ColoredString {
     match status {
         StageStatus::Verified => "✓".green().bold(),
         StageStatus::Executing => "●".blue().bold(),
-        StageStatus::Ready => "▶".cyan().bold(),
-        StageStatus::Pending => "○".white().dimmed(),
+        StageStatus::Queued => "▶".cyan().bold(),
+        StageStatus::WaitingForDeps => "○".white().dimmed(),
         StageStatus::WaitingForInput => "?".magenta().bold(),
         StageStatus::Blocked => "✗".red().bold(),
         StageStatus::Completed => "✔".green(),
@@ -258,10 +258,10 @@ mod tests {
         assert!(status_indicator(&StageStatus::Executing)
             .to_string()
             .contains('●'));
-        assert!(status_indicator(&StageStatus::Ready)
+        assert!(status_indicator(&StageStatus::Queued)
             .to_string()
             .contains('▶'));
-        assert!(status_indicator(&StageStatus::Pending)
+        assert!(status_indicator(&StageStatus::WaitingForDeps)
             .to_string()
             .contains('○'));
         assert!(status_indicator(&StageStatus::WaitingForInput)
@@ -290,7 +290,7 @@ mod tests {
         let stages = vec![create_test_stage(
             "stage-1",
             "First Stage",
-            StageStatus::Ready,
+            StageStatus::Queued,
             vec![],
         )];
 
@@ -305,7 +305,7 @@ mod tests {
         let stages = vec![
             create_test_stage("stage-1", "First", StageStatus::Verified, vec![]),
             create_test_stage("stage-2", "Second", StageStatus::Executing, vec!["stage-1"]),
-            create_test_stage("stage-3", "Third", StageStatus::Pending, vec!["stage-2"]),
+            create_test_stage("stage-3", "Third", StageStatus::WaitingForDeps, vec!["stage-2"]),
         ];
 
         let output = build_graph_display(&stages).unwrap();
@@ -328,7 +328,7 @@ mod tests {
             create_test_stage("a", "Stage A", StageStatus::Verified, vec![]),
             create_test_stage("b", "Stage B", StageStatus::Completed, vec!["a"]),
             create_test_stage("c", "Stage C", StageStatus::Completed, vec!["a"]),
-            create_test_stage("d", "Stage D", StageStatus::Ready, vec!["b", "c"]),
+            create_test_stage("d", "Stage D", StageStatus::Queued, vec!["b", "c"]),
         ];
 
         let output = build_graph_display(&stages).unwrap();
@@ -348,12 +348,12 @@ mod tests {
     #[test]
     fn test_build_graph_display_multiple_roots() {
         let stages = vec![
-            create_test_stage("root-1", "Root One", StageStatus::Ready, vec![]),
+            create_test_stage("root-1", "Root One", StageStatus::Queued, vec![]),
             create_test_stage("root-2", "Root Two", StageStatus::Executing, vec![]),
             create_test_stage(
                 "child",
                 "Child",
-                StageStatus::Pending,
+                StageStatus::WaitingForDeps,
                 vec!["root-1", "root-2"],
             ),
         ];
@@ -370,8 +370,8 @@ mod tests {
         let stages = vec![
             create_test_stage("s1", "Verified Stage", StageStatus::Verified, vec![]),
             create_test_stage("s2", "Executing Stage", StageStatus::Executing, vec![]),
-            create_test_stage("s3", "Ready Stage", StageStatus::Ready, vec![]),
-            create_test_stage("s4", "Pending Stage", StageStatus::Pending, vec![]),
+            create_test_stage("s3", "Ready Stage", StageStatus::Queued, vec![]),
+            create_test_stage("s4", "Pending Stage", StageStatus::WaitingForDeps, vec![]),
             create_test_stage(
                 "s5",
                 "WaitingForInput Stage",
