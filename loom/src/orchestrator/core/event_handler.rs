@@ -228,8 +228,8 @@ impl Orchestrator {
         }
 
         // Get target branch (default branch of the repo)
-        let target_branch = default_branch(&self.config.repo_root)
-            .unwrap_or_else(|_| "main".to_string());
+        let target_branch =
+            default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string());
 
         clear_status_line();
         eprintln!("Auto-merging stage '{stage_id}'...");
@@ -241,7 +241,12 @@ impl Orchestrator {
             &target_branch,
             self.backend.as_ref(),
         ) {
-            Ok(AutoMergeResult::Success { files_changed, insertions, deletions, .. }) => {
+            Ok(AutoMergeResult::Success {
+                files_changed,
+                insertions,
+                deletions,
+                ..
+            }) => {
                 clear_status_line();
                 eprintln!(
                     "Stage '{stage_id}' merged: {files_changed} files, +{insertions} -{deletions}"
@@ -255,7 +260,10 @@ impl Orchestrator {
                 clear_status_line();
                 eprintln!("Stage '{stage_id}' already up to date");
             }
-            Ok(AutoMergeResult::ConflictResolutionSpawned { session_id, conflicting_files }) => {
+            Ok(AutoMergeResult::ConflictResolutionSpawned {
+                session_id,
+                conflicting_files,
+            }) => {
                 clear_status_line();
                 eprintln!(
                     "Stage '{stage_id}' has {} conflict(s). Spawned resolution session: {session_id}",

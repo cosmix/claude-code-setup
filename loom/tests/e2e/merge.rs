@@ -9,7 +9,7 @@ use loom::plan::schema::{LoomMetadata, StageDefinition};
 fn create_test_stage(id: &str, auto_merge: Option<bool>) -> Stage {
     Stage {
         id: id.to_string(),
-        name: format!("Test Stage {}", id),
+        name: format!("Test Stage {id}"),
         description: None,
         status: StageStatus::Completed,
         dependencies: vec![],
@@ -120,7 +120,7 @@ loom:
 fn test_auto_merge_all_combinations() {
     // Test all 8 combinations of the three boolean flags
     // Format: (orchestrator, plan, stage, expected_result)
-    let test_cases = vec![
+    let test_cases = [
         (false, None, None, false),
         (false, None, Some(false), false),
         (false, None, Some(true), true),
@@ -142,12 +142,11 @@ fn test_auto_merge_all_combinations() {
     ];
 
     for (idx, (orchestrator, plan, stage_merge, expected)) in test_cases.iter().enumerate() {
-        let stage = create_test_stage(&format!("test-{}", idx), *stage_merge);
+        let stage = create_test_stage(&format!("test-{idx}"), *stage_merge);
         let result = is_auto_merge_enabled(&stage, *orchestrator, *plan);
         assert_eq!(
             result, *expected,
-            "Test case {} failed: orchestrator={}, plan={:?}, stage={:?}, expected={}, got={}",
-            idx, orchestrator, plan, stage_merge, expected, result
+            "Test case {idx} failed: orchestrator={orchestrator}, plan={plan:?}, stage={stage_merge:?}, expected={expected}, got={result}",
         );
     }
 }
