@@ -1,8 +1,6 @@
 //! E2E tests for context exhaustion detection and handoff automation
 
-use loom::handoff::detector::{
-    check_context_threshold, context_usage_percent, should_handoff, ContextLevel,
-};
+use loom::handoff::detector::{check_context_threshold, ContextLevel};
 use loom::handoff::generator::{generate_handoff, HandoffContent};
 use loom::models::constants::{CONTEXT_WARNING_THRESHOLD, DEFAULT_CONTEXT_LIMIT};
 use loom::models::session::{Session, SessionStatus};
@@ -91,7 +89,7 @@ fn test_handoff_generation() {
 
     // Generate handoff content
     let content = HandoffContent::new(session.id.clone(), stage.id.clone())
-        .with_context_percent(context_usage_percent(&session))
+        .with_context_percent(session.context_health())
         .with_goals("Implement test feature with proper error handling".to_string())
         .with_completed_work(vec![
             "Created initial module structure in src/test_feature.rs:1-50".to_string(),
@@ -276,21 +274,21 @@ fn test_should_handoff_function() {
 
     // Green zone - should not handoff
     session.context_tokens = 50_000; // 25%
-    assert!(!should_handoff(&session));
+    assert!(!session.is_context_exhausted());
 
     session.context_tokens = 100_000; // 50%
-    assert!(!should_handoff(&session));
+    assert!(!session.is_context_exhausted());
 
     // Yellow zone - should not handoff yet
     session.context_tokens = 130_000; // 65%
-    assert!(!should_handoff(&session));
+    assert!(!session.is_context_exhausted());
 
     // Red zone - should handoff
     session.context_tokens = 150_000; // 75%
-    assert!(should_handoff(&session));
+    assert!(session.is_context_exhausted());
 
     session.context_tokens = 180_000; // 90%
-    assert!(should_handoff(&session));
+    assert!(session.is_context_exhausted());
 }
 
 #[test]
@@ -395,24 +393,24 @@ fn test_context_usage_percent_function() {
     session.context_limit = 200_000;
 
     session.context_tokens = 0;
-    assert_eq!(context_usage_percent(&session), 0.0);
+    assert_eq!(session.context_health(), 0.0);
 
     session.context_tokens = 50_000;
-    assert_eq!(context_usage_percent(&session), 25.0);
+    assert_eq!(session.context_health(), 25.0);
 
     session.context_tokens = 100_000;
-    assert_eq!(context_usage_percent(&session), 50.0);
+    assert_eq!(session.context_health(), 50.0);
 
     session.context_tokens = 150_000;
-    assert_eq!(context_usage_percent(&session), 75.0);
+    assert_eq!(session.context_health(), 75.0);
 
     session.context_tokens = 200_000;
-    assert_eq!(context_usage_percent(&session), 100.0);
+    assert_eq!(session.context_health(), 100.0);
 
     // Zero limit edge case
     session.context_limit = 0;
     session.context_tokens = 1000;
-    assert_eq!(context_usage_percent(&session), 0.0);
+    assert_eq!(session.context_health(), 0.0);
 }
 
 #[test]

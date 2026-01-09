@@ -56,7 +56,8 @@ fn test_manual_mode_creates_signals() {
 
     let worktree = create_test_worktree("stage-1");
 
-    let signal_path = generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    let signal_path =
+        generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     assert!(signal_path.exists());
     assert_eq!(
@@ -87,7 +88,7 @@ fn test_signal_file_format() {
 
     let worktree = create_test_worktree("stage-2");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     let signal_content = read_signal("session-test-456", &work_dir)
         .unwrap()
@@ -141,6 +142,7 @@ fn test_signal_not_created_for_pending_stages() {
         &worktree_ready,
         &[],
         None,
+        None,
         &work_dir,
     )
     .unwrap();
@@ -160,7 +162,7 @@ fn test_manual_mode_no_tmux_sessions() {
     let stage = create_test_stage("stage-manual", "Manual Stage", StageStatus::Ready);
     let worktree = create_test_worktree("stage-manual");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     assert!(session.tmux_session.is_none());
     assert_eq!(stage.status, StageStatus::Ready);
@@ -178,7 +180,7 @@ fn test_signal_includes_context_restoration() {
 
     let worktree = create_test_worktree("stage-context");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     let signal_path = work_dir.join("signals").join("session-context.md");
     let content = fs::read_to_string(&signal_path).unwrap();
@@ -215,6 +217,7 @@ fn test_signal_includes_handoff_reference() {
         &worktree,
         &[],
         Some(handoff_file),
+        None,
         &work_dir,
     )
     .unwrap();
@@ -239,7 +242,7 @@ fn test_signal_acceptance_criteria_format() {
 
     let worktree = create_test_worktree("stage-acceptance");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     let signal_path = work_dir.join("signals").join("session-acceptance.md");
     let content = fs::read_to_string(&signal_path).unwrap();
@@ -276,7 +279,7 @@ fn test_signal_with_dependencies_status() {
         },
     ];
 
-    generate_signal(&session, &stage, &worktree, &deps, None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &deps, None, None, &work_dir).unwrap();
 
     let signal_path = work_dir.join("signals").join("session-deps.md");
     let content = fs::read_to_string(&signal_path).unwrap();
@@ -300,7 +303,7 @@ fn test_signal_default_tasks_when_none_provided() {
     );
     let worktree = create_test_worktree("stage-default-tasks");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     let signal_path = work_dir.join("signals").join("session-default-tasks.md");
     let content = fs::read_to_string(&signal_path).unwrap();
@@ -328,9 +331,9 @@ fn test_multiple_signals_can_coexist() {
     let stage3 = create_test_stage("stage-3", "Stage 3", StageStatus::Ready);
     let worktree3 = create_test_worktree("stage-3");
 
-    generate_signal(&session1, &stage1, &worktree1, &[], None, &work_dir).unwrap();
-    generate_signal(&session2, &stage2, &worktree2, &[], None, &work_dir).unwrap();
-    generate_signal(&session3, &stage3, &worktree3, &[], None, &work_dir).unwrap();
+    generate_signal(&session1, &stage1, &worktree1, &[], None, None, &work_dir).unwrap();
+    generate_signal(&session2, &stage2, &worktree2, &[], None, None, &work_dir).unwrap();
+    generate_signal(&session3, &stage3, &worktree3, &[], None, None, &work_dir).unwrap();
 
     let signals = list_signals(&work_dir).unwrap();
 
@@ -353,7 +356,7 @@ fn test_signal_worktree_information() {
     );
     let worktree = create_test_worktree("stage-worktree-info");
 
-    generate_signal(&session, &stage, &worktree, &[], None, &work_dir).unwrap();
+    generate_signal(&session, &stage, &worktree, &[], None, None, &work_dir).unwrap();
 
     let signal_path = work_dir.join("signals").join("session-worktree-info.md");
     let content = fs::read_to_string(&signal_path).unwrap();
