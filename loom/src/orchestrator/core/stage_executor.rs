@@ -115,6 +115,11 @@ impl StageExecutor for Orchestrator {
         let mut updated_stage = stage;
         updated_stage.assign_session(spawned_session.id.clone());
         updated_stage.set_worktree(Some(worktree.id.clone()));
+
+        // Transition through Queued if currently WaitingForDeps (WaitingForDeps -> Queued -> Executing)
+        if updated_stage.status == StageStatus::WaitingForDeps {
+            updated_stage.try_mark_queued()?;
+        }
         updated_stage.try_mark_executing()?;
         self.save_stage(&updated_stage)?;
 

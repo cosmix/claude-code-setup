@@ -7,6 +7,17 @@ use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::models::worktree::Worktree;
 
+/// Embedded context to include directly in signals so agents don't need to read from main repo
+#[derive(Debug, Clone, Default)]
+pub struct EmbeddedContext {
+    /// Content of the handoff file (if resuming from a previous session)
+    pub handoff_content: Option<String>,
+    /// Content of structure.md (codebase structure map)
+    pub structure_content: Option<String>,
+    /// Plan overview extracted from the plan file
+    pub plan_overview: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct DependencyStatus {
     pub stage_id: String,
@@ -60,6 +71,9 @@ pub fn generate_signal(
         fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
     }
 
+    // Build embedded context by reading files
+    let embedded_context = build_embedded_context(work_dir, handoff_file);
+
     let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_signal_content(
         session,
@@ -68,12 +82,128 @@ pub fn generate_signal(
         dependencies_status,
         handoff_file,
         git_history,
+        &embedded_context,
     );
 
     fs::write(&signal_path, content)
         .with_context(|| format!("Failed to write signal file: {}", signal_path.display()))?;
 
     Ok(signal_path)
+}
+
+/// Build embedded context by reading handoff, structure.md, and plan overview files
+fn build_embedded_context(work_dir: &Path, handoff_file: Option<&str>) -> EmbeddedContext {
+    let mut context = EmbeddedContext::default();
+
+    // Read handoff content if specified
+    if let Some(handoff_name) = handoff_file {
+        let handoff_path = work_dir.join("handoffs").join(format!("{handoff_name}.md"));
+        if handoff_path.exists() {
+            context.handoff_content = fs::read_to_string(&handoff_path).ok();
+        }
+    }
+
+    // Read structure.md if it exists
+    let structure_path = work_dir.join("structure.md");
+    if structure_path.exists() {
+        context.structure_content = fs::read_to_string(&structure_path).ok();
+    }
+
+    // Read plan overview from config.toml and the plan file
+    context.plan_overview = read_plan_overview(work_dir);
+
+    context
+}
+
+/// Read the plan overview from the plan file referenced in config.toml
+fn read_plan_overview(work_dir: &Path) -> Option<String> {
+    let config_path = work_dir.join("config.toml");
+    if !config_path.exists() {
+        return None;
+    }
+
+    let config_content = fs::read_to_string(&config_path).ok()?;
+    let config: toml::Value = config_content.parse().ok()?;
+
+    let source_path = config
+        .get("plan")?
+        .get("source_path")?
+        .as_str()?;
+
+    let plan_path = PathBuf::from(source_path);
+    if !plan_path.exists() {
+        return None;
+    }
+
+    let plan_content = fs::read_to_string(&plan_path).ok()?;
+
+    // Extract overview section from plan markdown
+    extract_plan_overview(&plan_content)
+}
+
+/// Extract overview and proposed changes sections from plan markdown
+fn extract_plan_overview(plan_content: &str) -> Option<String> {
+    let mut overview = String::new();
+    let mut in_relevant_section = false;
+    let mut current_section = String::new();
+
+    for line in plan_content.lines() {
+        // Detect section headers
+        if line.starts_with("## ") {
+            let section_name = line.trim_start_matches("## ").trim().to_lowercase();
+
+            // Save accumulated content from previous relevant section
+            if in_relevant_section && !current_section.is_empty() {
+                overview.push_str(&current_section);
+                overview.push_str("\n\n");
+                current_section.clear();
+            }
+
+            // Check if entering a relevant section
+            in_relevant_section = section_name.contains("overview")
+                || section_name.contains("proposed changes")
+                || section_name.contains("summary")
+                || section_name.contains("current state");
+
+            if in_relevant_section {
+                current_section.push_str(line);
+                current_section.push('\n');
+            }
+        } else if line.starts_with("# ") && overview.is_empty() {
+            // Capture plan title
+            overview.push_str(line);
+            overview.push_str("\n\n");
+        } else if in_relevant_section {
+            // Stop at next major section (Stages, metadata, etc.)
+            let trimmed = line.trim().to_lowercase();
+            if trimmed.starts_with("## stages")
+                || trimmed.starts_with("```yaml")
+                || trimmed.starts_with("<!-- loom")
+            {
+                in_relevant_section = false;
+                if !current_section.is_empty() {
+                    overview.push_str(&current_section);
+                    overview.push_str("\n\n");
+                    current_section.clear();
+                }
+            } else {
+                current_section.push_str(line);
+                current_section.push('\n');
+            }
+        }
+    }
+
+    // Capture any remaining content
+    if in_relevant_section && !current_section.is_empty() {
+        overview.push_str(&current_section);
+    }
+
+    let trimmed = overview.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 /// Generate a signal file for a merge conflict resolution session.
@@ -251,6 +381,7 @@ fn format_signal_content(
     dependencies_status: &[DependencyStatus],
     handoff_file: Option<&str>,
     git_history: Option<&GitHistory>,
+    embedded_context: &EmbeddedContext,
 ) -> String {
     let mut content = String::new();
 
@@ -262,14 +393,14 @@ fn format_signal_content(
         "You are in an **isolated git worktree**. This signal contains everything you need:\n\n",
     );
     content.push_str("- **Your stage assignment and acceptance criteria are below** - this file is self-contained\n");
-    content.push_str("- **Access `.work/` via symlink** for handoffs and structure map\n");
+    content.push_str("- **All context (plan overview, handoff, structure map) is embedded below** - no need to read from main repo\n");
     content.push_str(
         "- **Commit to your worktree branch** - it will be merged after verification\n\n",
     );
 
     // Add reminder to follow CLAUDE.md rules
     content.push_str("## Execution Rules\n\n");
-    content.push_str("Follow your `~/.claude/CLAUDE.md` rules. Key reminders:\n");
+    content.push_str("Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules (both are symlinked into this worktree). Key reminders:\n");
     content.push_str(
         "- **Delegate work to subagents** - use Task tool with appropriate agent types\n",
     );
@@ -282,12 +413,20 @@ fn format_signal_content(
     content.push_str(&format!("- **Stage**: {}\n", stage.id));
     if let Some(plan_id) = &stage.plan_id {
         content.push_str(&format!(
-            "- **Plan**: {plan_id} (reference only - content embedded below)\n"
+            "- **Plan**: {plan_id} (overview embedded below)\n"
         ));
     }
     content.push_str(&format!("- **Worktree**: {}\n", worktree.path.display()));
     content.push_str(&format!("- **Branch**: {}\n", worktree.branch));
     content.push('\n');
+
+    // Embed plan overview if available
+    if let Some(plan_overview) = &embedded_context.plan_overview {
+        content.push_str("## Plan Overview\n\n");
+        content.push_str("<plan-overview>\n");
+        content.push_str(plan_overview);
+        content.push_str("\n</plan-overview>\n\n");
+    }
 
     content.push_str("## Assignment\n\n");
     content.push_str(&format!("{}: ", stage.name));
@@ -317,18 +456,28 @@ fn format_signal_content(
         content.push('\n');
     }
 
-    content.push_str("## Context Restoration\n\n");
-    content.push_str("The `.work/` directory is accessible via symlink. Available resources:\n\n");
-    if let Some(handoff) = handoff_file {
+    // Embed handoff content if available (previous session context)
+    if let Some(handoff_content) = &embedded_context.handoff_content {
+        content.push_str("## Previous Session Handoff\n\n");
+        content.push_str("**READ THIS CAREFULLY** - This contains context from the previous session:\n\n");
+        content.push_str("<handoff>\n");
+        content.push_str(handoff_content);
+        content.push_str("\n</handoff>\n\n");
+    } else if let Some(handoff) = handoff_file {
+        // Fallback reference if content couldn't be read
+        content.push_str("## Context Restoration\n\n");
         content.push_str(&format!(
-            "- `.work/handoffs/{handoff}.md` - **READ THIS FIRST** - Previous session handoff\n"
+            "- `.work/handoffs/{handoff}.md` - **READ THIS FIRST** - Previous session handoff\n\n"
         ));
     }
-    content.push_str("- `.work/structure.md` - Codebase structure map (if exists)\n");
-    for file in &stage.files {
-        content.push_str(&format!("- `{file}` - Relevant code to modify\n"));
+
+    // Embed structure.md content if available
+    if let Some(structure_content) = &embedded_context.structure_content {
+        content.push_str("## Codebase Structure\n\n");
+        content.push_str("<structure-map>\n");
+        content.push_str(structure_content);
+        content.push_str("\n</structure-map>\n\n");
     }
-    content.push('\n');
 
     // Git History from previous session (if resuming)
     if let Some(history) = git_history {
@@ -749,8 +898,10 @@ mod tests {
         let session = create_test_session();
         let stage = create_test_stage();
         let worktree = create_test_worktree();
+        let embedded_context = EmbeddedContext::default();
 
-        let content = format_signal_content(&session, &stage, &worktree, &[], None, None);
+        let content =
+            format_signal_content(&session, &stage, &worktree, &[], None, None, &embedded_context);
 
         assert!(content.contains("# Signal: session-test-123"));
         assert!(content.contains("## Worktree Context"));
@@ -758,10 +909,80 @@ mod tests {
         assert!(content.contains("## Target"));
         assert!(content.contains("## Assignment"));
         assert!(content.contains("## Immediate Tasks"));
-        assert!(content.contains("## Context Restoration"));
         assert!(content.contains("## Acceptance Criteria"));
         assert!(content.contains("## Files to Modify"));
         assert!(content.contains("src/orchestrator/signals.rs"));
+    }
+
+    #[test]
+    fn test_format_signal_content_with_embedded_context() {
+        let session = create_test_session();
+        let stage = create_test_stage();
+        let worktree = create_test_worktree();
+        let embedded_context = EmbeddedContext {
+            handoff_content: Some("# Handoff\nPrevious session completed tasks A and B.".to_string()),
+            structure_content: Some("# Structure\nsrc/\n  main.rs\n  lib.rs".to_string()),
+            plan_overview: Some("# Plan Title\n\n## Overview\nThis plan does X.".to_string()),
+        };
+
+        let content =
+            format_signal_content(&session, &stage, &worktree, &[], None, None, &embedded_context);
+
+        // Verify embedded content is present
+        assert!(content.contains("## Plan Overview"));
+        assert!(content.contains("<plan-overview>"));
+        assert!(content.contains("This plan does X."));
+        assert!(content.contains("</plan-overview>"));
+
+        assert!(content.contains("## Previous Session Handoff"));
+        assert!(content.contains("<handoff>"));
+        assert!(content.contains("Previous session completed tasks A and B."));
+        assert!(content.contains("</handoff>"));
+
+        assert!(content.contains("## Codebase Structure"));
+        assert!(content.contains("<structure-map>"));
+        assert!(content.contains("src/"));
+        assert!(content.contains("</structure-map>"));
+    }
+
+    #[test]
+    fn test_extract_plan_overview() {
+        let plan_content = r#"# PLAN: Test Feature
+
+## Overview
+
+This is the overview section.
+It has multiple lines.
+
+## Current State
+
+Current state description.
+
+## Proposed Changes
+
+Proposed changes here.
+
+## Stages
+
+### Stage 1: First Stage
+
+Implementation details.
+
+```yaml
+loom:
+  version: 1
+```
+"#;
+
+        let overview = extract_plan_overview(plan_content).unwrap();
+        assert!(overview.contains("# PLAN: Test Feature"));
+        assert!(overview.contains("## Overview"));
+        assert!(overview.contains("This is the overview section."));
+        assert!(overview.contains("## Current State"));
+        assert!(overview.contains("## Proposed Changes"));
+        // Should NOT contain Stages section
+        assert!(!overview.contains("### Stage 1"));
+        assert!(!overview.contains("```yaml"));
     }
 
     #[test]

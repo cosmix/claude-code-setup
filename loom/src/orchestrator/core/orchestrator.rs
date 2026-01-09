@@ -110,6 +110,10 @@ impl Orchestrator {
         // After recovery, ensure ready status is updated for all stages
         self.graph.refresh_ready_status();
 
+        // Sync queued status from graph back to files so status display is accurate
+        self.sync_queued_status_to_files()
+            .context("Failed to sync queued status to files")?;
+
         let mut total_sessions_spawned = 0;
         let mut completed_stages = Vec::new();
         let mut failed_stages = Vec::new();
@@ -118,6 +122,15 @@ impl Orchestrator {
         let mut printed_view_instructions = false;
 
         loop {
+            // Re-sync with stage files to pick up external changes
+            // (e.g., stages verified via `loom verify` command)
+            self.sync_graph_with_stage_files()
+                .context("Failed to sync graph with stage files")?;
+
+            // Sync queued status back to files so status display is accurate
+            self.sync_queued_status_to_files()
+                .context("Failed to sync queued status to files")?;
+
             let started = self
                 .start_ready_stages()
                 .context("Failed to start ready stages")?;
@@ -223,7 +236,7 @@ impl Orchestrator {
             .get_node(stage_id)
             .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
 
-        if node.status != crate::plan::NodeStatus::Ready {
+        if node.status != crate::plan::NodeStatus::Queued {
             bail!(
                 "Stage '{}' is not ready for execution. Current status: {:?}",
                 stage_id,

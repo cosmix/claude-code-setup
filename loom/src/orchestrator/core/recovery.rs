@@ -22,7 +22,13 @@ fn clear_status_line() {
 /// Trait for recovery operations
 pub(super) trait Recovery: Persistence {
     /// Sync the execution graph with existing stage file statuses.
+    /// This syncs FROM files TO graph.
     fn sync_graph_with_stage_files(&mut self) -> Result<()>;
+
+    /// Sync queued status from graph back to stage files.
+    /// This ensures files reflect when dependencies are satisfied.
+    /// This syncs FROM graph TO files.
+    fn sync_queued_status_to_files(&mut self) -> Result<()>;
 
     /// Recover orphaned sessions (tmux died but session/stage files exist).
     fn recover_orphaned_sessions(&mut self) -> Result<usize>;
@@ -70,6 +76,11 @@ impl Recovery for Orchestrator {
                         // Mark as completed in graph (ignore errors for stages not in graph)
                         let _ = self.graph.mark_completed(stage_id);
                     }
+                    StageStatus::Queued => {
+                        // Sync Ready status from stage files to graph
+                        // This handles stages marked Ready by `loom verify` -> trigger_dependents()
+                        let _ = self.graph.mark_queued(stage_id);
+                    }
                     StageStatus::Executing => {
                         // Will be handled by orphan detection
                     }
@@ -77,6 +88,32 @@ impl Recovery for Orchestrator {
                         // Will be handled by orphan recovery
                     }
                     _ => {}
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn sync_queued_status_to_files(&mut self) -> Result<()> {
+        // Get all nodes that are Queued in the graph
+        let queued_stage_ids: Vec<String> = self
+            .graph
+            .all_nodes()
+            .iter()
+            .filter(|node| node.status == NodeStatus::Queued)
+            .map(|node| node.id.clone())
+            .collect();
+
+        // For each queued stage, update the file if it's still WaitingForDeps
+        for stage_id in queued_stage_ids {
+            if let Ok(mut stage) = self.load_stage(&stage_id) {
+                // Only update if the file says WaitingForDeps but graph says Queued
+                if stage.status == StageStatus::WaitingForDeps {
+                    // Use validated transition
+                    if stage.try_mark_queued().is_ok() {
+                        self.save_stage(&stage)?;
+                    }
                 }
             }
         }
@@ -139,9 +176,9 @@ impl Recovery for Orchestrator {
                                 stage.status = StageStatus::Blocked;
                             }
                             // Now Blocked/NeedsHandoff -> Ready is valid
-                            if stage.try_mark_ready().is_err() {
+                            if stage.try_mark_queued().is_err() {
                                 // Fallback: directly set status if transition fails
-                                stage.status = StageStatus::Ready;
+                                stage.status = StageStatus::Queued;
                             }
                             stage.session = None;
                             stage.close_reason = Some("Session crashed/orphaned".to_string());
@@ -153,7 +190,7 @@ impl Recovery for Orchestrator {
                                 if node.status != NodeStatus::Completed {
                                     // Try to mark as ready in graph
                                     // This will fail if dependencies aren't satisfied, which is OK
-                                    let _ = self.graph.mark_ready(stage_id);
+                                    let _ = self.graph.mark_queued(stage_id);
                                 }
                             }
 
@@ -189,7 +226,7 @@ impl Recovery for Orchestrator {
             match node.status {
                 NodeStatus::Completed => continue,
                 NodeStatus::Blocked => continue,
-                NodeStatus::Pending | NodeStatus::Ready | NodeStatus::Executing => {
+                NodeStatus::WaitingForDeps | NodeStatus::Queued | NodeStatus::Executing => {
                     // Need to check the actual stage file for held status
                     if let Ok(stage) = self.load_stage(&node.id) {
                         match stage.status {
@@ -198,7 +235,7 @@ impl Recovery for Orchestrator {
                             | StageStatus::Completed => {
                                 continue;
                             }
-                            StageStatus::Ready | StageStatus::Pending if stage.held => continue,
+                            StageStatus::Queued | StageStatus::WaitingForDeps if stage.held => continue,
                             _ => return false,
                         }
                     } else {
@@ -220,7 +257,7 @@ impl Recovery for Orchestrator {
         for node in nodes {
             match node.status {
                 NodeStatus::Executing => running += 1,
-                NodeStatus::Pending | NodeStatus::Ready => pending += 1,
+                NodeStatus::WaitingForDeps | NodeStatus::Queued => pending += 1,
                 NodeStatus::Completed => completed += 1,
                 NodeStatus::Blocked => blocked += 1,
             }

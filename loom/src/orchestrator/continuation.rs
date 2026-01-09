@@ -90,7 +90,7 @@ pub fn continue_session(
     // Validate stage can be continued
     if !matches!(
         stage.status,
-        StageStatus::NeedsHandoff | StageStatus::Ready | StageStatus::Executing
+        StageStatus::NeedsHandoff | StageStatus::Queued | StageStatus::Executing
     ) {
         bail!(
             "Stage {} is in status {:?}, which cannot be continued. Expected NeedsHandoff, Ready, or Executing.",
