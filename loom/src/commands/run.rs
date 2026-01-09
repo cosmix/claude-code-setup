@@ -12,19 +12,20 @@ use crate::plan::parser::parse_plan;
 use crate::plan::schema::StageDefinition;
 
 /// Execute plan stages in foreground (for --foreground flag)
-/// Usage: loom run --foreground [--stage <id>] [--manual] [--max-parallel <n>] [--watch]
+/// Usage: loom run --foreground [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--auto-merge]
 pub fn execute(
     stage_id: Option<String>,
     manual: bool,
     max_parallel: Option<usize>,
     watch: bool,
+    auto_merge: bool,
 ) -> Result<()> {
     // Load .work/ directory
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
 
     // Run orchestrator in foreground mode
-    execute_foreground(stage_id, manual, max_parallel, watch, &work_dir)
+    execute_foreground(stage_id, manual, max_parallel, watch, auto_merge, &work_dir)
 }
 
 /// Execute orchestrator in background (daemon mode)
@@ -79,6 +80,7 @@ fn execute_foreground(
     manual: bool,
     max_parallel: Option<usize>,
     watch: bool,
+    auto_merge: bool,
     work_dir: &WorkDir,
 ) -> Result<()> {
     // Build execution graph - prefer .work/stages/ files, fall back to plan file
@@ -94,7 +96,7 @@ fn execute_foreground(
         repo_root: std::env::current_dir()?,
         status_update_interval: Duration::from_secs(30),
         backend_type: BackendType::Native,
-        auto_merge: false,
+        auto_merge,
     };
 
     // Create and run orchestrator
@@ -342,10 +344,10 @@ mod tests {
     fn create_test_plan(dir: &Path, stages: Vec<StageDefinition>) -> PathBuf {
         let metadata = LoomMetadata {
             loom: LoomConfig {
-            version: 1,
-            auto_merge: None,
-            stages,
-        },
+                version: 1,
+                auto_merge: None,
+                stages,
+            },
         };
 
         let yaml = serde_yaml::to_string(&metadata).unwrap();
