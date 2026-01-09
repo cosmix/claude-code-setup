@@ -60,6 +60,7 @@ On any mistake: append to "MISTAKES AND LESSONS LEARNT" section (what, should-ha
 **Location:** `./doc/plans/PLAN-XXXX-description.md` (NEVER `~/.claude/plans`)
 
 **Workflow:**
+
 1. Research → Design
 2. **ASK:** "Is this a loom plan?"
    - **Yes** → Include loom YAML metadata (see LOOM PLAN FORMAT section)
@@ -71,6 +72,7 @@ On any mistake: append to "MISTAKES AND LESSONS LEARNT" section (what, should-ha
 **NO TIME ESTIMATES** — meaningless with parallel sessions.
 
 **Execution Diagram Example:**
+
 ```
 ┌─────────────────────────────────────────────────┐
 │              EXECUTION DIAGRAM                  │
@@ -124,6 +126,35 @@ Otherwise → PARALLEL
 ## Acceptance: [criteria]
 ```
 
+### Senior Agents + Extended Thinking (MANDATORY)
+
+**USE `senior-software-engineer` or `senior-*` agents WITH `model: opus` for:**
+
+| Scenario                     | Why Senior + Ultrathink                          |
+| ---------------------------- | ------------------------------------------------ |
+| **Git merge conflicts**      | Complex diff analysis, semantic understanding    |
+| **Debugging**                | Root cause analysis, multi-file trace reasoning  |
+| **Architectural decisions**  | System-wide impact analysis, pattern selection   |
+| **Algorithmic challenges**   | Correctness proofs, complexity analysis          |
+
+**Subagent prompt for these cases:**
+
+```
+** READ CLAUDE.md IMMEDIATELY AND FOLLOW ALL ITS RULES. **
+
+## Assignment: [task]
+## Complexity: HIGH — Use extended thinking (ultrathink)
+## Files You Own: [paths]
+## Files Read-Only: [paths]
+## Acceptance: [criteria]
+```
+
+**NEVER use standard agents for:**
+- Merge conflict resolution (spawned by `loom merge`)
+- Production bugs with unclear root cause
+- Cross-cutting refactors affecting >5 files
+- Algorithm design or optimization
+
 ---
 
 ## LOOM ORCHESTRATION
@@ -137,8 +168,9 @@ Otherwise → PARALLEL
 
 ### Stage Lifecycle
 
-`Pending` → `Ready` → `Executing` → `Completed` → `Verified`
-Also: `Blocked`, `NeedsHandoff`
+`WaitingForDeps` → `Queued` → `Executing` → `Completed` → `Verified`
+Also: `Blocked`, `NeedsHandoff`, `WaitingForInput`
+Aliases: `pending` → `WaitingForDeps`, `ready` → `Queued`
 
 ### Stage Completion
 
@@ -166,8 +198,12 @@ loom stage complete <stage-id>  # Runs acceptance, marks done
 
 ## LOOM PLAN FORMAT
 
+Plans must wrap YAML in HTML comment markers for the parser:
+
+````markdown
+<!-- loom METADATA -->
+
 ```yaml
-# doc/plans/PLAN-XXXX-description.md
 loom:
   version: 1
   stages:
@@ -181,7 +217,12 @@ loom:
         - "src/*.rs"
 ```
 
+<!-- END loom METADATA -->
+````
+
 **Stage Fields:** `id` (required), `name` (required), `dependencies` (required, use `[]` if none), `parallel_group`, `acceptance`, `files`
+
+**CRITICAL:** Without the `<!-- loom METADATA -->` markers, `loom init` cannot parse the plan.
 
 ---
 

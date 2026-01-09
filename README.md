@@ -1,7 +1,5 @@
 # Loom
-# Loom
 
-Loom is a self-propelling agent orchestration system for Claude Code.
 Loom is a self-propelling agent orchestration system for Claude Code.
 It combines a state management CLI, specialized AI agents, and reusable skills
 to create workflows that survive context exhaustion, session crashes, and
@@ -28,7 +26,7 @@ Loom solves these problems with three integrated components:
 | Component    | Purpose                                          |
 | ------------ | ------------------------------------------------ |
 | **loom CLI** | Manages persistent work state across sessions    |
-| **Agents**   | 19 specialized AI agents organized by domain    |
+| **Agents**   | 19 specialized AI agents organized by domain     |
 | **Skills**   | 56 reusable knowledge modules loaded dynamically |
 
 Together, they implement the **Signal Principle**: _"If you have a signal,
@@ -192,6 +190,7 @@ loom uses a **daemon architecture** for reliability:
 ```
 
 **Key benefits:**
+
 - Sessions run in native terminal windows (more stable than tmux)
 - Daemon survives terminal close
 - PID-based liveness monitoring
@@ -372,14 +371,15 @@ These commands cover 90% of typical usage:
 
 ```bash
 # Initialize loom with a plan
-loom init <plan-path>
+loom init <plan-path> [--clean]
 # Example: loom init doc/plans/PLAN-auth.md
 # - Parses plan, extracts stages and dependencies
 # - Creates execution graph in .work/
 # - Sets up .work/ directory structure
+# - --clean: remove old .work/, prune worktrees, kill orphaned sessions first
 
 # Execute stages (starts daemon, spawns sessions in native terminals)
-loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground]
+loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground] [--attach]
 # - Starts background daemon if not running
 # - Creates git worktrees for ready parallel stages
 # - Spawns Claude sessions in native terminal windows (unless --manual)
@@ -389,6 +389,7 @@ loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground]
 # - --max-parallel: max parallel sessions (default: 4)
 # - --watch: continuous mode - keep running until all stages terminal
 # - --foreground: run orchestrator in foreground (for debugging)
+# - --attach: attach to existing orchestrator (shows logs)
 
 # Live dashboard - shows plan progress and session health
 loom status
@@ -413,23 +414,26 @@ loom resume <stage-id>
 # - Creates new session with handoff context
 # - Continues from where previous session left off
 
-# Merge completed stage to main
+# Merge or recover a stage (restart conflict resolution if interrupted)
 loom merge <stage-id> [--force]
-# - Merges worktree branch to main
-# - Removes worktree on success
-# - If conflicts, prints resolution instructions
+# Primary use: recovery from failed/interrupted merge sessions
+# - When auto-merge succeeds: worktree branch merged to main, worktree removed
+# - When conflicts occur: loom spawns a Claude Code session to resolve them
+# - If that session terminates before completion, use this to restart it
 # - --force: merge even if stage not complete or has active sessions
 
 # Attach to running session or view logs
 loom attach [target]
 loom attach list
-loom attach all [--gui] [--detach]
+loom attach all [--gui] [--detach] [--windows] [--layout <LAYOUT>]
 loom attach logs
 # - Attaches terminal to running Claude session
 # - list: list all attachable sessions
-# - all: attach to all sessions
+# - all: attach to all sessions (default: tiled pane view)
 #   - --gui: open separate terminal windows (native backend)
 #   - --detach: detach other clients first
+#   - --windows: legacy window-per-session mode instead of tiled panes
+#   - --layout: layout for tiled view (tiled, horizontal, vertical)
 # - logs: stream daemon logs in real-time
 ```
 
