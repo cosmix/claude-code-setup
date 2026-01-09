@@ -233,13 +233,13 @@ With orchestration rules, Claude will:
 
 ```bash
 curl -fsSL \
-  https://raw.githubusercontent.com/cosmix/claude-loom/main/install.sh | bash
+  https://raw.githubusercontent.com/cosmix/loom/main/install.sh | bash
 ```
 
 ### Clone and Install
 
 ```bash
-git clone https://github.com/cosmix/claude-loom.git
+git clone https://github.com/cosmix/loom.git
 cd claude-loom
 bash install.sh
 ```
@@ -256,7 +256,7 @@ cat CLAUDE.template.md >> ~/.claude/CLAUDE.md
 
 # Download loom CLI for your platform
 # Linux x86_64 (glibc):
-loom_URL="https://github.com/cosmix/claude-loom/releases/latest/download"
+loom_URL="https://github.com/cosmix/loom/releases/latest/download"
 curl -fsSL "$loom_URL/loom-x86_64-unknown-linux-gnu" -o ~/.local/bin/loom
 chmod +x ~/.local/bin/loom
 
