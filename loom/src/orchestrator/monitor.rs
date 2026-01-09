@@ -839,7 +839,6 @@ Test content
         }
     }
 
-
     #[test]
     fn test_is_merge_session_with_merge_signal() {
         use tempfile::TempDir;

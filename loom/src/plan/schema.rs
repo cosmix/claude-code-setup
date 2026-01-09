@@ -778,11 +778,7 @@ name: Test Stage
                     description: None,
                     dependencies: vec![],
                     parallel_group: None,
-                    acceptance: vec![
-                        "".to_string(),
-                        "   ".to_string(),
-                        "cargo test".to_string(),
-                    ],
+                    acceptance: vec!["".to_string(), "   ".to_string(), "cargo test".to_string()],
                     setup: vec![],
                     files: vec![],
                 }],

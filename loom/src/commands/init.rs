@@ -51,18 +51,12 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
 
     // Ensure Claude Code permissions are configured for loom directories
     ensure_loom_permissions(&repo_root)?;
-    println!(
-        "  {} Permissions configured",
-        "✓".green().bold()
-    );
+    println!("  {} Permissions configured", "✓".green().bold());
 
     // Add .worktrees/ to Claude Code's global trusted directories
     // This prevents the "trust this folder?" prompt when spawning worktree sessions
     add_worktrees_to_global_trust(&repo_root)?;
-    println!(
-        "  {} Worktrees directory trusted",
-        "✓".green().bold()
-    );
+    println!("  {} Worktrees directory trusted", "✓".green().bold());
 
     if let Some(path) = plan_path {
         let stage_count = initialize_with_plan(&work_dir, &path)?;
@@ -77,18 +71,12 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
 /// Print the loom init header
 fn print_header() {
     println!();
-    println!(
-        "{}",
-        "╭──────────────────────────────────────╮".cyan()
-    );
+    println!("{}", "╭──────────────────────────────────────╮".cyan());
     println!(
         "{}",
         "│       Initializing Loom...           │".cyan().bold()
     );
-    println!(
-        "{}",
-        "╰──────────────────────────────────────╯".cyan()
-    );
+    println!("{}", "╰──────────────────────────────────────╯".cyan());
 }
 
 /// Print the final summary
@@ -108,22 +96,13 @@ fn print_summary(plan_path: Option<&Path>, stage_count: usize) {
             if stage_count == 1 { "" } else { "s" }
         );
     } else {
-        println!(
-            "{} Empty workspace initialized",
-            "✓".green().bold()
-        );
+        println!("{} Empty workspace initialized", "✓".green().bold());
     }
 
     println!();
     println!("{}", "Next steps:".bold());
-    println!(
-        "  {}  Start execution",
-        "loom run".cyan()
-    );
-    println!(
-        "  {}  View dashboard",
-        "loom status".cyan()
-    );
+    println!("  {}  Start execution", "loom run".cyan());
+    println!("  {}  View dashboard", "loom status".cyan());
     println!();
 }
 
@@ -317,10 +296,7 @@ fn prune_stale_worktrees(repo_root: &Path) -> Result<()> {
 
     match output {
         Ok(result) if result.status.success() => {
-            println!(
-                "  {} Stale worktrees pruned",
-                "✓".green().bold()
-            );
+            println!("  {} Stale worktrees pruned", "✓".green().bold());
         }
         Ok(result) => {
             let stderr = String::from_utf8_lossy(&result.stderr);
@@ -360,10 +336,7 @@ fn cleanup_orphaned_tmux_sessions() -> Result<()> {
         }
         Ok(_) => {
             // tmux returns non-zero when no sessions exist
-            println!(
-                "  {} No orphaned sessions",
-                "✓".green().bold()
-            );
+            println!("  {} No orphaned sessions", "✓".green().bold());
             return Ok(());
         }
         Err(_) => {
@@ -378,10 +351,7 @@ fn cleanup_orphaned_tmux_sessions() -> Result<()> {
     };
 
     if sessions.is_empty() {
-        println!(
-            "  {} No orphaned sessions",
-            "✓".green().bold()
-        );
+        println!("  {} No orphaned sessions", "✓".green().bold());
         return Ok(());
     }
 
@@ -440,11 +410,7 @@ fn cleanup_work_directory(repo_root: &Path) -> Result<()> {
             work_dir.display()
         )
     })?;
-    println!(
-        "  {} Removed old {}",
-        "✓".green().bold(),
-        ".work/".dimmed()
-    );
+    println!("  {} Removed old {}", "✓".green().bold(), ".work/".dimmed());
 
     Ok(())
 }

@@ -305,7 +305,10 @@ mod tests {
         assert!(output.contains('▶')); // Ready indicator
         assert!(output.contains("First Stage"));
         assert!(output.contains("stage-1"));
-        assert!(output.contains("Level 0"), "Single stage should be at level 0");
+        assert!(
+            output.contains("Level 0"),
+            "Single stage should be at level 0"
+        );
     }
 
     #[test]
@@ -377,7 +380,12 @@ mod tests {
         // Simulate the user's scenario: integration-tests depends on 3 stages,
         // one of which is still executing
         let stages = vec![
-            create_test_stage("state-machine", "State Machine", StageStatus::Completed, vec![]),
+            create_test_stage(
+                "state-machine",
+                "State Machine",
+                StageStatus::Completed,
+                vec![],
+            ),
             create_test_stage(
                 "merge-completed",
                 "Merge Completed",
@@ -427,7 +435,9 @@ mod tests {
         // The output should show all dependencies including the blocking one
         // (complete-refactor with ● indicator)
         assert!(
-            output.contains("complete-refactor") && output.contains("merge-completed") && output.contains("context-vars"),
+            output.contains("complete-refactor")
+                && output.contains("merge-completed")
+                && output.contains("context-vars"),
             "Should show all dependencies for integration-tests"
         );
 

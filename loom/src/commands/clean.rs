@@ -67,18 +67,12 @@ pub fn execute(all: bool, worktrees: bool, sessions: bool, state: bool) -> Resul
 /// Print the loom clean header
 fn print_header() {
     println!();
-    println!(
-        "{}",
-        "╭──────────────────────────────────────╮".cyan()
-    );
+    println!("{}", "╭──────────────────────────────────────╮".cyan());
     println!(
         "{}",
         "│         Cleaning Loom...             │".cyan().bold()
     );
-    println!(
-        "{}",
-        "╰──────────────────────────────────────╯".cyan()
-    );
+    println!("{}", "╰──────────────────────────────────────╯".cyan());
 }
 
 /// Print the final summary
@@ -99,14 +93,22 @@ fn print_summary(stats: &CleanStats) {
             items.push(format!(
                 "{} worktree{}",
                 stats.worktrees_removed,
-                if stats.worktrees_removed == 1 { "" } else { "s" }
+                if stats.worktrees_removed == 1 {
+                    ""
+                } else {
+                    "s"
+                }
             ));
         }
         if stats.branches_removed > 0 {
             items.push(format!(
                 "{} branch{}",
                 stats.branches_removed,
-                if stats.branches_removed == 1 { "" } else { "es" }
+                if stats.branches_removed == 1 {
+                    ""
+                } else {
+                    "es"
+                }
             ));
         }
         if stats.sessions_killed > 0 {
@@ -141,10 +143,7 @@ fn clean_worktrees(repo_root: &Path) -> Result<(usize, usize)> {
 
     match prune_output {
         Ok(result) if result.status.success() => {
-            println!(
-                "  {} Stale worktrees pruned",
-                "✓".green().bold()
-            );
+            println!("  {} Stale worktrees pruned", "✓".green().bold());
         }
         Ok(result) => {
             let stderr = String::from_utf8_lossy(&result.stderr);
@@ -164,11 +163,7 @@ fn clean_worktrees(repo_root: &Path) -> Result<(usize, usize)> {
     }
 
     if !worktrees_dir.exists() {
-        println!(
-            "  {} No {} directory",
-            "─".dimmed(),
-            ".worktrees/".dimmed()
-        );
+        println!("  {} No {} directory", "─".dimmed(), ".worktrees/".dimmed());
         return Ok((0, 0));
     }
 
@@ -310,10 +305,7 @@ fn clean_tmux_sessions() -> Result<usize> {
         }
         Ok(_) => {
             // tmux returns non-zero when no sessions exist
-            println!(
-                "  {} No sessions found",
-                "✓".green().bold()
-            );
+            println!("  {} No sessions found", "✓".green().bold());
             return Ok(0);
         }
         Err(_) => {
@@ -328,10 +320,7 @@ fn clean_tmux_sessions() -> Result<usize> {
     };
 
     if sessions.is_empty() {
-        println!(
-            "  {} No loom sessions found",
-            "✓".green().bold()
-        );
+        println!("  {} No loom sessions found", "✓".green().bold());
         return Ok(0);
     }
 
@@ -379,11 +368,7 @@ fn clean_state_directory(repo_root: &Path) -> Result<bool> {
     let work_dir = repo_root.join(".work");
 
     if !work_dir.exists() {
-        println!(
-            "  {} No {} directory",
-            "─".dimmed(),
-            ".work/".dimmed()
-        );
+        println!("  {} No {} directory", "─".dimmed(), ".work/".dimmed());
         return Ok(false);
     }
 
@@ -393,11 +378,7 @@ fn clean_state_directory(repo_root: &Path) -> Result<bool> {
             work_dir.display()
         )
     })?;
-    println!(
-        "  {} Removed {}",
-        "✓".green().bold(),
-        ".work/".dimmed()
-    );
+    println!("  {} Removed {}", "✓".green().bold(), ".work/".dimmed());
 
     Ok(true)
 }

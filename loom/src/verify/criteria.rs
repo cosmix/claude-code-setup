@@ -227,8 +227,7 @@ pub fn run_acceptance_with_config(
     let setup_prefix = if stage.setup.is_empty() {
         None
     } else {
-        let expanded_setup: Vec<String> =
-            stage.setup.iter().map(|s| context.expand(s)).collect();
+        let expanded_setup: Vec<String> = stage.setup.iter().map(|s| context.expand(s)).collect();
         Some(expanded_setup.join(" && "))
     };
 

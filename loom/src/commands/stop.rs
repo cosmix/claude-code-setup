@@ -10,23 +10,14 @@ pub fn execute() -> Result<()> {
     let work_dir = WorkDir::new(".")?;
 
     if !DaemonServer::is_running(work_dir.root()) {
-        println!(
-            "{} Daemon is not running",
-            "─".dimmed()
-        );
+        println!("{} Daemon is not running", "─".dimmed());
         return Ok(());
     }
 
-    println!(
-        "{} Stopping daemon...",
-        "→".cyan().bold()
-    );
+    println!("{} Stopping daemon...", "→".cyan().bold());
     DaemonServer::stop(work_dir.root()).context("Failed to stop daemon")?;
 
-    println!(
-        "{} Daemon stopped",
-        "✓".green().bold()
-    );
+    println!("{} Daemon stopped", "✓".green().bold());
     Ok(())
 }
 

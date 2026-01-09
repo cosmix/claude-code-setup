@@ -50,10 +50,7 @@ fn mark_stage_merged(stage_id: &str, work_dir: &std::path::Path) -> Result<()> {
 }
 
 /// Check if a merge conflict resolution session is already running for this stage
-fn find_active_merge_session(
-    stage_id: &str,
-    work_dir: &std::path::Path,
-) -> Result<Option<String>> {
+fn find_active_merge_session(stage_id: &str, work_dir: &std::path::Path) -> Result<Option<String>> {
     let sessions_dir = work_dir.join("sessions");
     if !sessions_dir.exists() {
         return Ok(None);
@@ -94,9 +91,7 @@ fn find_active_merge_session(
 
             // Check if PID indicates a running merge session
             // (for native backend, we check if the session ID contains "merge")
-            if let Some(session_id) =
-                super::validation::extract_frontmatter_field(&content, "id")
-            {
+            if let Some(session_id) = super::validation::extract_frontmatter_field(&content, "id") {
                 if session_id.contains("merge") {
                     if let Some(pid_str) =
                         super::validation::extract_frontmatter_field(&content, "pid")
@@ -151,8 +146,8 @@ fn spawn_merge_resolution_session(
     let stage = load_stage(stage_id, work_dir)?;
 
     // Get target branch
-    let target_branch = default_branch(repo_root)
-        .with_context(|| "Failed to detect default branch")?;
+    let target_branch =
+        default_branch(repo_root).with_context(|| "Failed to detect default branch")?;
 
     // Create a new merge session
     let session = Session::new();
@@ -215,9 +210,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
 
         // Check if a merge session is already running
         if let Some(session_name) = find_active_merge_session(&stage_id, &work_dir)? {
-            println!(
-                "\nMerge resolution session is already running: {session_name}"
-            );
+            println!("\nMerge resolution session is already running: {session_name}");
             println!("Use 'loom attach {stage_id}' to view the session.");
             return Ok(());
         }
@@ -230,7 +223,8 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
         }
 
         println!("\nSpawning merge resolution session...");
-        let session_id = spawn_merge_resolution_session(&stage_id, &conflicts, &repo_root, &work_dir)?;
+        let session_id =
+            spawn_merge_resolution_session(&stage_id, &conflicts, &repo_root, &work_dir)?;
         println!("Started merge resolution session: {session_id}");
         println!("\nThe session will help resolve conflicts. Once resolved,");
         println!("run 'loom merge {stage_id}' again to complete the merge.");

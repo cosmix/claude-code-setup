@@ -617,8 +617,7 @@ mod tests {
 
     #[test]
     fn test_embedded_loom_stop_hook_is_valid() {
-        // Verify the embedded hook script is non-empty and has correct shebang
-        assert!(!LOOM_STOP_HOOK.is_empty());
+        // Verify the embedded hook script has correct shebang and key functions
         assert!(LOOM_STOP_HOOK.starts_with("#!/usr/bin/env bash"));
         // Check for key functions that should exist
         assert!(LOOM_STOP_HOOK.contains("detect_loom_worktree"));

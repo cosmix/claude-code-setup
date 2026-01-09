@@ -54,7 +54,8 @@ impl CriteriaContext {
     /// - `STAGE_ID` - The stage identifier
     pub fn with_stage_id(worktree_path: &Path, stage_id: &str) -> Self {
         let mut ctx = Self::new(worktree_path);
-        ctx.variables.insert("STAGE_ID".into(), stage_id.to_string());
+        ctx.variables
+            .insert("STAGE_ID".into(), stage_id.to_string());
         ctx
     }
 

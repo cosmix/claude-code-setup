@@ -120,7 +120,9 @@ pub fn cleanup_stage_files(
     // Handle stage file
     if config.archive_stage {
         if let Err(e) = archive_stage_file(stage_id, work_dir) {
-            result.warnings.push(format!("Failed to archive stage file: {e}"));
+            result
+                .warnings
+                .push(format!("Failed to archive stage file: {e}"));
         } else {
             result.stage_file_handled = true;
         }
@@ -153,8 +155,12 @@ fn cleanup_sessions_for_stage(
         return Ok(result);
     }
 
-    let entries = fs::read_dir(&sessions_dir)
-        .with_context(|| format!("Failed to read sessions directory: {}", sessions_dir.display()))?;
+    let entries = fs::read_dir(&sessions_dir).with_context(|| {
+        format!(
+            "Failed to read sessions directory: {}",
+            sessions_dir.display()
+        )
+    })?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -259,8 +265,7 @@ fn archive_stage_file(stage_id: &str, work_dir: &Path) -> Result<()> {
     };
 
     // Ensure archive directory exists
-    fs::create_dir_all(&archive_dir)
-        .with_context(|| "Failed to create archive directory")?;
+    fs::create_dir_all(&archive_dir).with_context(|| "Failed to create archive directory")?;
 
     // Move to archive
     let archive_path = archive_dir.join(stage_file.file_name().unwrap_or_default());
@@ -318,8 +323,12 @@ pub fn find_sessions_for_stage(stage_id: &str, work_dir: &Path) -> Result<Vec<St
         return Ok(session_ids);
     }
 
-    let entries = fs::read_dir(&sessions_dir)
-        .with_context(|| format!("Failed to read sessions directory: {}", sessions_dir.display()))?;
+    let entries = fs::read_dir(&sessions_dir).with_context(|| {
+        format!(
+            "Failed to read sessions directory: {}",
+            sessions_dir.display()
+        )
+    })?;
 
     for entry in entries.flatten() {
         let path = entry.path();

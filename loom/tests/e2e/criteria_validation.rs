@@ -79,7 +79,9 @@ fn test_stage_id_path_traversal_rejected() {
 
         let errors = result.unwrap_err();
         assert!(
-            errors.iter().any(|e| e.message.contains("Invalid stage ID")),
+            errors
+                .iter()
+                .any(|e| e.message.contains("Invalid stage ID")),
             "Error should mention Invalid stage ID for '{id}'"
         );
     }
@@ -149,7 +151,10 @@ fn test_stage_id_too_long_rejected() {
     let metadata = create_metadata(vec![stage]);
     let result = validate(&metadata);
 
-    assert!(result.is_err(), "Stage ID over 128 chars should be rejected");
+    assert!(
+        result.is_err(),
+        "Stage ID over 128 chars should be rejected"
+    );
     let errors = result.unwrap_err();
     assert!(errors.iter().any(|e| e.message.contains("too long")));
 }
@@ -163,9 +168,7 @@ fn test_empty_stage_id_rejected() {
 
     assert!(result.is_err(), "Empty stage ID should be rejected");
     let errors = result.unwrap_err();
-    assert!(errors
-        .iter()
-        .any(|e| e.message.contains("cannot be empty")));
+    assert!(errors.iter().any(|e| e.message.contains("cannot be empty")));
 }
 
 // ============================================================================
@@ -257,7 +260,9 @@ fn test_control_chars_in_acceptance_rejected() {
         assert!(result.is_err(), "Criterion with {name} should be rejected");
         let errors = result.unwrap_err();
         assert!(
-            errors.iter().any(|e| e.message.contains("control character")),
+            errors
+                .iter()
+                .any(|e| e.message.contains("control character")),
             "Error should mention control character for {name}"
         );
     }
@@ -300,7 +305,10 @@ fn test_acceptance_criterion_too_long_rejected() {
     let metadata = create_metadata(vec![stage]);
     let result = validate(&metadata);
 
-    assert!(result.is_err(), "Criterion over 1024 chars should be rejected");
+    assert!(
+        result.is_err(),
+        "Criterion over 1024 chars should be rejected"
+    );
     let errors = result.unwrap_err();
     assert!(errors.iter().any(|e| e.message.contains("too long")));
 }

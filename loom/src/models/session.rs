@@ -738,8 +738,7 @@ mod tests {
         assert!(json.contains("\"merge_target_branch\":\"develop\""));
 
         // Test that deserialization works
-        let deserialized: Session =
-            serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: Session = serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.session_type, SessionType::Merge);
         assert!(deserialized.is_merge_session());
         assert_eq!(

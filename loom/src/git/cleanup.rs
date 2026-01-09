@@ -253,7 +253,11 @@ pub fn cleanup_branch(stage_id: &str, repo_root: &Path, force: bool) -> Result<b
 
     // Check if branch exists first
     let output = Command::new("git")
-        .args(["rev-parse", "--verify", &format!("refs/heads/{branch_name}")])
+        .args([
+            "rev-parse",
+            "--verify",
+            &format!("refs/heads/{branch_name}"),
+        ])
         .current_dir(repo_root)
         .output()
         .with_context(|| "Failed to check branch existence")?;
@@ -303,8 +307,8 @@ pub fn cleanup_multiple_stages(
     let mut results = Vec::with_capacity(stage_ids.len());
 
     for stage_id in stage_ids {
-        let result = cleanup_after_merge(stage_id, repo_root, config)
-            .unwrap_or_else(|e| CleanupResult {
+        let result =
+            cleanup_after_merge(stage_id, repo_root, config).unwrap_or_else(|e| CleanupResult {
                 worktree_removed: false,
                 branch_deleted: false,
                 warnings: vec![e.to_string()],
@@ -334,7 +338,11 @@ pub fn needs_cleanup(stage_id: &str, repo_root: &Path) -> bool {
 
     // Check branch exists
     let output = Command::new("git")
-        .args(["rev-parse", "--verify", &format!("refs/heads/{branch_name}")])
+        .args([
+            "rev-parse",
+            "--verify",
+            &format!("refs/heads/{branch_name}"),
+        ])
         .current_dir(repo_root)
         .output();
 

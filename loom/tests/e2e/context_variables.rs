@@ -42,8 +42,11 @@ fn test_project_root_detection_cargo() {
     let worktree_path = temp_dir.path();
 
     // Create Cargo.toml to trigger PROJECT_ROOT detection
-    fs::write(worktree_path.join("Cargo.toml"), "[package]\nname = \"test\"")
-        .expect("failed to write Cargo.toml");
+    fs::write(
+        worktree_path.join("Cargo.toml"),
+        "[package]\nname = \"test\"",
+    )
+    .expect("failed to write Cargo.toml");
 
     let ctx = CriteriaContext::new(worktree_path);
 
@@ -185,8 +188,7 @@ fn test_acceptance_criteria_with_project_root_variable() {
     let temp_dir = tempdir().expect("failed to create temp dir");
 
     // Create Cargo.toml so PROJECT_ROOT is detected
-    fs::write(temp_dir.path().join("Cargo.toml"), "[package]")
-        .expect("failed to write Cargo.toml");
+    fs::write(temp_dir.path().join("Cargo.toml"), "[package]").expect("failed to write Cargo.toml");
 
     let mut stage = Stage::new("test-stage".to_string(), None);
     stage.id = "test-stage-456".to_string();
@@ -236,8 +238,7 @@ fn test_multiple_variables_in_command() {
     let temp_dir = tempdir().expect("failed to create temp dir");
 
     // Create manifest so PROJECT_ROOT is set
-    fs::write(temp_dir.path().join("Cargo.toml"), "[package]")
-        .expect("failed to write Cargo.toml");
+    fs::write(temp_dir.path().join("Cargo.toml"), "[package]").expect("failed to write Cargo.toml");
 
     let ctx = CriteriaContext::with_stage_id(temp_dir.path(), "multi-var-stage");
 
@@ -279,8 +280,7 @@ fn test_available_variables() {
     let temp_dir = tempdir().expect("failed to create temp dir");
 
     // Create manifest so PROJECT_ROOT is set
-    fs::write(temp_dir.path().join("Cargo.toml"), "[package]")
-        .expect("failed to write Cargo.toml");
+    fs::write(temp_dir.path().join("Cargo.toml"), "[package]").expect("failed to write Cargo.toml");
 
     let ctx = CriteriaContext::with_stage_id(temp_dir.path(), "test-stage");
 
@@ -297,7 +297,10 @@ fn test_variable_expansion_edge_cases() {
 
     // Empty variable name
     let expanded = ctx.expand("echo ${}");
-    assert_eq!(expanded, "echo ${}", "Empty variable should remain unchanged");
+    assert_eq!(
+        expanded, "echo ${}",
+        "Empty variable should remain unchanged"
+    );
 
     // Nested braces (should not be supported)
     let expanded = ctx.expand("echo ${${VAR}}");
@@ -320,8 +323,11 @@ fn test_acceptance_in_git_worktree_context() {
     let repo = create_temp_git_repo().expect("failed to create git repo");
 
     // Create Cargo.toml so it looks like a Rust project
-    fs::write(repo.path().join("Cargo.toml"), "[package]\nname = \"test-project\"")
-        .expect("failed to write Cargo.toml");
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"test-project\"",
+    )
+    .expect("failed to write Cargo.toml");
 
     let mut stage = Stage::new("Worktree Test".to_string(), None);
     stage.id = "worktree-test".to_string();

@@ -54,19 +54,10 @@ pub fn execute_background(
 
     // Check if daemon is already running
     if DaemonServer::is_running(work_dir.root()) {
-        println!(
-            "{} Daemon is already running",
-            "─".dimmed()
-        );
+        println!("{} Daemon is already running", "─".dimmed());
         println!();
-        println!(
-            "  {}  Check status",
-            "loom status".cyan()
-        );
-        println!(
-            "  {}  Stop daemon",
-            "loom stop".cyan()
-        );
+        println!("  {}  Check status", "loom status".cyan());
+        println!("  {}  Stop daemon", "loom stop".cyan());
         return Ok(());
     }
 
@@ -74,19 +65,10 @@ pub fn execute_background(
     let daemon = DaemonServer::new(work_dir.root());
     daemon.start()?;
 
-    println!(
-        "{} Daemon started",
-        "✓".green().bold()
-    );
+    println!("{} Daemon started", "✓".green().bold());
     println!();
-    println!(
-        "  {}  Monitor progress",
-        "loom status".cyan()
-    );
-    println!(
-        "  {}  Stop daemon",
-        "loom stop".cyan()
-    );
+    println!("  {}  Monitor progress", "loom status".cyan());
+    println!("  {}  Stop daemon", "loom stop".cyan());
 
     Ok(())
 }
@@ -119,11 +101,7 @@ fn execute_foreground(
         Orchestrator::new(config, graph).context("Failed to create orchestrator")?;
 
     let result = if let Some(id) = stage_id {
-        println!(
-            "{} Running single stage: {}",
-            "→".cyan().bold(),
-            id.bold()
-        );
+        println!("{} Running single stage: {}", "→".cyan().bold(), id.bold());
         orchestrator.run_single(&id)?
     } else {
         if watch {
@@ -132,16 +110,9 @@ fn execute_foreground(
                 "→".cyan().bold(),
                 "(continuous execution)".dimmed()
             );
-            println!(
-                "  {} Press {} to stop\n",
-                "→".dimmed(),
-                "Ctrl+C".bold()
-            );
+            println!("  {} Press {} to stop\n", "→".dimmed(), "Ctrl+C".bold());
         } else {
-            println!(
-                "{} Running all ready stages...",
-                "→".cyan().bold()
-            );
+            println!("{} Running all ready stages...", "→".cyan().bold());
         }
         orchestrator.run()?
     };
@@ -294,18 +265,12 @@ fn extract_stage_frontmatter(content: &str) -> Result<StageFrontmatter> {
 /// Print orchestrator result summary
 fn print_result(result: &OrchestratorResult) {
     println!();
-    println!(
-        "{}",
-        "╭──────────────────────────────────────╮".cyan()
-    );
+    println!("{}", "╭──────────────────────────────────────╮".cyan());
     println!(
         "{}",
         "│       Orchestration Complete         │".cyan().bold()
     );
-    println!(
-        "{}",
-        "╰──────────────────────────────────────╯".cyan()
-    );
+    println!("{}", "╰──────────────────────────────────────╯".cyan());
 
     if !result.completed_stages.is_empty() {
         println!(
@@ -315,11 +280,7 @@ fn print_result(result: &OrchestratorResult) {
         );
         println!("{}", "─".repeat(40).dimmed());
         for stage in &result.completed_stages {
-            println!(
-                "  {} {}",
-                "✓".green().bold(),
-                stage
-            );
+            println!("  {} {}", "✓".green().bold(), stage);
         }
     }
 
@@ -331,11 +292,7 @@ fn print_result(result: &OrchestratorResult) {
         );
         println!("{}", "─".repeat(40).dimmed());
         for stage in &result.failed_stages {
-            println!(
-                "  {} {}",
-                "✗".red().bold(),
-                stage
-            );
+            println!("  {} {}", "✗".red().bold(), stage);
         }
     }
 
@@ -347,11 +304,7 @@ fn print_result(result: &OrchestratorResult) {
         );
         println!("{}", "─".repeat(40).dimmed());
         for stage in &result.needs_handoff {
-            println!(
-                "  {} {}",
-                "⚠".yellow().bold(),
-                stage
-            );
+            println!("  {} {}", "⚠".yellow().bold(), stage);
         }
         println!(
             "\n  {} Run {} to continue",
