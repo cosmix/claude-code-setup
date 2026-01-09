@@ -80,10 +80,11 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
         cleanup_session_resources(&stage_id, sid, work_dir);
     }
 
-    // Mark as Completed if all criteria passed
+    // Mark stage as completed
+    stage.try_complete(None)?;
+    save_stage(&stage, work_dir)?;
+
     if all_passed {
-        stage.try_complete(None)?;
-        save_stage(&stage, work_dir)?;
         println!("Stage '{stage_id}' completed!");
 
         // Trigger dependent stages
@@ -97,9 +98,7 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
             }
         }
     } else {
-        stage.try_complete(None)?;
-        save_stage(&stage, work_dir)?;
-        println!("Stage '{stage_id}' marked as completed (needs manual verification)");
+        println!("Stage '{stage_id}' completed (skipped verification)");
     }
 
     Ok(())
@@ -878,6 +877,7 @@ last_active: "2024-01-01T00:00:00Z"
         assert!(result.is_ok(), "complete() failed: {:?}", result.err());
 
         let loaded_stage = load_stage("test-stage", &work_dir_path).unwrap();
+        // After refactor: complete goes directly to Completed (no more Verified)
         assert_eq!(loaded_stage.status, StageStatus::Completed);
     }
 
