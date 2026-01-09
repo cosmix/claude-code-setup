@@ -5,6 +5,7 @@
 
 pub mod context_variables;
 pub mod criteria_validation;
+pub mod daemon_config;
 pub mod fixtures;
 pub mod handoff;
 pub mod helpers;
