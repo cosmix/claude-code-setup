@@ -706,6 +706,51 @@ When working in a worktree:
 3. Merge conflicts are reported for manual resolution
 4. Never manually switch branches - you're always on `loom/[stage-id]`
 
+---
+
+## Daemon Architecture
+
+Loom uses a native daemon for orchestration rather than running in the foreground.
+
+### How It Works
+
+- `loom run` starts a background daemon process (not a tmux session)
+- The daemon manages the orchestration loop and session spawning
+- Control files in `.work/`:
+  - **PID file**: `.work/orchestrator.pid` - daemon process ID
+  - **Unix socket**: `.work/orchestrator.sock` - IPC for status/control
+  - **Log file**: `.work/orchestrator.log` - daemon output and events
+
+### Terminal Backends
+
+Loom supports multiple terminal backends for spawning Claude Code sessions:
+
+**Native Backend** (default):
+- Spawns sessions in native terminal windows (kitty, alacritty, gnome-terminal, etc.)
+- Terminal detection priority:
+  1. `$TERMINAL` environment variable
+  2. `gsettings` (GNOME default terminal)
+  3. `xdg-terminal-exec`
+  4. Fallback list: kitty, alacritty, wezterm, gnome-terminal, konsole, xfce4-terminal, xterm
+
+**Tmux Backend** (legacy):
+- Uses tmux sessions for session management
+- Available if tmux is preferred or required
+- Enable via configuration or `--backend tmux` flag
+
+### Updated CLI Commands
+
+| Command           | Behavior                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| `loom run`        | Starts daemon in background and exits immediately           |
+| `loom status`     | Live dashboard via socket (Ctrl+C exits view, NOT daemon)   |
+| `loom stop`       | Gracefully shuts down the daemon                            |
+| `loom attach logs`| Streams raw daemon logs                                     |
+
+**Important**: `Ctrl+C` during `loom status` only exits the status view. The daemon continues running. Use `loom stop` to shut down the daemon.
+
+---
+
 ### Team Workflow References (Optional)
 
 If your team has workflow documentation, reference it here:

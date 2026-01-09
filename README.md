@@ -26,7 +26,7 @@ loom solves these problems with three integrated components:
 | Component    | Purpose                                          |
 | ------------ | ------------------------------------------------ |
 | **loom CLI** | Manages persistent work state across sessions    |
-| **Agents**   | 19 specialized AI agents organized by domain     |
+| **Agents**   | 19 specialized AI agents organized by domain    |
 | **Skills**   | 56 reusable knowledge modules loaded dynamically |
 
 Together, they implement the **Signal Principle**: _"If you have a signal,
@@ -83,12 +83,13 @@ Initialize loom with a plan and execute:
 ```bash
 cd /path/to/project
 loom init doc/plans/my-plan.md   # Initialize with a plan
-loom run                          # Execute stages automatically
-loom status                       # Check progress
+loom run                          # Start daemon and execute stages
+loom status                       # Live dashboard (Ctrl+C to exit)
+loom stop                         # Stop the daemon
 ```
 
 loom will create git worktrees for parallel stages and spawn Claude Code
-sessions automatically to execute your plan.
+sessions in native terminal windows automatically.
 
 ## How It Works
 
@@ -132,6 +133,9 @@ project/
 ├── .work/                    # loom state (version controlled)
 │   ├── config.toml           # Active plan, settings
 │   ├── execution-graph.toml  # Stage dependency DAG
+│   ├── orchestrator.pid      # Daemon process ID
+│   ├── orchestrator.sock     # Unix socket for IPC
+│   ├── orchestrator.log      # Daemon log file
 │   ├── stages/               # Stage state files
 │   ├── sessions/             # Session state files
 │   ├── signals/              # Stage assignments
@@ -147,6 +151,49 @@ project/
 
 This git-friendly format enables version control, team collaboration, and
 manual inspection.
+
+## Architecture
+
+loom uses a **daemon architecture** for reliability:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                        loom run                              │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Daemon Process (background)                     │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Unix Socket (.work/orchestrator.sock)              │    │
+│  │  - Accepts CLI connections (status, logs, stop)     │    │
+│  │  - Streams live updates to `loom status` clients    │    │
+│  │  - Handles shutdown commands                        │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Orchestrator Loop (every 5s)                       │    │
+│  │  - Poll stage/session files for changes             │    │
+│  │  - Start ready stages (spawn native terminals)      │    │
+│  │  - Detect crashed sessions (PID not alive)          │    │
+│  │  - Generate git-based handoffs on crash             │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           ▼               ▼               ▼
+      ┌─────────┐    ┌─────────┐    ┌─────────┐
+      │ Terminal│    │ Terminal│    │ Terminal│  (auto-detected:
+      │ Window  │    │ Window  │    │ Window  │   kitty, alacritty,
+      │ stage-1 │    │ stage-2 │    │ stage-3 │   gnome-terminal, etc.)
+      └─────────┘    └─────────┘    └─────────┘
+```
+
+**Key benefits:**
+- Sessions run in native terminal windows (more stable than tmux)
+- Daemon survives terminal close
+- PID-based liveness monitoring
+- Git-based crash recovery
 
 ## How the CLAUDE.md Configuration Works
 
@@ -183,7 +230,7 @@ With orchestration rules, Claude will:
 
 ### Linux: File Descriptor Limits
 
-Running multiple concurrent Claude Code sessions requires sufficient file descriptors. The default limit (`ulimit -n 1024`) is too low and can cause tmux to crash under load.
+Running multiple concurrent Claude Code sessions requires sufficient file descriptors. The default limit (`ulimit -n 1024`) is too low.
 
 **Check your current limit:**
 
@@ -212,22 +259,16 @@ ulimit -n 65536
 
 Then log out and back in.
 
-### tmux Configuration
+### Terminal Detection
 
-loom uses tmux for session management. For stability, especially with tmux 3.3-3.4,
-add these settings to `~/.tmux.conf`:
+loom automatically detects and uses your system's terminal emulator. Supported terminals (in order of detection):
 
-```bash
-# Recommended settings for loom
-set -g default-terminal "screen-256color"
-set -sg escape-time 10
-```
+1. `$TERMINAL` environment variable
+2. GNOME default terminal (via gsettings)
+3. `xdg-terminal-exec` (XDG standard)
+4. Direct detection: kitty, alacritty, gnome-terminal, konsole, xfce4-terminal, xterm
 
-After editing, reload the configuration:
-
-```bash
-tmux source-file ~/.tmux.conf
-```
+For best results, ensure one of these is installed and accessible in your PATH.
 
 ### Verifying System Readiness
 
@@ -235,11 +276,8 @@ tmux source-file ~/.tmux.conf
 # Check file descriptor limit
 ulimit -n  # Should be >= 65536
 
-# Check tmux version
-tmux -V    # 3.2+ recommended
-
-# If tmux is running, check its FD limit
-cat /proc/$(pgrep -x tmux)/limits | grep "open files"
+# Check loom CLI
+loom --version
 ```
 
 ## Installation
@@ -392,21 +430,29 @@ loom init <plan-path>
 # - Creates execution graph in .work/
 # - Sets up .work/ directory structure
 
-# Execute stages (creates worktrees, spawns sessions)
-loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--attach] [--foreground]
+# Execute stages (starts daemon, spawns sessions in native terminals)
+loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground]
+# - Starts background daemon if not running
 # - Creates git worktrees for ready parallel stages
-# - Spawns Claude sessions (unless --manual)
+# - Spawns Claude sessions in native terminal windows (unless --manual)
 # - Monitors progress, triggers dependent stages
 # - --stage: run only specific stage
 # - --manual: don't spawn sessions, just prepare signals
 # - --max-parallel: max parallel sessions (default: 4)
 # - --watch: continuous mode - keep running until all stages terminal
-# - --attach: attach to existing orchestrator session
-# - --foreground: run orchestrator in foreground
+# - --foreground: run orchestrator in foreground (for debugging)
 
-# Check plan progress and session health
+# Live dashboard - shows plan progress and session health
 loom status
-# Shows: plan progress, stage states, session health, context levels
+# - Connects to daemon via Unix socket
+# - Updates continuously until Ctrl+C
+# - Shows: stage states, session health, context levels
+
+# Stop the running daemon
+loom stop
+# - Sends graceful shutdown signal to daemon
+# - Terminates all running sessions
+# - Cleans up socket and PID files
 
 # Human verification gate
 loom verify <stage-id>
@@ -426,17 +472,17 @@ loom merge <stage-id> [--force]
 # - If conflicts, prints resolution instructions
 # - --force: merge even if stage not complete or has active sessions
 
-# Attach to running session
+# Attach to running session or view logs
 loom attach [target]
 loom attach list
 loom attach all [--gui] [--detach]
-# - Attaches terminal to running Claude session (via tmux)
-# - Human can observe, type, intervene
-# - Detach with Ctrl+B D
+loom attach logs
+# - Attaches terminal to running Claude session
 # - list: list all attachable sessions
-# - all: attach to all sessions in unified view
-#   - --gui: open separate terminal windows
+# - all: attach to all sessions
+#   - --gui: open separate terminal windows (native backend)
 #   - --detach: detach other clients first
+# - logs: stream daemon logs in real-time
 ```
 
 ### Secondary Commands
@@ -479,7 +525,7 @@ loom stage resume <stage-id>
 loom clean [--all] [--worktrees] [--sessions] [--state]
 # - --all: remove all loom resources
 # - --worktrees: remove worktrees and branches only
-# - --sessions: kill tmux sessions only
+# - --sessions: kill sessions only
 # - --state: remove .work/ only
 ```
 
@@ -576,24 +622,26 @@ cd /path/to/project
 loom init doc/plans/PLAN-auth.md
 # Output: Initialized .work/ directory structure with plan from doc/plans/PLAN-auth.md
 
-# 3. Run stages (creates worktrees, spawns sessions)
+# 3. Run stages (starts daemon, spawns terminal windows)
 loom run --watch
-# Output: Running in watch mode (continuous execution)...
+# Output: Starting daemon...
+#         Running in watch mode (continuous execution)...
 #         Creating worktree for stage-1...
-#         Spawning Claude session for stage-1...
+#         Spawning Claude session in terminal window...
 # Watch mode keeps running, auto-spawning ready stages as dependencies complete
 
-# 4. Monitor progress
+# 4. Monitor progress (live dashboard)
 loom status
-# Shows:
+# Shows live-updating display:
 #   Stages:   2
 #   Sessions: 1
 #   stage-1: Running (session: sess-001, context: 45%)
 #   stage-2: Blocked (waiting on: stage-1)
+# Press Ctrl+C to exit (daemon keeps running)
 
-# 5. Attach to observe a running stage
-loom attach stage-1
-# (Opens tmux session showing Claude working on stage-1)
+# 5. View daemon logs
+loom attach logs
+# Streams real-time logs from the orchestrator
 
 # 6. Verify completed stages (only needed if auto-verification failed)
 # With --watch mode, stages auto-verify when acceptance passes.
@@ -611,13 +659,18 @@ loom merge stage-1
 #         Merge successful!
 #         Removing worktree...
 
+# 8. Stop the daemon when done
+loom stop
+# Output: Stopping daemon (PID 12345)...
+#         Daemon stopped.
+
 # When context reaches 75%, Claude automatically:
 # - Creates handoff in .work/handoffs/
 # - Updates session state
 # - Exits gracefully
 # - loom run or loom resume continues seamlessly
 
-# 8. (Optional) Hold a stage to prevent auto-execution
+# 9. (Optional) Hold a stage to prevent auto-execution
 loom stage hold stage-3
 # Stage 'stage-3' held
 # The stage will not auto-execute. Use 'loom stage release stage-3' to unlock.
