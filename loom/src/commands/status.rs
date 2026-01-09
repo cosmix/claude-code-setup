@@ -5,6 +5,7 @@ mod validation;
 use crate::commands::graph::build_graph_display;
 use crate::daemon::{read_message, write_message, DaemonServer, Request, Response, StageInfo};
 use crate::fs::work_dir::WorkDir;
+use crate::models::worktree::WorktreeStatus;
 use crate::verify::transitions::list_all_stages;
 use anyhow::{Context, Result};
 use colored::Colorize;
@@ -13,7 +14,10 @@ use std::os::unix::net::UnixStream;
 use diagnostics::{
     check_directory_structure, check_orphaned_tracks, check_parsing_errors, check_stuck_runners,
 };
-use display::{count_files, display_runner_health, display_sessions, display_stages, load_runners};
+use display::{
+    count_files, display_runner_health, display_sessions, display_stages, display_worktrees,
+    load_runners,
+};
 use validation::{validate_markdown_files, validate_references};
 
 /// Show the status dashboard with context health
@@ -188,11 +192,13 @@ fn render_live_status(
                 .signed_duration_since(stage.started_at)
                 .num_seconds();
             let time_info = format_elapsed(elapsed);
+            let worktree_info = format_worktree_status(&stage.worktree_status);
             println!(
-                "    {}  {}{}  {}",
+                "    {}  {}{}{}  {}",
                 stage.id.dimmed(),
                 stage.name,
                 pid_info.dimmed(),
+                worktree_info,
                 time_info.dimmed()
             );
         }
@@ -239,6 +245,18 @@ fn format_elapsed(seconds: i64) -> String {
     }
 }
 
+/// Format worktree status for display
+fn format_worktree_status(status: &Option<WorktreeStatus>) -> colored::ColoredString {
+    match status {
+        Some(WorktreeStatus::Conflict) => " [CONFLICT]".red().bold(),
+        Some(WorktreeStatus::Merging) => " [MERGING]".yellow().bold(),
+        Some(WorktreeStatus::Merged) => " [MERGED]".green(),
+        Some(WorktreeStatus::Creating) => " [CREATING]".cyan(),
+        Some(WorktreeStatus::Removed) => " [REMOVED]".dimmed(),
+        Some(WorktreeStatus::Active) | None => "".normal(),
+    }
+}
+
 /// Show static status dashboard (original implementation)
 fn execute_static(work_dir: &WorkDir) -> Result<()> {
     println!();
@@ -277,6 +295,9 @@ fn execute_static(work_dir: &WorkDir) -> Result<()> {
     if session_count > 0 {
         display_sessions(work_dir)?;
     }
+
+    // Show worktrees status
+    display_worktrees(work_dir)?;
 
     // Show execution graph if stages exist
     if stage_count > 0 {

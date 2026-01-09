@@ -4,11 +4,13 @@ use std::fs;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::models::worktree::WorktreeStatus;
 use crate::orchestrator::terminal::BackendType;
 use crate::orchestrator::{Orchestrator, OrchestratorConfig};
 use crate::plan::graph::ExecutionGraph;
@@ -527,6 +529,12 @@ impl DaemonServer {
         let stages_dir = work_dir.join("stages");
         let sessions_dir = work_dir.join("sessions");
 
+        // Get repo root (parent of .work/)
+        let repo_root = work_dir
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."));
+
         let mut stages_executing = Vec::new();
         let mut stages_pending = Vec::new();
         let mut stages_completed = Vec::new();
@@ -549,11 +557,14 @@ impl DaemonServer {
                                             session_id.as_deref(),
                                         );
                                         let started_at = Self::get_stage_started_at(&content);
+                                        let worktree_status =
+                                            Self::detect_worktree_status(&id, &repo_root);
                                         stages_executing.push(StageInfo {
                                             id,
                                             name,
                                             session_pid,
                                             started_at,
+                                            worktree_status,
                                         });
                                     }
                                     "pending" | "ready" => {
@@ -580,6 +591,67 @@ impl DaemonServer {
             stages_completed,
             stages_blocked,
         })
+    }
+
+    /// Detect the worktree status for a stage.
+    ///
+    /// Returns the appropriate WorktreeStatus based on:
+    /// - Whether the worktree directory exists
+    /// - Whether there are merge conflicts
+    /// - Whether a merge is in progress
+    fn detect_worktree_status(stage_id: &str, repo_root: &Path) -> Option<WorktreeStatus> {
+        let worktree_path = repo_root.join(".worktrees").join(stage_id);
+
+        if !worktree_path.exists() {
+            return None;
+        }
+
+        // Check for merge conflicts using git diff --name-only --diff-filter=U
+        if Self::has_merge_conflicts(&worktree_path) {
+            return Some(WorktreeStatus::Conflict);
+        }
+
+        // Check if a merge is in progress by looking for MERGE_HEAD
+        let merge_head = worktree_path.join(".git").join("MERGE_HEAD");
+        // For worktrees, .git is a file pointing to the main repo, so check gitdir
+        let git_path = worktree_path.join(".git");
+        let is_merging = if git_path.is_file() {
+            // Read gitdir path and check for MERGE_HEAD there
+            if let Ok(content) = fs::read_to_string(&git_path) {
+                if let Some(gitdir) = content.strip_prefix("gitdir: ") {
+                    let gitdir_path = PathBuf::from(gitdir.trim());
+                    gitdir_path.join("MERGE_HEAD").exists()
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            merge_head.exists()
+        };
+
+        if is_merging {
+            return Some(WorktreeStatus::Merging);
+        }
+
+        Some(WorktreeStatus::Active)
+    }
+
+    /// Check if there are unmerged paths (merge conflicts) in the worktree
+    fn has_merge_conflicts(worktree_path: &Path) -> bool {
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=U"])
+            .current_dir(worktree_path)
+            .output();
+
+        match output {
+            Ok(out) => {
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                !stdout.trim().is_empty()
+            }
+            Err(_) => false,
+        }
     }
 
     /// Parse stage frontmatter to extract id, name, status, and session.
