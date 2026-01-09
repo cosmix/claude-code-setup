@@ -24,6 +24,7 @@
 - If you don't know how to implement something: **STOP AND ASK.** Do NOT stub it.
 - If it's too complex: **BREAK IT DOWN.** Do NOT leave placeholders.
 - Every function you write MUST BE COMPLETE AND WORKING.
+- NEVER ADD Claude attribution to git commits or documents.
 
 ### 1. NATIVE TOOLS — NOT CLI
 
