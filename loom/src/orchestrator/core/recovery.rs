@@ -70,27 +70,36 @@ impl Recovery for Orchestrator {
             }
 
             // Load the stage and sync status
+            // NOTE: We use stage.id (from YAML frontmatter) for graph operations,
+            // not stage_id (from filename), because the graph is built using frontmatter IDs.
             if let Ok(stage) = self.load_stage(stage_id) {
                 match stage.status {
                     StageStatus::Completed | StageStatus::Verified => {
                         // Mark as completed in graph (ignore errors for stages not in graph)
-                        let _ = self.graph.mark_completed(stage_id);
+                        let _ = self.graph.mark_completed(&stage.id);
                     }
                     StageStatus::Queued => {
                         // Sync Ready status from stage files to graph
                         // This handles stages marked Ready by `loom verify` -> trigger_dependents()
-                        let _ = self.graph.mark_queued(stage_id);
+                        let _ = self.graph.mark_queued(&stage.id);
                     }
                     StageStatus::Executing => {
-                        // Will be handled by orphan detection
+                        // Mark as executing in graph to track active sessions
+                        let _ = self.graph.mark_executing(&stage.id);
                     }
                     StageStatus::Blocked => {
-                        // Will be handled by orphan recovery
+                        // Mark as blocked in graph
+                        let _ = self.graph.mark_blocked(&stage.id);
                     }
                     _ => {}
                 }
             }
         }
+
+        // After syncing all stage statuses, refresh ready status to ensure
+        // dependent stages get marked as Queued when their dependencies complete.
+        // This handles cases where stages are processed out of topological order.
+        self.graph.refresh_ready_status();
 
         Ok(())
     }
