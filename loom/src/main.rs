@@ -79,7 +79,11 @@ enum Commands {
         stage_id: String,
     },
 
-    /// Merge a completed stage
+    /// Merge or recover a stage (restart conflict resolution if interrupted)
+    ///
+    /// Primary use: recovery from failed/interrupted merge sessions.
+    /// When a merge conflict occurs, loom spawns a Claude Code session to resolve it.
+    /// If that session terminates before completion, use this command to restart it.
     Merge {
         /// Stage ID to merge (alphanumeric, dash, underscore only; max 128 characters)
         #[arg(value_parser = clap_id_validator)]

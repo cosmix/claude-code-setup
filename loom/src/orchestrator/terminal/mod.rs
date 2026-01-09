@@ -2,6 +2,10 @@
 //!
 //! Provides a unified interface for spawning and managing Claude Code sessions
 //! in different terminal environments (native terminal windows or tmux).
+//!
+//! Supports two session types:
+//! - Stage sessions: run in isolated worktrees for parallel stage execution
+//! - Merge sessions: run in main repository for conflict resolution
 
 pub mod native;
 pub mod tmux;
@@ -53,12 +57,26 @@ pub trait TerminalBackend: Send + Sync {
     ///
     /// Creates a terminal (native window or tmux session) and runs the claude
     /// command with the signal file path as the initial prompt.
+    /// The session runs in the worktree directory for isolated stage work.
     fn spawn_session(
         &self,
         stage: &Stage,
         worktree: &Worktree,
         session: Session,
         signal_path: &Path,
+    ) -> Result<Session>;
+
+    /// Spawn a merge conflict resolution session in the main repository
+    ///
+    /// Unlike regular stage sessions, merge sessions run in the main repository
+    /// (not a worktree) to resolve merge conflicts. The session uses a merge signal
+    /// that provides conflict context and resolution instructions.
+    fn spawn_merge_session(
+        &self,
+        stage: &Stage,
+        session: Session,
+        signal_path: &Path,
+        repo_root: &Path,
     ) -> Result<Session>;
 
     /// Kill a running session
