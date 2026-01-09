@@ -399,8 +399,9 @@ fn close_window_by_title(title: &str) -> bool {
                     let window_id = window_id.trim();
                     if !window_id.is_empty() {
                         // Send close request to the window
-                        let close_result =
-                            Command::new("xdotool").args(["windowclose", window_id]).output();
+                        let close_result = Command::new("xdotool")
+                            .args(["windowclose", window_id])
+                            .output();
 
                         if close_result.is_ok() {
                             return true;

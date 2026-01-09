@@ -305,7 +305,12 @@ mod tests {
         let stages = vec![
             create_test_stage("stage-1", "First", StageStatus::Verified, vec![]),
             create_test_stage("stage-2", "Second", StageStatus::Executing, vec!["stage-1"]),
-            create_test_stage("stage-3", "Third", StageStatus::WaitingForDeps, vec!["stage-2"]),
+            create_test_stage(
+                "stage-3",
+                "Third",
+                StageStatus::WaitingForDeps,
+                vec!["stage-2"],
+            ),
         ];
 
         let output = build_graph_display(&stages).unwrap();

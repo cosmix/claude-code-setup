@@ -26,7 +26,6 @@ pub struct GitHistory {
     pub uncommitted_changes: Vec<String>,
 }
 
-
 /// Format git history as markdown for inclusion in handoff/signal files.
 pub fn format_git_history_markdown(history: &GitHistory) -> String {
     let mut output = String::new();
@@ -188,5 +187,4 @@ mod tests {
         assert!(markdown.contains("- ?? src/new.rs"));
         assert!(!markdown.contains("No commits or uncommitted changes."));
     }
-
 }

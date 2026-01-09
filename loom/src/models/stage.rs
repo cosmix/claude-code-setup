@@ -367,7 +367,10 @@ impl Stage {
     }
 
     // Deprecated: Use try_mark_queued for validated transitions
-    #[deprecated(since = "0.2.0", note = "Use try_mark_queued for validated transitions")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use try_mark_queued for validated transitions"
+    )]
     pub fn mark_queued(&mut self) {
         self.status = StageStatus::Queued;
         self.updated_at = Utc::now();

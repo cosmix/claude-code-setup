@@ -106,7 +106,6 @@ pub fn check_context_threshold(session: &Session) -> ContextLevel {
     ThresholdConfig::default().check_level(session)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,7 +144,6 @@ mod tests {
             ContextLevel::Red
         );
     }
-
 
     #[test]
     fn test_threshold_config_default() {

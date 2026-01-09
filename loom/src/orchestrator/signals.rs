@@ -125,10 +125,7 @@ fn read_plan_overview(work_dir: &Path) -> Option<String> {
     let config_content = fs::read_to_string(&config_path).ok()?;
     let config: toml::Value = config_content.parse().ok()?;
 
-    let source_path = config
-        .get("plan")?
-        .get("source_path")?
-        .as_str()?;
+    let source_path = config.get("plan")?.get("source_path")?.as_str()?;
 
     let plan_path = PathBuf::from(source_path);
     if !plan_path.exists() {
@@ -233,8 +230,12 @@ pub fn generate_merge_signal(
         conflicting_files,
     );
 
-    fs::write(&signal_path, &content)
-        .with_context(|| format!("Failed to write merge signal file: {}", signal_path.display()))?;
+    fs::write(&signal_path, &content).with_context(|| {
+        format!(
+            "Failed to write merge signal file: {}",
+            signal_path.display()
+        )
+    })?;
 
     Ok(signal_path)
 }
@@ -459,7 +460,9 @@ fn format_signal_content(
     // Embed handoff content if available (previous session context)
     if let Some(handoff_content) = &embedded_context.handoff_content {
         content.push_str("## Previous Session Handoff\n\n");
-        content.push_str("**READ THIS CAREFULLY** - This contains context from the previous session:\n\n");
+        content.push_str(
+            "**READ THIS CAREFULLY** - This contains context from the previous session:\n\n",
+        );
         content.push_str("<handoff>\n");
         content.push_str(handoff_content);
         content.push_str("\n</handoff>\n\n");
@@ -580,9 +583,10 @@ fn parse_signal_content(session_id: &str, content: &str) -> Result<SignalContent
                 if let Some(id) = trimmed.strip_prefix("- **Stage**: ") {
                     stage_id = id.to_string();
                 } else if let Some(pid) = trimmed.strip_prefix("- **Plan**: ") {
-                    // Strip the "(reference only - content embedded below)" suffix if present
+                    // Strip the plan ID suffix if present (handles both old and new formats)
                     let clean_pid = pid
                         .strip_suffix(" (reference only - content embedded below)")
+                        .or_else(|| pid.strip_suffix(" (overview embedded below)"))
                         .unwrap_or(pid);
                     plan_id = Some(clean_pid.to_string());
                 }
@@ -701,7 +705,8 @@ fn format_merge_signal_content(
     // Conflicting files
     content.push_str("## Conflicting Files\n\n");
     if conflicting_files.is_empty() {
-        content.push_str("_No specific files listed - run `git status` to see current conflicts_\n");
+        content
+            .push_str("_No specific files listed - run `git status` to see current conflicts_\n");
     } else {
         for file in conflicting_files {
             content.push_str(&format!("- `{file}`\n"));
@@ -900,8 +905,15 @@ mod tests {
         let worktree = create_test_worktree();
         let embedded_context = EmbeddedContext::default();
 
-        let content =
-            format_signal_content(&session, &stage, &worktree, &[], None, None, &embedded_context);
+        let content = format_signal_content(
+            &session,
+            &stage,
+            &worktree,
+            &[],
+            None,
+            None,
+            &embedded_context,
+        );
 
         assert!(content.contains("# Signal: session-test-123"));
         assert!(content.contains("## Worktree Context"));
@@ -920,13 +932,22 @@ mod tests {
         let stage = create_test_stage();
         let worktree = create_test_worktree();
         let embedded_context = EmbeddedContext {
-            handoff_content: Some("# Handoff\nPrevious session completed tasks A and B.".to_string()),
+            handoff_content: Some(
+                "# Handoff\nPrevious session completed tasks A and B.".to_string(),
+            ),
             structure_content: Some("# Structure\nsrc/\n  main.rs\n  lib.rs".to_string()),
             plan_overview: Some("# Plan Title\n\n## Overview\nThis plan does X.".to_string()),
         };
 
-        let content =
-            format_signal_content(&session, &stage, &worktree, &[], None, None, &embedded_context);
+        let content = format_signal_content(
+            &session,
+            &stage,
+            &worktree,
+            &[],
+            None,
+            None,
+            &embedded_context,
+        );
 
         // Verify embedded content is present
         assert!(content.contains("## Plan Overview"));
@@ -1199,8 +1220,13 @@ loom:
         let stage = create_test_stage();
         let conflicting_files = vec!["src/test.rs".to_string()];
 
-        let content =
-            format_merge_signal_content(&session, &stage, "loom/stage-1", "main", &conflicting_files);
+        let content = format_merge_signal_content(
+            &session,
+            &stage,
+            "loom/stage-1",
+            "main",
+            &conflicting_files,
+        );
 
         // Check all required sections are present
         assert!(content.contains("# Merge Signal:"));
@@ -1251,8 +1277,12 @@ loom:
         assert_eq!(content.source_branch, "loom/stage-1");
         assert_eq!(content.target_branch, "main");
         assert_eq!(content.conflicting_files.len(), 2);
-        assert!(content.conflicting_files.contains(&"src/main.rs".to_string()));
-        assert!(content.conflicting_files.contains(&"src/lib.rs".to_string()));
+        assert!(content
+            .conflicting_files
+            .contains(&"src/main.rs".to_string()));
+        assert!(content
+            .conflicting_files
+            .contains(&"src/lib.rs".to_string()));
     }
 
     #[test]

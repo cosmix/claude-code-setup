@@ -103,8 +103,8 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
     }
 
     // Determine target branch - merge to the current branch of the main repo
-    let target_branch = current_branch(&repo_root)
-        .with_context(|| "Failed to get current branch")?;
+    let target_branch =
+        current_branch(&repo_root).with_context(|| "Failed to get current branch")?;
     println!("Target branch: {target_branch}");
 
     // Ensure .work is in .gitignore to prevent merge conflicts

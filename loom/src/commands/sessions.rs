@@ -60,8 +60,8 @@ pub fn kill(session_id: String) -> Result<()> {
         .with_context(|| format!("Failed to read session file: {}", session_file.display()))?;
 
     // Parse session from markdown YAML frontmatter
-    let session = parse_session_from_markdown(&content)
-        .context("Failed to parse session from markdown")?;
+    let session =
+        parse_session_from_markdown(&content).context("Failed to parse session from markdown")?;
 
     // Detect backend type from session metadata
     let backend_type = detect_backend_type(&session);

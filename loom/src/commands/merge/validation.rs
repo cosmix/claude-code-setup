@@ -103,7 +103,10 @@ fn is_native_session_alive(pid: u32) -> bool {
 /// Find active session for a stage, checking both tmux and native backends
 ///
 /// Returns (session_name, is_tmux) if an active session is found.
-fn find_active_session_for_stage(stage_id: &str, work_dir: &Path) -> Result<Option<(String, bool)>> {
+fn find_active_session_for_stage(
+    stage_id: &str,
+    work_dir: &Path,
+) -> Result<Option<(String, bool)>> {
     let sessions_dir = work_dir.join("sessions");
     if !sessions_dir.exists() {
         return Ok(None);
@@ -232,7 +235,11 @@ pub fn check_active_session(stage_id: &str, work_dir: &Path, force: bool) -> Res
 
     // Check for tracked sessions in .work/sessions/ (handles both backends)
     if let Some((session_name, is_tmux)) = find_active_session_for_stage(stage_id, work_dir)? {
-        let backend_name = if is_tmux { "tmux session" } else { "native session" };
+        let backend_name = if is_tmux {
+            "tmux session"
+        } else {
+            "native session"
+        };
 
         if force {
             eprintln!(

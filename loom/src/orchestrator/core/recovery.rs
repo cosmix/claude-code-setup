@@ -235,7 +235,9 @@ impl Recovery for Orchestrator {
                             | StageStatus::Completed => {
                                 continue;
                             }
-                            StageStatus::Queued | StageStatus::WaitingForDeps if stage.held => continue,
+                            StageStatus::Queued | StageStatus::WaitingForDeps if stage.held => {
+                                continue
+                            }
                             _ => return false,
                         }
                     } else {

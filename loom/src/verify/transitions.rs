@@ -852,8 +852,8 @@ status: Pending
         assert_eq!(updated.status, StageStatus::NeedsHandoff);
 
         // NeedsHandoff -> Ready (valid - resuming)
-        let updated =
-            transition_stage("stage-1", StageStatus::Queued, work_dir).expect("NeedsHandoff->Ready");
+        let updated = transition_stage("stage-1", StageStatus::Queued, work_dir)
+            .expect("NeedsHandoff->Ready");
         assert_eq!(updated.status, StageStatus::Queued);
     }
 

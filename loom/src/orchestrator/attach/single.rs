@@ -14,9 +14,7 @@ use anyhow::bail;
 #[cfg(not(unix))]
 use anyhow::Context;
 
-use super::{
-    detect_backend_type, find_session_for_stage, format_manual_mode_error, load_session,
-};
+use super::{detect_backend_type, find_session_for_stage, format_manual_mode_error, load_session};
 use crate::orchestrator::terminal::BackendType;
 
 /// Attach to a session by stage ID

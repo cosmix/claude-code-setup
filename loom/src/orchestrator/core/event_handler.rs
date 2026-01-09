@@ -125,7 +125,10 @@ impl EventHandler for Orchestrator {
         // Check if worktree exists before attempting merge
         let worktree_path = self.config.repo_root.join(".worktrees").join(stage_id);
         if !worktree_path.exists() {
-            eprintln!("  Worktree not found at {} - skipping merge", worktree_path.display());
+            eprintln!(
+                "  Worktree not found at {} - skipping merge",
+                worktree_path.display()
+            );
             return Ok(());
         }
 
