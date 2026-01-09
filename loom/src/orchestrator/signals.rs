@@ -103,8 +103,12 @@ pub fn generate_merge_signal(
         conflicting_files,
     );
 
-    fs::write(&signal_path, &content)
-        .with_context(|| format!("Failed to write merge signal file: {}", signal_path.display()))?;
+    fs::write(&signal_path, &content).with_context(|| {
+        format!(
+            "Failed to write merge signal file: {}",
+            signal_path.display()
+        )
+    })?;
 
     Ok(signal_path)
 }
@@ -552,7 +556,8 @@ fn format_merge_signal_content(
     // Conflicting files
     content.push_str("## Conflicting Files\n\n");
     if conflicting_files.is_empty() {
-        content.push_str("_No specific files listed - run `git status` to see current conflicts_\n");
+        content
+            .push_str("_No specific files listed - run `git status` to see current conflicts_\n");
     } else {
         for file in conflicting_files {
             content.push_str(&format!("- `{file}`\n"));
@@ -978,8 +983,13 @@ mod tests {
         let stage = create_test_stage();
         let conflicting_files = vec!["src/test.rs".to_string()];
 
-        let content =
-            format_merge_signal_content(&session, &stage, "loom/stage-1", "main", &conflicting_files);
+        let content = format_merge_signal_content(
+            &session,
+            &stage,
+            "loom/stage-1",
+            "main",
+            &conflicting_files,
+        );
 
         // Check all required sections are present
         assert!(content.contains("# Merge Signal:"));
@@ -1030,8 +1040,12 @@ mod tests {
         assert_eq!(content.source_branch, "loom/stage-1");
         assert_eq!(content.target_branch, "main");
         assert_eq!(content.conflicting_files.len(), 2);
-        assert!(content.conflicting_files.contains(&"src/main.rs".to_string()));
-        assert!(content.conflicting_files.contains(&"src/lib.rs".to_string()));
+        assert!(content
+            .conflicting_files
+            .contains(&"src/main.rs".to_string()));
+        assert!(content
+            .conflicting_files
+            .contains(&"src/lib.rs".to_string()));
     }
 
     #[test]

@@ -257,7 +257,6 @@ fn extract_yaml_frontmatter(content: &str) -> Result<serde_yaml::Value> {
     serde_yaml::from_str(&yaml_content).context("Failed to parse YAML frontmatter")
 }
 
-
 /// Load worktree path from worktree ID
 ///
 /// In the future, this could load from .worktrees metadata.

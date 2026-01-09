@@ -408,11 +408,7 @@ pub fn display_worktrees(work_dir: &WorkDir) -> Result<()> {
         let path = entry.path();
 
         if path.is_dir() {
-            let stage_id = entry
-                .file_name()
-                .to_str()
-                .unwrap_or("unknown")
-                .to_string();
+            let stage_id = entry.file_name().to_str().unwrap_or("unknown").to_string();
             let status = detect_worktree_status(&path);
             worktrees.push((stage_id, status));
         }

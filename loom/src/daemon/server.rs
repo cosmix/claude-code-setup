@@ -415,8 +415,8 @@ impl DaemonServer {
             files: Vec<String>,
         }
 
-        let fm: StageFrontmatter =
-            serde_yaml::from_str(&yaml_content).context("Failed to parse stage YAML frontmatter")?;
+        let fm: StageFrontmatter = serde_yaml::from_str(&yaml_content)
+            .context("Failed to parse stage YAML frontmatter")?;
 
         Ok(StageDefinition {
             id: fm.id,
