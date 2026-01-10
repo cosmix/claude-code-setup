@@ -443,7 +443,7 @@ print_summary() {
 	echo -e "${DIM}hooks are auto-configured when you run:${NC}"
 	echo -e "  ${CYAN}loom init${NC} <plan.md>    ${DIM}in your project${NC}"
 	echo ""
-	echo -e "run ${CYAN}claude${NC} to start"
+	echo -e "run ${CYAN}loom run${NC} to start"
 	echo ""
 }
 
