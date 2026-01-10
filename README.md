@@ -252,7 +252,7 @@ cp -r agents ~/.claude/
 cp -r skills ~/.claude/
 
 # Install configuration
-cat CLAUDE.template.md >> ~/.claude/CLAUDE.md
+cat CLAUDE.md.template >> ~/.claude/CLAUDE.md
 
 # Download loom CLI for your platform
 # Linux x86_64 (glibc):
@@ -276,7 +276,7 @@ The installation places these components:
 | `~/.claude/CLAUDE.md` | Orchestration rules and configuration |
 | `~/.local/bin/loom`   | loom CLI binary                       |
 
-The [`CLAUDE.template.md`](CLAUDE.template.md) configuration includes:
+The [`CLAUDE.md.template`](CLAUDE.md.template) configuration includes:
 
 - **Agent orchestration** - When to use senior (opus) vs standard (sonnet)
   agents

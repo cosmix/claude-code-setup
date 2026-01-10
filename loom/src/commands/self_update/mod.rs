@@ -207,13 +207,13 @@ fn get_claude_dir() -> Result<PathBuf> {
 fn update_config_files(release: &Release) -> Result<()> {
     let claude_dir = get_claude_dir()?;
 
-    // Update CLAUDE.template.md -> CLAUDE.md
+    // Update CLAUDE.md.template -> CLAUDE.md
     if let Some(asset) = release
         .assets
         .iter()
-        .find(|a| a.name == "CLAUDE.template.md")
+        .find(|a| a.name == "CLAUDE.md.template")
     {
-        println!("  {} Downloading CLAUDE.template.md...", "→".blue());
+        println!("  {} Downloading CLAUDE.md.template...", "→".blue());
         download_and_save(&asset.browser_download_url, &claude_dir.join("CLAUDE.md"))?;
         println!("  {} CLAUDE.md updated", "✓".green());
     }

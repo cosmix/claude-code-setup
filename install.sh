@@ -114,12 +114,12 @@ install_claude_md_remote() {
 	step "downloading CLAUDE.md"
 
 	local claude_md="$CLAUDE_DIR/CLAUDE.md"
-	local temp_file="/tmp/CLAUDE.template.md.$$"
+	local temp_file="/tmp/CLAUDE.md.template.$$"
 
 	backup_if_exists "$claude_md" || true
 
-	download_file "${GITHUB_RELEASES}/CLAUDE.template.md" "$temp_file" || {
-		warn "failed to download CLAUDE.template.md"
+	download_file "${GITHUB_RELEASES}/CLAUDE.md.template" "$temp_file" || {
+		warn "failed to download CLAUDE.md.template"
 		return 1
 	}
 
@@ -171,8 +171,8 @@ check_requirements() {
 		echo -e "   ${RED}!!${NC} skills/ not found"
 		exit 1
 	}
-	[[ -f "$SCRIPT_DIR/CLAUDE.template.md" ]] || {
-		echo -e "   ${RED}!!${NC} CLAUDE.template.md not found"
+	[[ -f "$SCRIPT_DIR/CLAUDE.md.template" ]] || {
+		echo -e "   ${RED}!!${NC} CLAUDE.md.template not found"
 		exit 1
 	}
 
@@ -251,7 +251,7 @@ install_claude_md() {
 		echo "# claude-loom | installed $(date '+%Y-%m-%d %H:%M:%S')"
 		echo "# ───────────────────────────────────────────────────────────"
 		echo ""
-		cat "$SCRIPT_DIR/CLAUDE.template.md"
+		cat "$SCRIPT_DIR/CLAUDE.md.template"
 	} >"$claude_md"
 
 	ok "CLAUDE.md installed"
