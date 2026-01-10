@@ -10,4 +10,6 @@ pub use criteria::{
     DEFAULT_COMMAND_TIMEOUT,
 };
 pub use gates::{human_gate, GateConfig, GateDecision};
-pub use transitions::{transition_stage, trigger_dependents};
+pub use transitions::{
+    list_all_stages, load_stage, save_stage, transition_stage, trigger_dependents,
+};
