@@ -8,6 +8,7 @@ use colored::Colorize;
 
 use crate::models::stage::{Stage, StageStatus};
 
+use super::colors::stage_color;
 use super::indicators::status_indicator;
 use super::levels::compute_stage_levels;
 
@@ -37,11 +38,13 @@ fn render_footer(stages: &[Stage], stage_map: &HashMap<&str, &Stage>) -> String 
 
     // Find currently executing stage
     if let Some(executing) = stages.iter().find(|s| s.status == StageStatus::Executing) {
-        footer.push_str(&format!("{} Running:  {}\n", "▶".cyan().bold(), executing.name));
+        let colored_name = executing.name.color(stage_color(&executing.id));
+        footer.push_str(&format!("{} Running:  {colored_name}\n", "▶".cyan().bold()));
     }
 
     // Find next queued stage
     if let Some(queued) = stages.iter().find(|s| s.status == StageStatus::Queued) {
+        let colored_name = queued.name.color(stage_color(&queued.id));
         let incomplete_deps: Vec<&str> = queued
             .dependencies
             .iter()
@@ -54,12 +57,11 @@ fn render_footer(stages: &[Stage], stage_map: &HashMap<&str, &Stage>) -> String 
             .collect();
 
         if incomplete_deps.is_empty() {
-            footer.push_str(&format!("{} Next:     {}\n", "○".white().dimmed(), queued.name));
+            footer.push_str(&format!("{} Next:     {colored_name}\n", "○".white().dimmed()));
         } else {
             footer.push_str(&format!(
-                "{} Next:     {} (blocked by: {})\n",
+                "{} Next:     {colored_name} (blocked by: {})\n",
                 "○".white().dimmed(),
-                queued.name,
                 incomplete_deps.join(", ")
             ));
         }
@@ -94,7 +96,8 @@ pub fn build_tree_display(stages: &[Stage]) -> String {
         let connector = compute_connector(index, total_stages);
         let indicator = status_indicator(&stage.status);
         let deps = format_dep_annotation(&stage.dependencies, max_name_width, stage.name.len());
-        output.push_str(&format!("{connector}{indicator} {}{deps}\n", stage.name));
+        let colored_name = stage.name.color(stage_color(&stage.id));
+        output.push_str(&format!("{connector}{indicator} {colored_name}{deps}\n"));
     }
 
     output.push_str(&"─".repeat(50));

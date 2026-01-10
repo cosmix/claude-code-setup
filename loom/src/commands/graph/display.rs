@@ -6,8 +6,11 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::Result;
 
+use colored::Colorize;
+
 use crate::models::stage::Stage;
 
+use super::colors::stage_color;
 use super::indicators::{status_indicator, status_priority};
 use super::levels::compute_stage_levels;
 
@@ -74,9 +77,10 @@ pub fn build_graph_display(stages: &[Stage]) -> Result<String> {
         for stage in stages_in_level {
             let indicator = status_indicator(&stage.status);
             let deps = format_dependencies(stage, &stage_map);
+            let colored_name = stage.name.color(stage_color(&stage.id));
             output.push_str(&format!(
-                "  {indicator} {} ({}){deps}\n",
-                stage.name, stage.id
+                "  {indicator} {colored_name} ({}){deps}\n",
+                stage.id
             ));
         }
 

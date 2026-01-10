@@ -7,7 +7,9 @@
 //! - `display`: Graph building and visual formatting
 //! - `indicators`: Status indicators and priority ordering
 //! - `levels`: Topological level computation
+//! - `colors`: Stage color assignment for visual differentiation
 
+mod colors;
 mod display;
 mod indicators;
 mod levels;
@@ -22,6 +24,7 @@ use colored::Colorize;
 use crate::verify::transitions::list_all_stages;
 
 // Re-export the public API
+pub use colors::stage_color;
 pub use display::build_graph_display;
 pub use indicators::{status_indicator, status_priority};
 pub use levels::compute_stage_levels;
