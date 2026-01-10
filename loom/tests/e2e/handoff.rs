@@ -180,7 +180,6 @@ fn test_handoff_file_naming() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_marks_context_exhausted() {
     let mut session = Session::new();
     session.context_limit = DEFAULT_CONTEXT_LIMIT;
@@ -196,7 +195,9 @@ fn test_session_marks_context_exhausted() {
     assert!(session.is_context_exhausted());
 
     // Manually mark session as context exhausted
-    session.mark_context_exhausted();
+    session
+        .try_mark_context_exhausted()
+        .expect("Should transition to ContextExhausted");
     assert_eq!(session.status, SessionStatus::ContextExhausted);
 }
 
@@ -364,7 +365,6 @@ fn test_multiple_stages_different_handoffs() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_context_exhausted_triggers_stage_needs_handoff() {
     let mut session = Session::new();
     let mut stage = Stage::new("test-stage".to_string(), None);
@@ -379,9 +379,13 @@ fn test_context_exhausted_triggers_stage_needs_handoff() {
 
     assert!(session.is_context_exhausted());
 
-    // Update statuses
-    session.mark_context_exhausted();
-    stage.mark_needs_handoff();
+    // Update statuses using validated transitions
+    session
+        .try_mark_context_exhausted()
+        .expect("Should transition to ContextExhausted");
+    stage
+        .try_mark_needs_handoff()
+        .expect("Should transition to NeedsHandoff");
 
     assert_eq!(session.status, SessionStatus::ContextExhausted);
     assert_eq!(stage.status, StageStatus::NeedsHandoff);

@@ -266,12 +266,6 @@ pub fn check_active_session(stage_id: &str, work_dir: &Path, force: bool) -> Res
     Ok(())
 }
 
-/// Legacy alias for backward compatibility
-#[deprecated(since = "0.1.0", note = "Use check_active_session instead")]
-pub fn check_active_tmux_session(stage_id: &str, work_dir: &Path, force: bool) -> Result<()> {
-    check_active_session(stage_id, work_dir, force)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

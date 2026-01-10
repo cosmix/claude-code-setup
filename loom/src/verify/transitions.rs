@@ -53,49 +53,6 @@ pub fn transition_stage(stage_id: &str, new_status: StageStatus, work_dir: &Path
     Ok(stage)
 }
 
-/// Transition a stage to a new status without validation (deprecated)
-///
-/// This function performs transitions without validating the state machine.
-/// Use `transition_stage` for validated transitions.
-///
-/// # Arguments
-/// * `stage_id` - The ID of the stage to transition
-/// * `new_status` - The new status to assign
-/// * `work_dir` - Path to the `.work` directory
-///
-/// # Returns
-/// The updated stage
-#[deprecated(
-    since = "0.2.0",
-    note = "Use transition_stage for validated transitions"
-)]
-#[allow(dead_code)]
-pub fn transition_stage_unchecked(
-    stage_id: &str,
-    new_status: StageStatus,
-    work_dir: &Path,
-) -> Result<Stage> {
-    let mut stage = load_stage(stage_id, work_dir)
-        .with_context(|| format!("Failed to load stage: {stage_id}"))?;
-
-    #[allow(deprecated)]
-    match new_status {
-        StageStatus::Queued => stage.mark_queued(),
-        StageStatus::Executing => stage.mark_executing(),
-        StageStatus::WaitingForInput => stage.mark_waiting_for_input(),
-        StageStatus::NeedsHandoff => stage.mark_needs_handoff(),
-        StageStatus::Completed => stage.complete(None),
-        StageStatus::WaitingForDeps | StageStatus::Blocked => {
-            stage.status = new_status;
-            stage.updated_at = chrono::Utc::now();
-        }
-    }
-
-    save_stage(&stage, work_dir).with_context(|| format!("Failed to save stage: {stage_id}"))?;
-
-    Ok(stage)
-}
-
 /// Trigger dependent stages when a stage is completed
 ///
 /// Finds all stages that depend on `completed_stage_id` and checks if all

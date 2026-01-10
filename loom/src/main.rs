@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use loom::commands::{
     attach, clean, graph, init, merge, resume, run, self_update, sessions, stage, status, stop,
-    verify, worktree_cmd,
+    worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use loom::validation::{clap_description_validator, clap_id_validator};
@@ -64,17 +64,6 @@ enum Commands {
 
     /// Show dashboard with context health
     Status,
-
-    /// Verify a stage is complete
-    Verify {
-        /// Stage ID to verify (alphanumeric, dash, underscore only; max 128 characters)
-        #[arg(value_parser = clap_id_validator)]
-        stage_id: String,
-
-        /// Skip acceptance criteria checks and go straight to approval
-        #[arg(long, short)]
-        force: bool,
-    },
 
     /// Resume work on a stage
     Resume {
@@ -328,7 +317,6 @@ fn main() -> Result<()> {
             }
         }
         Commands::Status => status::execute(),
-        Commands::Verify { stage_id, force } => verify::execute(stage_id, force),
         Commands::Resume { stage_id } => resume::execute(stage_id),
         Commands::Merge { stage_id, force } => merge::execute(stage_id, force),
         Commands::Attach { command, target } => match (command, target) {

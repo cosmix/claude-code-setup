@@ -325,55 +325,6 @@ impl Stage {
         self.try_transition(StageStatus::Blocked)
     }
 
-    // Deprecated: Use try_complete for validated transitions
-    #[deprecated(since = "0.2.0", note = "Use try_complete for validated transitions")]
-    pub fn complete(&mut self, reason: Option<String>) {
-        self.status = StageStatus::Completed;
-        self.completed_at = Some(Utc::now());
-        self.close_reason = reason;
-        self.updated_at = Utc::now();
-    }
-
-    // Deprecated: Use try_mark_needs_handoff for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_needs_handoff for validated transitions"
-    )]
-    pub fn mark_needs_handoff(&mut self) {
-        self.status = StageStatus::NeedsHandoff;
-        self.updated_at = Utc::now();
-    }
-
-    // Deprecated: Use try_mark_queued for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_queued for validated transitions"
-    )]
-    pub fn mark_queued(&mut self) {
-        self.status = StageStatus::Queued;
-        self.updated_at = Utc::now();
-    }
-
-    // Deprecated: Use try_mark_executing for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_executing for validated transitions"
-    )]
-    pub fn mark_executing(&mut self) {
-        self.status = StageStatus::Executing;
-        self.updated_at = Utc::now();
-    }
-
-    // Deprecated: Use try_mark_waiting_for_input for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_waiting_for_input for validated transitions"
-    )]
-    pub fn mark_waiting_for_input(&mut self) {
-        self.status = StageStatus::WaitingForInput;
-        self.updated_at = Utc::now();
-    }
-
     pub fn hold(&mut self) {
         if !self.held {
             self.held = true;

@@ -67,44 +67,52 @@ fn test_session_release_from_stage() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_status_transitions() {
     let mut session = Session::new();
     assert_eq!(session.status, SessionStatus::Spawning);
 
-    session.mark_running();
+    session.try_mark_running().expect("Spawning -> Running");
     assert_eq!(session.status, SessionStatus::Running);
 
-    session.mark_paused();
+    session.try_mark_paused().expect("Running -> Paused");
     assert_eq!(session.status, SessionStatus::Paused);
 
-    session.mark_completed();
+    // Paused -> Running (resume), then Running -> Completed
+    session.try_mark_running().expect("Paused -> Running");
+    session.try_mark_completed().expect("Running -> Completed");
     assert_eq!(session.status, SessionStatus::Completed);
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_all_status_transitions() {
+    // Test pause/resume and crash workflow
     let mut session = Session::new();
 
-    session.mark_running();
+    session.try_mark_running().expect("Spawning -> Running");
     assert_eq!(session.status, SessionStatus::Running);
 
-    session.mark_paused();
+    session.try_mark_paused().expect("Running -> Paused");
     assert_eq!(session.status, SessionStatus::Paused);
 
-    session.mark_running();
+    session.try_mark_running().expect("Paused -> Running");
     assert_eq!(session.status, SessionStatus::Running);
 
-    session.mark_crashed();
+    session.try_mark_crashed().expect("Running -> Crashed");
     assert_eq!(session.status, SessionStatus::Crashed);
 
+    // Crashed is terminal - verify no transitions allowed
+    assert!(session.try_mark_running().is_err());
+
+    // Test context exhausted workflow
     let mut session2 = Session::new();
-    session2.mark_context_exhausted();
+    session2.try_mark_running().expect("Spawning -> Running");
+    session2
+        .try_mark_context_exhausted()
+        .expect("Running -> ContextExhausted");
     assert_eq!(session2.status, SessionStatus::ContextExhausted);
 
-    session2.mark_completed();
-    assert_eq!(session2.status, SessionStatus::Completed);
+    // ContextExhausted is terminal - verify no transitions allowed
+    assert!(session2.try_mark_completed().is_err());
 }
 
 #[test]
@@ -205,7 +213,6 @@ fn test_session_pid_assignment() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_serialization_roundtrip() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let file_path = temp_dir.path().join("sessions").join("test-session.json");
@@ -215,7 +222,7 @@ fn test_session_serialization_roundtrip() {
     session.set_tmux_session("loom-test-123".to_string());
     session.set_worktree_path(PathBuf::from("/tmp/test-worktree"));
     session.set_pid(54321);
-    session.mark_running();
+    session.try_mark_running().expect("Spawning -> Running");
     session.update_context(125_000);
 
     std::fs::create_dir_all(file_path.parent().unwrap()).expect("Should create sessions directory");
@@ -239,12 +246,11 @@ fn test_session_serialization_roundtrip() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_clone() {
     let mut session = Session::new();
     session.assign_to_stage("stage-1".to_string());
     session.set_tmux_session("loom-test".to_string());
-    session.mark_running();
+    session.try_mark_running().expect("Spawning -> Running");
 
     let cloned = session.clone();
 
@@ -255,7 +261,6 @@ fn test_session_clone() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_multiple_sessions_independent() {
     let mut session1 = Session::new();
     let mut session2 = Session::new();
@@ -265,9 +270,11 @@ fn test_multiple_sessions_independent() {
     session2.assign_to_stage("stage-2".to_string());
     session3.assign_to_stage("stage-3".to_string());
 
-    session1.mark_running();
-    session2.mark_paused();
-    session3.mark_completed();
+    session1.try_mark_running().expect("s1: Spawning -> Running");
+    session2.try_mark_running().expect("s2: Spawning -> Running");
+    session2.try_mark_paused().expect("s2: Running -> Paused");
+    session3.try_mark_running().expect("s3: Spawning -> Running");
+    session3.try_mark_completed().expect("s3: Running -> Completed");
 
     session1.update_context(50_000);
     session2.update_context(100_000);
@@ -315,7 +322,6 @@ fn test_session_stage_reassignment() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_session_complex_lifecycle() {
     let mut session = Session::new();
 
@@ -326,7 +332,7 @@ fn test_session_complex_lifecycle() {
     session.set_worktree_path(PathBuf::from("/tmp/worktree-1"));
     session.set_pid(99999);
 
-    session.mark_running();
+    session.try_mark_running().expect("Spawning -> Running");
     assert_eq!(session.status, SessionStatus::Running);
 
     session.update_context(50_000);
@@ -337,7 +343,9 @@ fn test_session_complex_lifecycle() {
     assert_eq!(session.context_health(), 75.0);
     assert!(session.is_context_exhausted());
 
-    session.mark_context_exhausted();
+    session
+        .try_mark_context_exhausted()
+        .expect("Running -> ContextExhausted");
     assert_eq!(session.status, SessionStatus::ContextExhausted);
 
     session.release_from_stage();

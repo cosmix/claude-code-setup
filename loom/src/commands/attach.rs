@@ -237,9 +237,11 @@ pub fn execute_logs() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_execute_logs_daemon_not_running() {
         // Create a temporary directory for testing
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

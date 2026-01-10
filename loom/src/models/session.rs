@@ -303,51 +303,6 @@ impl Session {
     pub fn try_mark_context_exhausted(&mut self) -> Result<()> {
         self.try_transition(SessionStatus::ContextExhausted)
     }
-
-    // Deprecated: Use try_mark_running for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_running for validated transitions"
-    )]
-    pub fn mark_running(&mut self) {
-        self.status = SessionStatus::Running;
-    }
-
-    // Deprecated: Use try_mark_paused for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_paused for validated transitions"
-    )]
-    pub fn mark_paused(&mut self) {
-        self.status = SessionStatus::Paused;
-    }
-
-    // Deprecated: Use try_mark_completed for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_completed for validated transitions"
-    )]
-    pub fn mark_completed(&mut self) {
-        self.status = SessionStatus::Completed;
-    }
-
-    // Deprecated: Use try_mark_crashed for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_crashed for validated transitions"
-    )]
-    pub fn mark_crashed(&mut self) {
-        self.status = SessionStatus::Crashed;
-    }
-
-    // Deprecated: Use try_mark_context_exhausted for validated transitions
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use try_mark_context_exhausted for validated transitions"
-    )]
-    pub fn mark_context_exhausted(&mut self) {
-        self.status = SessionStatus::ContextExhausted;
-    }
 }
 
 impl Default for Session {

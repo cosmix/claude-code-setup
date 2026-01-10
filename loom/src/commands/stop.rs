@@ -24,10 +24,12 @@ pub fn execute() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::fs;
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_stop_when_daemon_not_running() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let test_dir = temp_dir.path();
@@ -51,6 +53,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_stop_succeeds_when_work_dir_missing() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let test_dir = temp_dir.path();
