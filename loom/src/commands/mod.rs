@@ -1,5 +1,6 @@
 pub mod attach;
 pub mod clean;
+pub mod diagnose;
 pub mod graph;
 pub mod init;
 pub mod merge;

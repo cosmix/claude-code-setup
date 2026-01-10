@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use loom::commands::{
-    attach, clean, graph, init, merge, resume, run, self_update, sessions, stage, status, stop,
-    worktree_cmd,
+    attach, clean, diagnose, graph, init, merge, resume, run, self_update, sessions, stage, status,
+    stop, worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use loom::validation::{clap_description_validator, clap_id_validator};
@@ -146,6 +146,13 @@ enum Commands {
     /// Stop the running daemon
     Stop,
 
+    /// Diagnose a failed stage with Claude Code
+    Diagnose {
+        /// Stage ID to diagnose (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+    },
+
     /// Generate shell completion script
     Completions {
         /// Shell to generate completions for (bash, zsh, fish)
@@ -264,6 +271,28 @@ enum StageCommands {
         #[arg(value_parser = clap_id_validator)]
         stage_id: String,
     },
+
+    /// Skip a stage (dependents will remain blocked)
+    Skip {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+
+        /// Reason for skipping (max 500 characters)
+        #[arg(short, long, value_parser = clap_description_validator)]
+        reason: Option<String>,
+    },
+
+    /// Retry a blocked stage
+    Retry {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+
+        /// Ignore retry limit and reset retry count
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -362,6 +391,8 @@ fn main() -> Result<()> {
             StageCommands::Resume { stage_id } => stage::resume_from_waiting(stage_id),
             StageCommands::Hold { stage_id } => stage::hold(stage_id),
             StageCommands::Release { stage_id } => stage::release(stage_id),
+            StageCommands::Skip { stage_id, reason } => stage::skip(stage_id, reason),
+            StageCommands::Retry { stage_id, force } => stage::retry(stage_id, force),
         },
         Commands::SelfUpdate => self_update::execute(),
         Commands::Clean {
@@ -371,6 +402,7 @@ fn main() -> Result<()> {
             state,
         } => clean::execute(all, worktrees, sessions, state),
         Commands::Stop => stop::execute(),
+        Commands::Diagnose { stage_id } => diagnose::execute(&stage_id),
         Commands::Completions { shell } => {
             let shell = Shell::from_str(&shell)?;
             let mut cmd = Cli::command();
