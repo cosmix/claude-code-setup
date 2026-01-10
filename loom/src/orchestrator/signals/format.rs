@@ -31,13 +31,20 @@ pub fn format_signal_content(
 
     // Add reminder to follow CLAUDE.md rules
     content.push_str("## Execution Rules\n\n");
-    content.push_str("Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules (both are symlinked into this worktree). Key reminders:\n");
+    content.push_str("Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules (both are symlinked into this worktree). Key reminders:\n\n");
+    content.push_str("**Delegation & Efficiency:**\n");
     content.push_str(
-        "- **Delegate work to subagents** - use Task tool with appropriate agent types\n",
+        "- **Use PARALLEL subagents** - spawn multiple appropriate subagents concurrently when tasks are independent\n",
     );
-    content.push_str("- **Use TodoWrite** to plan and track progress\n");
+    content.push_str("- **Use Skills** - invoke relevant skills wherever applicable\n");
+    content.push_str("- **Use TodoWrite** to plan and track progress\n\n");
+    content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n\n");
+    content.push_str("**Git Staging (CRITICAL):**\n");
+    content.push_str("- **ALWAYS use `git add <specific-files>`** - stage only files you modified\n");
+    content.push_str("- **NEVER use `git add -A` or `git add .`** - these include `.work` which must NOT be committed\n");
+    content.push_str("- `.work` is a symlink to shared orchestration state - never stage it\n\n");
 
     content.push_str("## Target\n\n");
     content.push_str(&format!("- **Session**: {}\n", session.id));

@@ -117,9 +117,14 @@ Agents receive **self-contained signals** - no need to read plan files from main
 **BEFORE ending ANY loom worktree session:**
 
 ```bash
-git add -A && git commit -m "feat: <description>"
+git add <specific-files-or-directories> && git commit -m "feat: <description>"
 loom stage complete <stage-id>
 ````
+
+**⚠️ NEVER STAGE `.work`:** The `.work` directory is a symlink to shared orchestration state. NEVER include it in commits:
+- **ALWAYS use `git add <specific-files-or-directories>`** - stage only the files you modified
+- **NEVER use `git add -A` or `git add .`** - these will include `.work`
+- If you accidentally staged `.work`, run: `git reset HEAD .work`
 
 **HOOK BLOCKS EXIT WHEN:**
 
