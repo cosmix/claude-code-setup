@@ -42,6 +42,23 @@ pub struct MergeSignalContent {
     pub conflicting_files: Vec<String>,
 }
 
+/// Content for a base branch conflict resolution signal
+///
+/// This signal is generated when merging multiple dependency branches into a base branch
+/// (loom/_base/{stage_id}) fails due to conflicts. The session runs in the main repository
+/// to resolve conflicts before the stage can proceed.
+#[derive(Debug, Clone)]
+pub struct BaseConflictSignalContent {
+    pub session_id: String,
+    pub stage_id: String,
+    /// The dependency branches being merged
+    pub source_branches: Vec<String>,
+    /// The target base branch (loom/_base/{stage_id})
+    pub target_branch: String,
+    /// Files with merge conflicts
+    pub conflicting_files: Vec<String>,
+}
+
 #[derive(Debug, Default)]
 pub struct SignalUpdates {
     pub add_tasks: Option<Vec<String>>,

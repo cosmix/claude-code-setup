@@ -85,6 +85,27 @@ pub trait TerminalBackend: Send + Sync {
         repo_root: &Path,
     ) -> Result<Session>;
 
+    /// Spawn a Claude Code session for base branch conflict resolution
+    ///
+    /// When a stage has multiple dependencies, loom creates a base branch by merging
+    /// all dependency branches. If this merge fails due to conflicts, this method
+    /// spawns a session to resolve them. The session runs in the main repository.
+    ///
+    /// After resolution, the user runs `loom retry {stage_id}` to continue.
+    ///
+    /// # Arguments
+    /// * `stage` - The stage whose base branch creation failed
+    /// * `session` - A base conflict session (created with `Session::new_base_conflict`)
+    /// * `signal_path` - Path to the base conflict signal file
+    /// * `repo_root` - Path to the main repository (not a worktree)
+    fn spawn_base_conflict_session(
+        &self,
+        stage: &Stage,
+        session: Session,
+        signal_path: &Path,
+        repo_root: &Path,
+    ) -> Result<Session>;
+
     /// Kill a running session
     fn kill_session(&self, session: &Session) -> Result<()>;
 
