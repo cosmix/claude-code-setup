@@ -422,4 +422,72 @@ loom:
             .to_string()
             .contains("Unsupported version"));
     }
+
+    #[test]
+    fn test_extract_yaml_metadata_four_backticks() {
+        // Plans with embedded code examples use 4 backticks for the outer fence
+        let content = r#"
+# Test Plan
+
+Some content with code:
+```rust
+fn example() {}
+```
+
+<!-- loom METADATA -->
+
+````yaml
+loom:
+  version: 1
+  stages:
+    - id: stage-1
+      name: "Stage with code"
+      description: |
+        Example code:
+        ```rust
+        fn inner() {}
+        ```
+      dependencies: []
+````
+
+<!-- END loom METADATA -->
+"#;
+
+        let yaml = extract_yaml_metadata(content).unwrap();
+        assert!(yaml.contains("loom:"));
+        assert!(yaml.contains("stage-1"));
+        assert!(yaml.contains("```rust"));  // Inner code block preserved
+    }
+
+    #[test]
+    fn test_find_yaml_fence() {
+        // 3 backticks
+        let content = "```yaml\nfoo";
+        let (pos, len) = find_yaml_fence(content).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(len, 3);
+
+        // 4 backticks
+        let content = "````yaml\nfoo";
+        let (pos, len) = find_yaml_fence(content).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(len, 4);
+
+        // 5 backticks
+        let content = "`````yaml\nfoo";
+        let (pos, len) = find_yaml_fence(content).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(len, 5);
+
+        // With leading content
+        let content = "some text\n````yaml\nfoo";
+        let (pos, len) = find_yaml_fence(content).unwrap();
+        assert_eq!(pos, 10);
+        assert_eq!(len, 4);
+
+        // Skip non-yaml fences
+        let content = "```rust\ncode\n```\n````yaml\nfoo";
+        let (_pos, len) = find_yaml_fence(content).unwrap();
+        assert_eq!(len, 4);
+    }
 }
