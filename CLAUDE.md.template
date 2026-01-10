@@ -70,12 +70,19 @@ loom:
   stages:
     - id: stage-id           # Required: unique kebab-case identifier
       name: "Stage Name"     # Required: human-readable name
+      description: |         # IMPORTANT: Full task description for the agent
+        Detailed explanation of what this stage must accomplish.
+        - Subtask one with specific requirements
+        - Subtask two with file references
+        - Subtask three with acceptance notes
       dependencies: []       # Required: array of stage IDs (use [] if none)
       parallel_group: "grp"  # Optional: group stages that run concurrently
-      acceptance:            # Optional: commands that must pass
+      acceptance:            # Required: commands that verify completion
         - "cargo test"
-        - "cargo clippy"
-      files:                 # Optional: glob patterns for owned files
+        - "cargo clippy -- -D warnings"
+      setup:                 # Optional: commands run before session starts
+        - "cargo fetch"
+      files:                 # Optional: glob patterns for target files
         - "src/**/*.rs"
 ```
 
@@ -83,6 +90,14 @@ loom:
 ```
 
 Without the `<!-- loom METADATA -->` markers, `loom init` cannot parse the plan.
+
+**IMPORTANT:** The stage definition IS the task specification. Signals embed ALL stage data:
+- `description` → Assignment section (bullet points become Immediate Tasks)
+- `acceptance` → Acceptance Criteria checklist
+- `files` → Files to Modify section
+- Plus: plan overview, dependency status, handoff context, codebase structure
+
+Agents receive **self-contained signals** - no need to read plan files from main repo.
 
 ### 10. DEPENDENCIES
 

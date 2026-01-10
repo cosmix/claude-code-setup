@@ -33,10 +33,14 @@ pub(super) trait Persistence {
                 .get_node(stage_id)
                 .ok_or_else(|| anyhow::anyhow!("Stage not found in graph: {stage_id}"))?;
 
-            let mut stage = Stage::new(node.name.clone(), None);
+            let mut stage = Stage::new(node.name.clone(), node.description.clone());
             stage.id = stage_id.to_string();
             stage.dependencies = node.dependencies.clone();
             stage.parallel_group = node.parallel_group.clone();
+            stage.acceptance = node.acceptance.clone();
+            stage.setup = node.setup.clone();
+            stage.files = node.files.clone();
+            stage.auto_merge = node.auto_merge;
 
             return Ok(stage);
         }

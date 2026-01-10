@@ -25,6 +25,21 @@ pub struct StageNode {
     pub dependencies: Vec<String>,
     pub parallel_group: Option<String>,
     pub status: NodeStatus,
+    /// Stage description - provides task context for the agent
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Acceptance criteria - commands to verify stage completion
+    #[serde(default)]
+    pub acceptance: Vec<String>,
+    /// Setup commands to run before stage execution
+    #[serde(default)]
+    pub setup: Vec<String>,
+    /// Files to modify in this stage
+    #[serde(default)]
+    pub files: Vec<String>,
+    /// Whether to auto-merge after completion
+    #[serde(default)]
+    pub auto_merge: Option<bool>,
 }
 
 /// Status of a node in the execution graph.
@@ -78,6 +93,11 @@ impl ExecutionGraph {
                 dependencies: stage.dependencies.clone(),
                 parallel_group: stage.parallel_group.clone(),
                 status: NodeStatus::WaitingForDeps,
+                description: stage.description.clone(),
+                acceptance: stage.acceptance.clone(),
+                setup: stage.setup.clone(),
+                files: stage.files.clone(),
+                auto_merge: stage.auto_merge,
             };
             nodes.insert(stage.id.clone(), node);
 
