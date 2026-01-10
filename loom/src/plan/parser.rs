@@ -90,19 +90,49 @@ fn extract_yaml_metadata(content: &str) -> Result<String> {
     let metadata_section = &content[start_pos..end_pos];
 
     // Find YAML code block within metadata section
-    let yaml_start = metadata_section
-        .find("```yaml")
+    // Support variable-length backtick fences (```, ````, etc.)
+    let (yaml_start, fence_len) = find_yaml_fence(metadata_section)
         .ok_or_else(|| anyhow::anyhow!("No ```yaml block in metadata"))?;
 
-    let yaml_content_start = yaml_start + "```yaml".len();
+    let yaml_content_start = yaml_start + fence_len + "yaml".len();
 
+    // Find the closing fence with the same number of backticks
+    let closing_fence = "`".repeat(fence_len);
     let yaml_end = metadata_section[yaml_content_start..]
-        .find("```")
-        .ok_or_else(|| anyhow::anyhow!("No closing ``` for YAML block"))?;
+        .find(&closing_fence)
+        .ok_or_else(|| anyhow::anyhow!("No closing {} for YAML block", closing_fence))?;
 
     let yaml_content = &metadata_section[yaml_content_start..yaml_content_start + yaml_end];
 
     Ok(yaml_content.trim().to_string())
+}
+
+/// Find the start of a YAML code fence and return (position, fence_length)
+/// Supports ```, ````, ````` etc.
+fn find_yaml_fence(content: &str) -> Option<(usize, usize)> {
+    let mut pos = 0;
+    while pos < content.len() {
+        if let Some(backtick_start) = content[pos..].find('`') {
+            let abs_start = pos + backtick_start;
+            // Count consecutive backticks
+            let fence_len = content[abs_start..]
+                .chars()
+                .take_while(|&c| c == '`')
+                .count();
+
+            if fence_len >= 3 {
+                // Check if followed by "yaml"
+                let after_fence = abs_start + fence_len;
+                if content[after_fence..].starts_with("yaml") {
+                    return Some((abs_start, fence_len));
+                }
+            }
+            pos = abs_start + fence_len.max(1);
+        } else {
+            break;
+        }
+    }
+    None
 }
 
 #[cfg(test)]
