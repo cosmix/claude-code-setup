@@ -7,7 +7,7 @@ impl StageStatus {
     ///
     /// Valid transitions:
     /// - `WaitingForDeps` -> `Queued` | `Skipped` (when dependencies satisfied or user skips)
-    /// - `Queued` -> `Executing` | `Skipped` (when session spawned or user skips)
+    /// - `Queued` -> `Executing` | `Skipped` | `Blocked` (when session spawns, user skips, or pre-execution failure)
     /// - `Executing` -> `Completed` | `Blocked` | `NeedsHandoff` | `WaitingForInput`
     /// - `Blocked` -> `Queued` | `Skipped` (when unblocked or user skips)
     /// - `NeedsHandoff` -> `Queued` (when resumed)
@@ -31,7 +31,10 @@ impl StageStatus {
                 matches!(new_status, StageStatus::Queued | StageStatus::Skipped)
             }
             StageStatus::Queued => {
-                matches!(new_status, StageStatus::Executing | StageStatus::Skipped)
+                matches!(
+                    new_status,
+                    StageStatus::Executing | StageStatus::Skipped | StageStatus::Blocked
+                )
             }
             StageStatus::Executing => matches!(
                 new_status,
@@ -69,7 +72,9 @@ impl StageStatus {
     pub fn valid_transitions(&self) -> Vec<StageStatus> {
         match self {
             StageStatus::WaitingForDeps => vec![StageStatus::Queued, StageStatus::Skipped],
-            StageStatus::Queued => vec![StageStatus::Executing, StageStatus::Skipped],
+            StageStatus::Queued => {
+                vec![StageStatus::Executing, StageStatus::Skipped, StageStatus::Blocked]
+            }
             StageStatus::Executing => vec![
                 StageStatus::Completed,
                 StageStatus::Blocked,

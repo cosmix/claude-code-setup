@@ -36,11 +36,19 @@ fn test_queued_can_transition_to_executing() {
 }
 
 #[test]
+fn test_queued_can_transition_to_blocked() {
+    // Queued stages can be blocked due to pre-execution failures
+    // (e.g., merge conflicts during base branch resolution)
+    let status = StageStatus::Queued;
+    assert!(status.can_transition_to(&StageStatus::Blocked));
+}
+
+#[test]
 fn test_queued_cannot_transition_to_other_states() {
     let status = StageStatus::Queued;
     assert!(!status.can_transition_to(&StageStatus::WaitingForDeps));
     assert!(!status.can_transition_to(&StageStatus::Completed));
-    assert!(!status.can_transition_to(&StageStatus::Blocked));
+    // Note: Queued CAN transition to Blocked (pre-execution failure, e.g., merge conflict)
     assert!(!status.can_transition_to(&StageStatus::NeedsHandoff));
 }
 
@@ -352,6 +360,29 @@ fn test_waiting_for_input_workflow() {
 }
 
 #[test]
+fn test_pre_execution_blocked_workflow() {
+    // Scenario: Stage is queued but base branch resolution fails
+    // (e.g., merge conflict before session even starts)
+    let mut stage = create_test_stage(StageStatus::WaitingForDeps);
+
+    // WaitingForDeps -> Queued (dependencies satisfied)
+    assert!(stage.try_mark_queued().is_ok());
+    assert_eq!(stage.status, StageStatus::Queued);
+
+    // Queued -> Blocked (base resolution failed with merge conflict)
+    assert!(stage.try_mark_blocked().is_ok());
+    assert_eq!(stage.status, StageStatus::Blocked);
+
+    // Blocked -> Queued (after user resolves the conflict)
+    assert!(stage.try_mark_queued().is_ok());
+    assert_eq!(stage.status, StageStatus::Queued);
+
+    // Queued -> Executing (retry succeeds)
+    assert!(stage.try_mark_executing().is_ok());
+    assert_eq!(stage.status, StageStatus::Executing);
+}
+
+#[test]
 fn test_display_implementation() {
     assert_eq!(format!("{}", StageStatus::WaitingForDeps), "WaitingForDeps");
     assert_eq!(format!("{}", StageStatus::Queued), "Queued");
@@ -463,6 +494,16 @@ fn test_valid_transitions_includes_skipped() {
 
     let transitions = StageStatus::Executing.valid_transitions();
     assert!(!transitions.contains(&StageStatus::Skipped));
+}
+
+#[test]
+fn test_valid_transitions_queued_includes_blocked() {
+    // Queued stages can be blocked due to pre-execution failures
+    let transitions = StageStatus::Queued.valid_transitions();
+    assert!(transitions.contains(&StageStatus::Blocked));
+    assert!(transitions.contains(&StageStatus::Executing));
+    assert!(transitions.contains(&StageStatus::Skipped));
+    assert_eq!(transitions.len(), 3);
 }
 
 #[test]

@@ -75,7 +75,7 @@ pub struct Stage {
 ///
 /// State machine transitions:
 /// - `WaitingForDeps` -> `Queued` (when all dependencies complete)
-/// - `Queued` -> `Executing` (when session spawns)
+/// - `Queued` -> `Executing` | `Blocked` (when session spawns, or pre-execution failure)
 /// - `Executing` -> `Completed` | `Blocked` | `NeedsHandoff` | `WaitingForInput`
 /// - `WaitingForInput` -> `Executing` (when input provided)
 /// - `Blocked` -> `Queued` (when unblocked)
