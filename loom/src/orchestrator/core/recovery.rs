@@ -4,7 +4,8 @@ use anyhow::Result;
 use std::io::{self, Write};
 
 use crate::models::session::Session;
-use crate::models::stage::StageStatus;
+use crate::models::stage::{Stage, StageStatus};
+use crate::orchestrator::retry::{calculate_backoff, is_backoff_elapsed, should_auto_retry};
 use crate::parser::frontmatter::extract_yaml_frontmatter;
 use crate::plan::graph::NodeStatus;
 
@@ -40,6 +41,33 @@ pub(super) trait Recovery: Persistence {
     fn print_status_update(&self);
 }
 
+/// Check if a blocked stage is eligible for automatic retry.
+///
+/// A stage is eligible for retry if:
+/// - It has failure_info with a retryable failure_type (SessionCrash or Timeout)
+/// - retry_count < max_retries (default 3)
+/// - Sufficient time has elapsed since the last failure (exponential backoff)
+///
+/// # Arguments
+/// * `stage` - The stage to check
+///
+/// # Returns
+/// `true` if the stage should be automatically retried, `false` otherwise
+fn check_retry_eligibility(stage: &Stage) -> bool {
+    let Some(ref info) = stage.failure_info else {
+        return false;
+    };
+
+    let max = stage.max_retries.unwrap_or(3);
+    if !should_auto_retry(&info.failure_type, stage.retry_count, max) {
+        return false;
+    }
+
+    // Calculate backoff: base 30s, max 300s (5 minutes)
+    let backoff = calculate_backoff(stage.retry_count, 30, 300);
+    is_backoff_elapsed(stage.last_failure_at, backoff)
+}
+
 impl Recovery for Orchestrator {
     fn sync_graph_with_stage_files(&mut self) -> Result<()> {
         let stages_dir = self.config.work_dir.join("stages");
@@ -72,7 +100,7 @@ impl Recovery for Orchestrator {
             // Load the stage and sync status
             // NOTE: We use stage.id (from YAML frontmatter) for graph operations,
             // not stage_id (from filename), because the graph is built using frontmatter IDs.
-            if let Ok(stage) = self.load_stage(stage_id) {
+            if let Ok(mut stage) = self.load_stage(stage_id) {
                 match stage.status {
                     StageStatus::Completed => {
                         // Mark as completed in graph (ignore errors for stages not in graph)
@@ -88,8 +116,28 @@ impl Recovery for Orchestrator {
                         let _ = self.graph.mark_executing(&stage.id);
                     }
                     StageStatus::Blocked => {
-                        // Mark as blocked in graph
-                        let _ = self.graph.mark_blocked(&stage.id);
+                        // Check if the blocked stage is eligible for automatic retry
+                        if check_retry_eligibility(&stage) {
+                            // Re-queue the stage for retry
+                            if stage.try_mark_queued().is_ok() {
+                                clear_status_line();
+                                eprintln!(
+                                    "Auto-retrying stage '{}' (attempt {})",
+                                    stage.id,
+                                    stage.retry_count + 1
+                                );
+                                // Save the updated stage
+                                if let Err(e) = self.save_stage(&stage) {
+                                    eprintln!("Warning: Failed to save stage during retry: {e}");
+                                } else {
+                                    // Update graph to reflect the queued status
+                                    let _ = self.graph.mark_queued(&stage.id);
+                                }
+                            }
+                        } else {
+                            // Not eligible for retry, just mark as blocked in graph
+                            let _ = self.graph.mark_blocked(&stage.id);
+                        }
                     }
                     _ => {}
                 }
@@ -235,6 +283,7 @@ impl Recovery for Orchestrator {
             match node.status {
                 NodeStatus::Completed => continue,
                 NodeStatus::Blocked => continue,
+                NodeStatus::Skipped => continue,
                 NodeStatus::WaitingForDeps | NodeStatus::Queued | NodeStatus::Executing => {
                     // Need to check the actual stage file for held status
                     if let Ok(stage) = self.load_stage(&node.id) {
@@ -269,6 +318,7 @@ impl Recovery for Orchestrator {
                 NodeStatus::WaitingForDeps | NodeStatus::Queued => pending += 1,
                 NodeStatus::Completed => completed += 1,
                 NodeStatus::Blocked => blocked += 1,
+                NodeStatus::Skipped => completed += 1, // Count skipped as completed for status display
             }
         }
 

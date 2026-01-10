@@ -3,7 +3,9 @@ pub mod auto_merge;
 pub mod continuation;
 pub mod core;
 pub mod monitor;
+pub mod retry;
 pub mod signals;
+pub mod skip;
 pub mod spawner;
 pub mod terminal;
 
