@@ -7,6 +7,7 @@ use crate::commands::graph::build_tree_display;
 use crate::daemon::{read_message, write_message, DaemonServer, Request, Response, StageInfo};
 use crate::fs::work_dir::WorkDir;
 use crate::models::worktree::WorktreeStatus;
+use crate::orchestrator::get_merge_point;
 use crate::utils::{cleanup_terminal, install_terminal_panic_hook};
 use crate::verify::transitions::list_all_stages;
 use anyhow::{Context, Result};
@@ -18,9 +19,10 @@ use diagnostics::{
     check_directory_structure, check_orphaned_tracks, check_parsing_errors, check_stuck_runners,
 };
 use display::{
-    count_files, display_runner_health, display_sessions, display_stages, display_worktrees,
-    load_runners,
+    count_files, display_merge_status, display_runner_health, display_sessions, display_stages,
+    display_worktrees, load_runners,
 };
+use merge_status::build_merge_report;
 use validation::{validate_markdown_files, validate_references};
 
 /// Show the status dashboard with context health
@@ -347,6 +349,18 @@ fn execute_static(work_dir: &WorkDir) -> Result<()> {
 
     // Show worktrees status
     display_worktrees(work_dir)?;
+
+    // Show merge status for completed stages
+    if stage_count > 0 {
+        let work_path = work_dir.root();
+        let stages = list_all_stages(work_path)?;
+        let merge_point = get_merge_point(work_path)?;
+        // Use parent of .work as repo root
+        let repo_root = work_path.parent().unwrap_or(work_path);
+        if let Ok(report) = build_merge_report(&stages, &merge_point, repo_root) {
+            display_merge_status(&report);
+        }
+    }
 
     // Show execution graph if stages exist
     if stage_count > 0 {
