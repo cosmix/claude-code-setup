@@ -39,6 +39,10 @@ pub struct Stage {
     /// Detailed failure information if stage is blocked due to failure
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure_info: Option<FailureInfo>,
+    /// The resolved base branch used for worktree creation
+    /// Format: "main", "loom/dep-id", or "loom/_base/stage-id" (temp merge)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_base: Option<String>,
     /// Base branch used for this stage's worktree
     /// Either inherited from a single dependency (e.g., "loom/dep-stage")
     /// or a merged base branch (e.g., "loom/_base/stage-id")

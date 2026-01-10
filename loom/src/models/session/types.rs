@@ -9,8 +9,10 @@ pub enum SessionType {
     /// Regular stage execution session (default)
     #[default]
     Stage,
-    /// Merge conflict resolution session
+    /// Merge conflict resolution session (post-completion merge to target branch)
     Merge,
+    /// Base branch conflict resolution session (pre-stage multi-dep merge)
+    BaseConflict,
 }
 
 impl std::fmt::Display for SessionType {
@@ -18,6 +20,7 @@ impl std::fmt::Display for SessionType {
         match self {
             SessionType::Stage => write!(f, "stage"),
             SessionType::Merge => write!(f, "merge"),
+            SessionType::BaseConflict => write!(f, "base_conflict"),
         }
     }
 }

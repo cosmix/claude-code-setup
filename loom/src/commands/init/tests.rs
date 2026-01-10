@@ -104,6 +104,7 @@ fn test_serialize_stage_to_markdown_minimal() {
         max_retries: None,
         last_failure_at: None,
         failure_info: None,
+        resolved_base: None,
         base_branch: None,
         base_merged_from: vec![],
     };
@@ -142,6 +143,7 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         max_retries: None,
         last_failure_at: None,
         failure_info: None,
+        resolved_base: None,
         base_branch: None,
         base_merged_from: vec![],
     };
