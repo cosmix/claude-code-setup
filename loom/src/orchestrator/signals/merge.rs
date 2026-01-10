@@ -124,14 +124,21 @@ pub(super) fn format_merge_signal_content(
     ));
     content.push_str("2. Resolve conflicts in the files listed above\n");
     content.push_str("3. Stage resolved files: `git add <resolved-files>`\n");
-    content.push_str("4. Review changes and complete the merge: `git commit`\n\n");
+    content.push_str("4. Review changes and complete the merge: `git commit`\n");
+    content.push_str(&format!(
+        "5. Clean up worktree and branch: `loom worktree remove {}`\n\n",
+        stage.id
+    ));
 
     // Important notes
     content.push_str("## Important\n\n");
     content.push_str("- Do NOT modify code beyond what's needed for conflict resolution\n");
     content.push_str("- Preserve intent from BOTH branches where possible\n");
     content.push_str("- If unclear how to resolve, ask the user for guidance\n");
-    content.push_str("- After completing the merge, loom will automatically detect and clean up\n");
+    content.push_str(&format!(
+        "- **After completing the merge commit**, run `loom worktree remove {}` to clean up\n",
+        stage.id
+    ));
 
     content
 }

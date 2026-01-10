@@ -88,7 +88,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             spawn_merge_resolution_session(&stage_id, &conflicts, &repo_root, &work_dir)?;
         println!("Started merge resolution session: {session_id}");
         println!("\nThe session will help resolve conflicts. Once resolved,");
-        println!("run 'loom merge {stage_id}' again to complete the merge.");
+        println!("run 'loom worktree remove {stage_id}' to clean up worktree and branch.");
         return Ok(());
     }
 
@@ -115,13 +115,12 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             "Worktree for stage '{stage_id}' not found at {}\n\
              Branch '{branch_name}' exists but worktree is missing.\n\
              \n\
-             This may indicate a partial cleanup. To recreate:\n\
+             If the merge was already completed (conflicts resolved), run:\n\
+                loom worktree remove {stage_id}\n\
              \n\
-             1. Restore worktree:\n\
-                git worktree add .worktrees/{stage_id} {branch_name}\n\
-             \n\
-             2. Then retry:\n\
-                loom merge {stage_id}",
+             Otherwise, to recreate the worktree:\n\
+             1. git worktree add .worktrees/{stage_id} {branch_name}\n\
+             2. loom merge {stage_id}",
             worktree_path.display(),
             stage_id = stage_id,
             branch_name = branch_name
@@ -259,6 +258,12 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             remove_worktree(&stage_id, &repo_root, true)?;
             println!("Worktree removed: {}", worktree_path.display());
 
+            // Clean up merged branch
+            let cleaned = cleanup_merged_branches(&target_branch, &repo_root)?;
+            if !cleaned.is_empty() {
+                println!("Cleaned up branches: {}", cleaned.join(", "));
+            }
+
             mark_stage_merged(&stage_id, &work_dir)?;
         }
         MergeResult::Conflict { conflicting_files } => {
@@ -287,7 +292,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             println!("\n{instructions}");
             println!("\nStarted merge resolution session: {session_id}");
             println!("The session will help resolve conflicts.");
-            println!("Once resolved, run 'loom merge {stage_id}' again to complete the merge.");
+            println!("Once resolved, run 'loom worktree remove {stage_id}' to clean up.");
 
             return Ok(());
         }

@@ -190,6 +190,16 @@ enum WorktreeCommands {
 
     /// Clean up unused worktrees
     Clean,
+
+    /// Remove a specific worktree and branch after merge conflict resolution
+    ///
+    /// Use this command after resolving merge conflicts (manually or via Claude Code).
+    /// It cleans up the worktree and branch WITHOUT attempting another merge.
+    Remove {
+        /// Stage ID to clean up (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -370,6 +380,7 @@ fn main() -> Result<()> {
         Commands::Worktree { command } => match command {
             WorktreeCommands::List => worktree_cmd::list(),
             WorktreeCommands::Clean => worktree_cmd::clean(),
+            WorktreeCommands::Remove { stage_id } => worktree_cmd::remove(stage_id),
         },
         Commands::Graph { command } => match command {
             GraphCommands::Show => graph::show(),

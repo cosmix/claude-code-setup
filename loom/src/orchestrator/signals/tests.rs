@@ -459,6 +459,8 @@ fn test_format_merge_signal_content_sections() {
     assert!(content.contains("Resolve conflicts"));
     assert!(content.contains("git add"));
     assert!(content.contains("git commit"));
+    // Should use worktree remove for cleanup, not loom merge
+    assert!(content.contains("loom worktree remove stage-1"));
 }
 
 #[test]

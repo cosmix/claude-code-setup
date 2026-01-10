@@ -199,7 +199,7 @@ pub fn conflict_resolution_instructions(
     instructions.push_str("  5. git add <resolved files>\n");
     instructions.push_str("  6. git commit\n");
     instructions.push_str(&format!(
-        "  7. loom merge {stage_id} (to clean up worktree)\n"
+        "  7. loom worktree remove {stage_id} (to clean up worktree and branch)\n"
     ));
 
     instructions
@@ -238,5 +238,8 @@ mod tests {
         assert!(instructions.contains("loom/stage-1"));
         assert!(instructions.contains("src/lib.rs"));
         assert!(instructions.contains("Cargo.toml"));
+        // Should reference worktree remove for cleanup, not loom merge
+        assert!(instructions.contains("loom worktree remove stage-1"));
+        assert!(!instructions.contains("loom merge stage-1"));
     }
 }

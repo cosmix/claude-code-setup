@@ -33,7 +33,7 @@ mod helpers;
 mod validation;
 
 // Re-export the public API
-pub use execute::{execute, worktree_path};
+pub use execute::{execute, mark_stage_merged, worktree_path};
 
 // Re-export validation functions that may be useful externally
 pub use validation::{
