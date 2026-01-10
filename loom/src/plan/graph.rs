@@ -35,6 +35,7 @@ pub struct StageNode {
 /// - `Executing` - Currently running
 /// - `Completed` - Done (includes Verified stages)
 /// - `Blocked` - Hit an error
+/// - `Skipped` - Intentionally skipped (does NOT satisfy dependencies)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeStatus {
     /// Waiting for upstream dependencies to complete.
@@ -56,6 +57,10 @@ pub enum NodeStatus {
     /// Blocked due to error.
     #[serde(rename = "blocked")]
     Blocked,
+
+    /// Intentionally skipped (does NOT satisfy dependencies).
+    #[serde(rename = "skipped")]
+    Skipped,
 }
 
 impl ExecutionGraph {
@@ -278,6 +283,16 @@ impl ExecutionGraph {
         Ok(())
     }
 
+    /// Mark a stage as skipped
+    pub fn mark_skipped(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::Skipped;
+        Ok(())
+    }
+
     /// Mark a stage as queued for execution.
     ///
     /// Used to reset orphaned/blocked stages back to queued state.
@@ -370,11 +385,11 @@ impl ExecutionGraph {
         self.nodes.values().collect()
     }
 
-    /// Check if all stages are completed
+    /// Check if all stages are completed or skipped
     pub fn is_complete(&self) -> bool {
-        self.nodes
-            .values()
-            .all(|n| n.status == NodeStatus::Completed)
+        self.nodes.values().all(|n| {
+            n.status == NodeStatus::Completed || n.status == NodeStatus::Skipped
+        })
     }
 }
 
@@ -476,5 +491,48 @@ mod tests {
         assert!(pos_a < pos_b);
         assert!(pos_a < pos_c);
         assert!(pos_b < pos_c);
+    }
+
+    #[test]
+    fn test_skipped_does_not_satisfy_deps() {
+        let stages = vec![
+            make_stage("a", vec![], None),
+            make_stage("b", vec!["a"], None),
+        ];
+
+        let mut graph = ExecutionGraph::build(stages).unwrap();
+
+        // Mark stage 'a' as skipped
+        graph.mark_skipped("a").unwrap();
+        assert_eq!(graph.get_node("a").unwrap().status, NodeStatus::Skipped);
+
+        // Update ready status - stage 'b' should remain WaitingForDeps
+        graph.update_ready_status();
+        assert_eq!(
+            graph.get_node("b").unwrap().status,
+            NodeStatus::WaitingForDeps
+        );
+
+        // Verify that 'b' is not in the ready stages list
+        let ready = graph.ready_stages();
+        assert!(ready.is_empty());
+    }
+
+    #[test]
+    fn test_is_complete_with_skipped() {
+        let stages = vec![
+            make_stage("a", vec![], None),
+            make_stage("b", vec![], None),
+        ];
+
+        let mut graph = ExecutionGraph::build(stages).unwrap();
+
+        // Complete one stage and skip another
+        graph.mark_executing("a").unwrap();
+        graph.mark_completed("a").unwrap();
+        graph.mark_skipped("b").unwrap();
+
+        // Graph should be considered complete
+        assert!(graph.is_complete());
     }
 }

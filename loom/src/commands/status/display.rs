@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 use std::path::Path;
@@ -9,9 +9,11 @@ use crate::models::constants::DEFAULT_CONTEXT_LIMIT;
 use crate::models::keys::frontmatter;
 use crate::models::runner::{Runner, RunnerStatus};
 use crate::models::session::{Session, SessionStatus};
+use crate::models::failure::FailureType;
 use crate::models::stage::{Stage, StageStatus};
 use crate::models::worktree::WorktreeStatus;
 use crate::orchestrator::terminal::BackendType;
+use crate::parser::frontmatter::extract_yaml_frontmatter;
 use crate::parser::markdown::MarkdownDocument;
 
 pub fn load_runners(work_dir: &WorkDir) -> Result<(Vec<Runner>, usize)> {
@@ -118,10 +120,9 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
 
         if path.is_file() && path.extension().is_some_and(|e| e == "md") {
             if let Ok(content) = fs::read_to_string(&path) {
-                if let Ok(doc) = MarkdownDocument::parse(&content) {
-                    if let Some(stage) = parse_stage_from_doc(&doc) {
-                        stages.push(stage);
-                    }
+                // Use proper YAML deserialization for full stage parsing
+                if let Ok(stage) = parse_stage_from_markdown(&content) {
+                    stages.push(stage);
                 }
             }
         }
@@ -142,6 +143,7 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
         (StageStatus::NeedsHandoff, "↻", "Needs Handoff"),
         (StageStatus::Blocked, "✗", "Blocked"),
         (StageStatus::WaitingForDeps, "·", "Pending"),
+        (StageStatus::Skipped, "⊘", "Skipped"),
     ];
 
     // Find max ID length for alignment
@@ -162,6 +164,7 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
             StageStatus::NeedsHandoff => header.yellow(),
             StageStatus::Blocked => header.red(),
             StageStatus::WaitingForDeps => header.dimmed(),
+            StageStatus::Skipped => header.dimmed().strikethrough(),
         };
         println!("  {colored_header}");
 
@@ -172,11 +175,38 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
             } else {
                 "".normal()
             };
+
+            // Build status-specific suffix (retry info for blocked, etc.)
+            let status_suffix = if stage.status == StageStatus::Blocked {
+                let max = stage.max_retries.unwrap_or(3);
+                let failure_label = stage
+                    .failure_info
+                    .as_ref()
+                    .map(|i| match i.failure_type {
+                        FailureType::SessionCrash => "crash",
+                        FailureType::TestFailure => "test",
+                        FailureType::BuildFailure => "build",
+                        FailureType::CodeError => "code",
+                        FailureType::Timeout => "timeout",
+                        FailureType::ContextExhausted => "context",
+                        FailureType::UserBlocked => "user",
+                        FailureType::MergeConflict => "merge",
+                        FailureType::Unknown => "error",
+                    })
+                    .unwrap_or("error");
+
+                format!(" [{}] ({}/{} retries)", failure_label, stage.retry_count, max)
+                    .red()
+            } else {
+                "".normal()
+            };
+
             println!(
-                "    {}  {}{}",
+                "    {}  {}{}{}",
                 padded_id.dimmed(),
                 stage.name,
-                held_indicator
+                held_indicator,
+                status_suffix
             );
         }
         println!();
@@ -185,48 +215,18 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
     Ok(())
 }
 
-fn parse_stage_from_doc(doc: &MarkdownDocument) -> Option<Stage> {
-    let id = doc.get_frontmatter(frontmatter::ID)?.clone();
-    let name = doc.get_frontmatter(frontmatter::NAME)?.clone();
-    let status_str = doc.get_frontmatter(frontmatter::STATUS)?;
-    let status = match status_str.as_str() {
-        "pending" => StageStatus::WaitingForDeps,
-        "ready" => StageStatus::Queued,
-        "executing" => StageStatus::Executing,
-        "blocked" => StageStatus::Blocked,
-        "completed" => StageStatus::Completed,
-        "needs-handoff" => StageStatus::NeedsHandoff,
-        "verified" => StageStatus::Completed, // Map legacy "verified" to Completed for backwards compatibility
-        _ => return None,
-    };
+/// Parse a Stage from markdown with YAML frontmatter
+///
+/// Uses full YAML deserialization to properly handle all stage fields
+/// including nested structures like failure_info.
+fn parse_stage_from_markdown(content: &str) -> Result<Stage> {
+    let frontmatter = extract_yaml_frontmatter(content)
+        .context("Failed to extract YAML frontmatter from stage file")?;
 
-    let held = doc
-        .get_frontmatter("held")
-        .map(|s| s == "true")
-        .unwrap_or(false);
+    let stage: Stage = serde_yaml::from_value(frontmatter)
+        .context("Failed to deserialize Stage from YAML frontmatter")?;
 
-    Some(Stage {
-        id,
-        name,
-        description: doc.get_frontmatter("description").cloned(),
-        status,
-        dependencies: Vec::new(),
-        parallel_group: None,
-        acceptance: Vec::new(),
-        setup: Vec::new(),
-        files: Vec::new(),
-        plan_id: None,
-        worktree: None,
-        session: None,
-        held,
-        parent_stage: None,
-        child_stages: Vec::new(),
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-        completed_at: None,
-        close_reason: None,
-        auto_merge: None,
-    })
+    Ok(stage)
 }
 
 /// Check if a session is orphaned (status says running/spawning but backend says otherwise)
@@ -557,5 +557,73 @@ mod tests {
     fn test_is_pid_alive_non_existent() {
         // PID 999999 is very unlikely to exist
         assert!(!is_pid_alive(999999));
+    }
+
+    #[test]
+    fn test_parse_stage_with_retry_info() {
+        use crate::models::failure::FailureType;
+
+        // Test with full YAML frontmatter including nested failure_info
+        let content = r#"---
+id: stage-test-1
+name: Test Stage
+status: blocked
+dependencies: []
+acceptance: []
+setup: []
+files: []
+child_stages: []
+retry_count: 2
+max_retries: 3
+created_at: 2025-01-10T12:00:00Z
+updated_at: 2025-01-10T12:00:00Z
+failure_info:
+  failure_type: session-crash
+  detected_at: 2025-01-10T12:00:00Z
+  evidence:
+    - "Session crashed unexpectedly"
+---
+
+# Stage: Test Stage
+"#;
+
+        let stage = parse_stage_from_markdown(content).expect("Should parse stage from markdown");
+
+        assert_eq!(stage.id, "stage-test-1");
+        assert_eq!(stage.name, "Test Stage");
+        assert_eq!(stage.status, StageStatus::Blocked);
+        assert_eq!(stage.retry_count, 2);
+        assert_eq!(stage.max_retries, Some(3));
+        assert!(stage.failure_info.is_some());
+
+        if let Some(failure_info) = stage.failure_info {
+            assert_eq!(failure_info.failure_type, FailureType::SessionCrash);
+            assert_eq!(failure_info.evidence.len(), 1);
+        }
+    }
+
+    #[test]
+    fn test_parse_stage_skipped() {
+        let content = r#"---
+id: stage-test-2
+name: Skipped Stage
+status: skipped
+dependencies: []
+acceptance: []
+setup: []
+files: []
+child_stages: []
+created_at: 2025-01-10T12:00:00Z
+updated_at: 2025-01-10T12:00:00Z
+---
+
+# Stage: Skipped Stage
+"#;
+
+        let stage = parse_stage_from_markdown(content).expect("Should parse stage from markdown");
+
+        assert_eq!(stage.id, "stage-test-2");
+        assert_eq!(stage.name, "Skipped Stage");
+        assert_eq!(stage.status, StageStatus::Skipped);
     }
 }

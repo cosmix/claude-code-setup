@@ -18,6 +18,7 @@ fn status_indicator(status: &StageStatus) -> ColoredString {
         StageStatus::WaitingForInput => "?".magenta().bold(),
         StageStatus::Blocked => "✗".red().bold(),
         StageStatus::NeedsHandoff => "⟳".yellow().bold(),
+        StageStatus::Skipped => "⊘".white().dimmed().strikethrough(),
     }
 }
 
@@ -83,6 +84,7 @@ fn status_priority(status: &StageStatus) -> u8 {
         StageStatus::WaitingForDeps => 4,
         StageStatus::Blocked => 5,
         StageStatus::Completed => 6,
+        StageStatus::Skipped => 7,
     }
 }
 
