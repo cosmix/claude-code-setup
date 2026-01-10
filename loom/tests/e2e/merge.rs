@@ -28,6 +28,10 @@ fn create_test_stage(id: &str, auto_merge: Option<bool>) -> Stage {
         completed_at: Some(Utc::now()),
         close_reason: None,
         auto_merge,
+        retry_count: 0,
+        max_retries: None,
+        last_failure_at: None,
+        failure_info: None,
     }
 }
 

@@ -241,6 +241,10 @@ fn create_stage_from_definition(
         completed_at: None,
         close_reason: None,
         auto_merge: stage_def.auto_merge,
+        retry_count: 0,
+        max_retries: None,
+        last_failure_at: None,
+        failure_info: None,
     }
 }
 
@@ -569,6 +573,10 @@ mod tests {
             completed_at: None,
             close_reason: None,
             auto_merge: None,
+            retry_count: 0,
+            max_retries: None,
+            last_failure_at: None,
+            failure_info: None,
         };
 
         let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -601,6 +609,10 @@ mod tests {
             completed_at: None,
             close_reason: None,
             auto_merge: None,
+            retry_count: 0,
+            max_retries: None,
+            last_failure_at: None,
+            failure_info: None,
         };
 
         let content = serialize_stage_to_markdown(&stage).unwrap();

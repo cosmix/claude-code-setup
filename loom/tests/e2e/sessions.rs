@@ -270,11 +270,19 @@ fn test_multiple_sessions_independent() {
     session2.assign_to_stage("stage-2".to_string());
     session3.assign_to_stage("stage-3".to_string());
 
-    session1.try_mark_running().expect("s1: Spawning -> Running");
-    session2.try_mark_running().expect("s2: Spawning -> Running");
+    session1
+        .try_mark_running()
+        .expect("s1: Spawning -> Running");
+    session2
+        .try_mark_running()
+        .expect("s2: Spawning -> Running");
     session2.try_mark_paused().expect("s2: Running -> Paused");
-    session3.try_mark_running().expect("s3: Spawning -> Running");
-    session3.try_mark_completed().expect("s3: Running -> Completed");
+    session3
+        .try_mark_running()
+        .expect("s3: Spawning -> Running");
+    session3
+        .try_mark_completed()
+        .expect("s3: Running -> Completed");
 
     session1.update_context(50_000);
     session2.update_context(100_000);

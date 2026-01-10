@@ -186,6 +186,10 @@ pub fn stage_from_markdown(content: &str) -> Result<Stage> {
         completed_at,
         close_reason,
         auto_merge: None,
+        retry_count: 0,
+        max_retries: None,
+        last_failure_at: None,
+        failure_info: None,
     })
 }
 
