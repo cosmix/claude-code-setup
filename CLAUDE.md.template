@@ -29,24 +29,56 @@ Plans MUST wrap YAML in HTML comment markers:
 
 ````markdown
 <!-- loom METADATA -->
+
 ```yaml
 loom:
   version: 1
   stages:
-    - id: stage-id           # Required: unique kebab-case
-      name: "Stage Name"     # Required: human-readable
-      description: |         # Required: full task for agent
+    - id: stage-id # Required: unique kebab-case
+      name: "Stage Name" # Required: human-readable
+      description: | # Required: full task for agent
         What this stage must accomplish.
         - Subtask with requirements
-      dependencies: []       # Required: array of stage IDs
-      parallel_group: "grp"  # Optional: concurrent grouping
-      acceptance:            # Required: verification commands
+      dependencies: [] # Required: array of stage IDs
+      parallel_group: "grp" # Optional: concurrent grouping
+      acceptance: # Required: verification commands
         - "cargo test"
-      files:                 # Optional: target file globs
+      files: # Optional: target file globs
         - "src/**/*.rs"
 ```
+
 <!-- END loom METADATA -->
 ````
+
+**YAML FORMATTING RULES (CRITICAL):**
+
+| Rule                     | Correct                 | Incorrect             |
+| ------------------------ | ----------------------- | --------------------- |
+| Code fence               | 3 backticks (```)       | 4 backticks (````)    |
+| Nested code blocks       | NEVER in descriptions   | Breaks YAML parser    |
+| Examples in descriptions | Use plain indented text | Do NOT use ``` fences |
+
+**Example — How to write descriptions with code examples:**
+
+````yaml
+# WRONG - nested code blocks break parsing
+description: |
+  Create the config file:
+  ```toml
+  [settings]
+  key = "value"
+````
+
+# CORRECT - use plain indented text
+
+description: |
+Create the config file with TOML format:
+[settings]
+key = "value"
+
+Or describe inline: settings section with key=value entry
+
+```
 
 Stage definitions become agent signals: `description` → tasks, `acceptance` → criteria, `files` → scope.
 
@@ -62,12 +94,14 @@ Maximize parallel execution at TWO levels:
 - This turns file conflicts into manageable merge operations
 
 ```
+
 ┌─────────────────────────────────────────────────────────────┐
-│  SAME FILES?                                                │
-│    NO  → Same stage, parallel subagents (or single stage)   │
-│    YES → Separate stages, loom merges later                 │
+│ SAME FILES? │
+│ NO → Same stage, parallel subagents (or single stage) │
+│ YES → Separate stages, loom merges later │
 └─────────────────────────────────────────────────────────────┘
-```
+
+````
 
 **Example:** Adding auth + adding logging both touch `src/api/handler.ts`:
 - BAD: One stage with both tasks → subagents conflict
@@ -90,7 +124,7 @@ At 75% context: STOP immediately. Write handoff to `.work/handoffs/`. No new tas
 ```bash
 git add <specific-files> && git commit -m "feat: <description>"
 loom stage complete <stage-id>
-```
+````
 
 **NEVER use `git add -A` or `git add .`** — these stage `.work` (shared state symlink). Always specify files.
 
@@ -133,14 +167,14 @@ When executing in a loom worktree, you MUST stay within your worktree boundaries
 
 **FORBIDDEN — These operations MUST NEVER be used:**
 
-| Operation | Example | Why Forbidden |
-|-----------|---------|---------------|
-| `git -C <path>` | `git -C ../.. status` | Operates on main repo |
-| `git --work-tree=<path>` | `git --work-tree=/path/to/main` | Escapes worktree |
-| `git --git-dir=<path>` | `git --git-dir=../../.git` | Accesses main repo git |
-| `cd` outside worktree | `cd ../..`, `cd /home/user/project` | Escapes worktree context |
-| `../../` relative paths | `cat ../../src/main.rs` | Reads from main repo |
-| Reading main repo files | Any file outside `.worktrees/<stage-id>/` | Creates implicit dependencies |
+| Operation                | Example                                   | Why Forbidden                 |
+| ------------------------ | ----------------------------------------- | ----------------------------- |
+| `git -C <path>`          | `git -C ../.. status`                     | Operates on main repo         |
+| `git --work-tree=<path>` | `git --work-tree=/path/to/main`           | Escapes worktree              |
+| `git --git-dir=<path>`   | `git --git-dir=../../.git`                | Accesses main repo git        |
+| `cd` outside worktree    | `cd ../..`, `cd /home/user/project`       | Escapes worktree context      |
+| `../../` relative paths  | `cat ../../src/main.rs`                   | Reads from main repo          |
+| Reading main repo files  | Any file outside `.worktrees/<stage-id>/` | Creates implicit dependencies |
 
 **ALLOWED — These operations are safe:**
 
@@ -234,12 +268,15 @@ Location: `.work/handoffs/YYYY-MM-DD-desc.md`
 
 ```markdown
 # Handoff: [Description]
+
 **Stage**: [id] | **Context**: [X]%
 
 ## Completed
+
 [file:line refs]
 
 ## Next Steps
+
 [prioritized tasks]
 ```
 
@@ -249,12 +286,15 @@ Location: `.work/signals/<session-id>.md`
 
 ```markdown
 # Signal: [session-id]
+
 **Stage**: [id] | **Plan**: [plan-id]
 
 ## Tasks
+
 [from stage definition]
 
 ## Context Restoration
+
 [file:line refs to read]
 ```
 
