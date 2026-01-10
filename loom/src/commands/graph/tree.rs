@@ -12,14 +12,25 @@ use super::colors::color_by_index;
 use super::indicators::status_indicator;
 use super::levels::compute_stage_levels;
 
-/// Compute the tree connector prefix based on position
-fn compute_connector(index: usize, total: usize) -> &'static str {
-    if index == 0 {
-        ""
-    } else if index == total - 1 {
-        "└── "
+/// Compute the tree connector prefix based on level and position within level
+fn compute_connector(
+    level: usize,
+    index_in_level: usize,
+    level_size: usize,
+    is_last_level: bool,
+) -> String {
+    // Base indentation: 4 spaces per level
+    let indent = "    ".repeat(level);
+
+    if level == 0 {
+        // Root level: no connectors, just indentation
+        indent
+    } else if is_last_level && index_in_level == level_size - 1 {
+        // Last stage in the last level: use └──
+        format!("{indent}└── ")
     } else {
-        "├── "
+        // Other stages at non-root levels: use ├──
+        format!("{indent}├── ")
     }
 }
 
@@ -118,18 +129,34 @@ pub fn build_tree_display(stages: &[Stage]) -> String {
         .map(|(i, stage)| (stage.id.as_str(), color_by_index(i)))
         .collect();
 
+    // Calculate max level and count stages per level
+    let max_level = levels.values().copied().max().unwrap_or(0);
+    let mut level_counts: HashMap<usize, usize> = HashMap::new();
+    let mut level_indices: HashMap<usize, usize> = HashMap::new();
+    for stage in &sorted_stages {
+        let level = levels.get(&stage.id).copied().unwrap_or(0);
+        *level_counts.entry(level).or_insert(0) += 1;
+    }
+
     let max_id_width = sorted_stages.iter().map(|s| s.id.len()).max().unwrap_or(0);
-    let total_stages = sorted_stages.len();
 
     let mut output = String::new();
 
-    for (index, stage) in sorted_stages.iter().enumerate() {
-        let connector = compute_connector(index, total_stages);
+    for (global_index, stage) in sorted_stages.iter().enumerate() {
+        let level = levels.get(&stage.id).copied().unwrap_or(0);
+        let index_in_level = *level_indices.entry(level).or_insert(0);
+        let level_size = level_counts.get(&level).copied().unwrap_or(1);
+        let is_last_level = level == max_level;
+
+        let connector = compute_connector(level, index_in_level, level_size, is_last_level);
         let indicator = status_indicator(&stage.status);
         let deps = format_dep_annotation(&stage.dependencies, max_id_width, stage.id.len(), &color_map);
-        let color = color_by_index(index);
+        let color = color_by_index(global_index);
         let colored_id = stage.id.color(color);
         output.push_str(&format!("{connector}{indicator} {colored_id}{deps}\n"));
+
+        // Increment index for this level
+        *level_indices.get_mut(&level).unwrap() += 1;
 
         // Show base branch info for executing or queued stages with base branch set
         if matches!(stage.status, StageStatus::Executing | StageStatus::Queued) {
