@@ -105,6 +105,8 @@ fn test_serialize_stage_to_markdown_minimal() {
         last_failure_at: None,
         failure_info: None,
         resolved_base: None,
+        base_branch: None,
+        base_merged_from: vec![],
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -142,6 +144,8 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         last_failure_at: None,
         failure_info: None,
         resolved_base: None,
+        base_branch: None,
+        base_merged_from: vec![],
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
