@@ -5,6 +5,7 @@ use crate::models::stage::{Stage, StageStatus};
 use super::display::build_graph_display;
 use super::indicators::status_indicator;
 use super::levels::compute_stage_levels;
+use super::tree::build_tree_display;
 
 fn create_test_stage(id: &str, name: &str, status: StageStatus, deps: Vec<&str>) -> Stage {
     let mut stage = Stage::new(name.to_string(), Some(format!("Test stage: {name}")));
@@ -305,4 +306,131 @@ fn test_compute_stage_levels() {
     assert_eq!(levels.get("b"), Some(&1));
     assert_eq!(levels.get("c"), Some(&1));
     assert_eq!(levels.get("d"), Some(&2));
+}
+
+// ============================================================================
+// Tree Display Tests
+// ============================================================================
+
+#[test]
+fn test_tree_display_empty() {
+    let stages: Vec<Stage> = vec![];
+    let output = build_tree_display(&stages);
+    assert!(
+        output.to_lowercase().contains("no stages"),
+        "Empty stages should show 'no stages' message"
+    );
+}
+
+#[test]
+fn test_tree_display_single_stage() {
+    let stages = vec![create_test_stage(
+        "init",
+        "Initialize",
+        StageStatus::Completed,
+        vec![],
+    )];
+
+    let output = build_tree_display(&stages);
+    assert!(output.contains("Initialize"), "Should contain stage name");
+    assert!(
+        !output.contains("├──") && !output.contains("└──"),
+        "Root stage should have no tree connector"
+    );
+}
+
+#[test]
+fn test_tree_display_linear_chain() {
+    let stages = vec![
+        create_test_stage("a", "Stage A", StageStatus::Completed, vec![]),
+        create_test_stage("b", "Stage B", StageStatus::Completed, vec!["a"]),
+        create_test_stage("c", "Stage C", StageStatus::Queued, vec!["b"]),
+    ];
+
+    let output = build_tree_display(&stages);
+
+    assert!(output.contains("Stage A"), "Should contain Stage A");
+    assert!(output.contains("Stage B"), "Should contain Stage B");
+    assert!(output.contains("Stage C"), "Should contain Stage C");
+    assert!(output.contains("← a"), "Stage B should show dependency on a");
+    assert!(output.contains("← b"), "Stage C should show dependency on b");
+}
+
+#[test]
+fn test_tree_display_diamond_pattern() {
+    let stages = vec![
+        create_test_stage("a", "Root", StageStatus::Completed, vec![]),
+        create_test_stage("b", "Left", StageStatus::Completed, vec!["a"]),
+        create_test_stage("c", "Right", StageStatus::Completed, vec!["a"]),
+        create_test_stage("d", "Merge", StageStatus::Queued, vec!["b", "c"]),
+    ];
+
+    let output = build_tree_display(&stages);
+
+    assert!(output.contains("Root"), "Should contain Root stage");
+    assert!(output.contains("Left"), "Should contain Left stage");
+    assert!(output.contains("Right"), "Should contain Right stage");
+    assert!(output.contains("Merge"), "Should contain Merge stage");
+    assert!(
+        output.contains("b") && output.contains("c"),
+        "Merge stage should show both b and c in dependency annotation"
+    );
+}
+
+#[test]
+fn test_tree_connector_last_item() {
+    let stages = vec![
+        create_test_stage("a", "First", StageStatus::Completed, vec![]),
+        create_test_stage("b", "Second", StageStatus::Completed, vec!["a"]),
+        create_test_stage("c", "Third", StageStatus::Completed, vec!["b"]),
+    ];
+
+    let output = build_tree_display(&stages);
+
+    assert!(
+        output.contains("└──"),
+        "Last item in tree should use └── connector"
+    );
+    assert!(
+        !output.ends_with("├──"),
+        "Tree should not end with ├── connector"
+    );
+}
+
+#[test]
+fn test_tree_footer_shows_running() {
+    let stages = vec![
+        create_test_stage("a", "Completed Stage", StageStatus::Completed, vec![]),
+        create_test_stage("b", "Running Stage", StageStatus::Executing, vec!["a"]),
+    ];
+
+    let output = build_tree_display(&stages);
+
+    assert!(
+        output.contains("Running"),
+        "Footer should contain 'Running' label"
+    );
+    assert!(
+        output.contains("Running Stage"),
+        "Footer should show the executing stage name"
+    );
+}
+
+#[test]
+fn test_tree_footer_shows_next() {
+    let stages = vec![
+        create_test_stage("a", "Executing Stage", StageStatus::Executing, vec![]),
+        create_test_stage("b", "Queued Stage", StageStatus::Queued, vec!["a"]),
+    ];
+
+    let output = build_tree_display(&stages);
+
+    assert!(
+        output.contains("Next"),
+        "Footer should contain 'Next' label when there's a queued stage"
+    );
+    assert!(
+        output.contains("Queued Stage"),
+        "Footer should show the queued stage name"
+    );
 }
