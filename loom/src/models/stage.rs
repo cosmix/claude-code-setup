@@ -2,6 +2,8 @@ use anyhow::{bail, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::failure::FailureInfo;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stage {
     pub id: String,
@@ -27,6 +29,17 @@ pub struct Stage {
     pub close_reason: Option<String>,
     #[serde(default)]
     pub auto_merge: Option<bool>,
+    /// Number of retry attempts for this stage
+    #[serde(default)]
+    pub retry_count: u32,
+    /// Maximum retries allowed (None = use global default of 3)
+    #[serde(default)]
+    pub max_retries: Option<u32>,
+    /// Timestamp of last failure (for backoff calculation)
+    pub last_failure_at: Option<DateTime<Utc>>,
+    /// Detailed failure information if stage is blocked due to failure
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_info: Option<FailureInfo>,
 }
 
 /// Status of a stage in the execution lifecycle.
@@ -71,6 +84,11 @@ pub enum StageStatus {
     /// Session hit context limit; needs new session to continue.
     #[serde(rename = "needs-handoff", alias = "needshandoff")]
     NeedsHandoff,
+
+    /// Stage was explicitly skipped by user.
+    /// Terminal state - does NOT satisfy dependencies.
+    #[serde(rename = "skipped")]
+    Skipped,
 }
 
 impl std::fmt::Display for StageStatus {
@@ -83,6 +101,7 @@ impl std::fmt::Display for StageStatus {
             StageStatus::Blocked => write!(f, "Blocked"),
             StageStatus::Completed => write!(f, "Completed"),
             StageStatus::NeedsHandoff => write!(f, "NeedsHandoff"),
+            StageStatus::Skipped => write!(f, "Skipped"),
         }
     }
 }
@@ -91,13 +110,14 @@ impl StageStatus {
     /// Check if transitioning from the current status to the new status is valid.
     ///
     /// Valid transitions:
-    /// - `WaitingForDeps` -> `Queued` (when dependencies satisfied)
-    /// - `Queued` -> `Executing` (when session spawned)
+    /// - `WaitingForDeps` -> `Queued` | `Skipped` (when dependencies satisfied or user skips)
+    /// - `Queued` -> `Executing` | `Skipped` (when session spawned or user skips)
     /// - `Executing` -> `Completed` | `Blocked` | `NeedsHandoff` | `WaitingForInput`
-    /// - `Blocked` -> `Queued` (when unblocked)
+    /// - `Blocked` -> `Queued` | `Skipped` (when unblocked or user skips)
     /// - `NeedsHandoff` -> `Queued` (when resumed)
     /// - `WaitingForInput` -> `Executing` (when input provided)
     /// - `Completed` is a terminal state
+    /// - `Skipped` is a terminal state
     ///
     /// # Arguments
     /// * `new_status` - The target status to transition to
@@ -111,8 +131,12 @@ impl StageStatus {
         }
 
         match self {
-            StageStatus::WaitingForDeps => matches!(new_status, StageStatus::Queued),
-            StageStatus::Queued => matches!(new_status, StageStatus::Executing),
+            StageStatus::WaitingForDeps => {
+                matches!(new_status, StageStatus::Queued | StageStatus::Skipped)
+            }
+            StageStatus::Queued => {
+                matches!(new_status, StageStatus::Executing | StageStatus::Skipped)
+            }
             StageStatus::Executing => matches!(
                 new_status,
                 StageStatus::Completed
@@ -122,8 +146,11 @@ impl StageStatus {
             ),
             StageStatus::WaitingForInput => matches!(new_status, StageStatus::Executing),
             StageStatus::Completed => false, // Terminal state
-            StageStatus::Blocked => matches!(new_status, StageStatus::Queued),
+            StageStatus::Blocked => {
+                matches!(new_status, StageStatus::Queued | StageStatus::Skipped)
+            }
             StageStatus::NeedsHandoff => matches!(new_status, StageStatus::Queued),
+            StageStatus::Skipped => false, // Terminal state
         }
     }
 
@@ -145,8 +172,8 @@ impl StageStatus {
     /// Returns the list of valid statuses this status can transition to.
     pub fn valid_transitions(&self) -> Vec<StageStatus> {
         match self {
-            StageStatus::WaitingForDeps => vec![StageStatus::Queued],
-            StageStatus::Queued => vec![StageStatus::Executing],
+            StageStatus::WaitingForDeps => vec![StageStatus::Queued, StageStatus::Skipped],
+            StageStatus::Queued => vec![StageStatus::Executing, StageStatus::Skipped],
             StageStatus::Executing => vec![
                 StageStatus::Completed,
                 StageStatus::Blocked,
@@ -155,8 +182,9 @@ impl StageStatus {
             ],
             StageStatus::WaitingForInput => vec![StageStatus::Executing],
             StageStatus::Completed => vec![], // Terminal state
-            StageStatus::Blocked => vec![StageStatus::Queued],
+            StageStatus::Blocked => vec![StageStatus::Queued, StageStatus::Skipped],
             StageStatus::NeedsHandoff => vec![StageStatus::Queued],
+            StageStatus::Skipped => vec![], // Terminal state
         }
     }
 }
@@ -187,6 +215,10 @@ impl Stage {
             completed_at: None,
             close_reason: None,
             auto_merge: None,
+            retry_count: 0,
+            max_retries: None,
+            last_failure_at: None,
+            failure_info: None,
         }
     }
 
@@ -323,6 +355,16 @@ impl Stage {
     /// `Ok(())` if the transition succeeded, `Err` if invalid
     pub fn try_mark_blocked(&mut self) -> Result<()> {
         self.try_transition(StageStatus::Blocked)
+    }
+
+    /// Mark the stage as skipped with validation.
+    ///
+    /// # Returns
+    /// `Ok(())` if the transition succeeded, `Err` if invalid
+    pub fn try_skip(&mut self, reason: Option<String>) -> Result<()> {
+        self.try_transition(StageStatus::Skipped)?;
+        self.close_reason = reason;
+        Ok(())
     }
 
     pub fn hold(&mut self) {
@@ -467,6 +509,7 @@ mod tests {
             StageStatus::Blocked,
             StageStatus::NeedsHandoff,
             StageStatus::WaitingForInput,
+            StageStatus::Skipped,
         ];
 
         for status in statuses {
@@ -507,7 +550,7 @@ mod tests {
     #[test]
     fn test_valid_transitions_waiting_for_deps() {
         let transitions = StageStatus::WaitingForDeps.valid_transitions();
-        assert_eq!(transitions, vec![StageStatus::Queued]);
+        assert_eq!(transitions, vec![StageStatus::Queued, StageStatus::Skipped]);
     }
 
     #[test]
@@ -715,5 +758,110 @@ mod tests {
 
         stage.auto_merge = Some(true);
         assert_eq!(stage.auto_merge, Some(true));
+    }
+
+    // =========================================================================
+    // Skipped status tests
+    // =========================================================================
+
+    #[test]
+    fn test_skipped_is_terminal_state() {
+        let status = StageStatus::Skipped;
+        assert!(!status.can_transition_to(&StageStatus::WaitingForDeps));
+        assert!(!status.can_transition_to(&StageStatus::Queued));
+        assert!(!status.can_transition_to(&StageStatus::Executing));
+        assert!(!status.can_transition_to(&StageStatus::Blocked));
+        assert!(!status.can_transition_to(&StageStatus::Completed));
+        assert!(!status.can_transition_to(&StageStatus::NeedsHandoff));
+        assert!(!status.can_transition_to(&StageStatus::WaitingForInput));
+    }
+
+    #[test]
+    fn test_blocked_can_transition_to_skipped() {
+        let status = StageStatus::Blocked;
+        assert!(status.can_transition_to(&StageStatus::Skipped));
+
+        let mut stage = create_test_stage(StageStatus::Blocked);
+        let result = stage.try_skip(Some("User requested skip".to_string()));
+        assert!(result.is_ok());
+        assert_eq!(stage.status, StageStatus::Skipped);
+        assert_eq!(stage.close_reason, Some("User requested skip".to_string()));
+    }
+
+    #[test]
+    fn test_waiting_for_deps_can_transition_to_skipped() {
+        let status = StageStatus::WaitingForDeps;
+        assert!(status.can_transition_to(&StageStatus::Skipped));
+
+        let mut stage = create_test_stage(StageStatus::WaitingForDeps);
+        let result = stage.try_skip(Some("Not needed".to_string()));
+        assert!(result.is_ok());
+        assert_eq!(stage.status, StageStatus::Skipped);
+        assert_eq!(stage.close_reason, Some("Not needed".to_string()));
+    }
+
+    #[test]
+    fn test_queued_can_transition_to_skipped() {
+        let status = StageStatus::Queued;
+        assert!(status.can_transition_to(&StageStatus::Skipped));
+
+        let mut stage = create_test_stage(StageStatus::Queued);
+        let result = stage.try_skip(None);
+        assert!(result.is_ok());
+        assert_eq!(stage.status, StageStatus::Skipped);
+        assert_eq!(stage.close_reason, None);
+    }
+
+    #[test]
+    fn test_stage_try_skip_valid() {
+        let mut stage = create_test_stage(StageStatus::WaitingForDeps);
+        let result = stage.try_skip(Some("Skipped by user".to_string()));
+        assert!(result.is_ok());
+        assert_eq!(stage.status, StageStatus::Skipped);
+        assert_eq!(stage.close_reason, Some("Skipped by user".to_string()));
+
+        // Verify it's terminal - can't transition from Skipped
+        let result = stage.try_mark_queued();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_executing_cannot_transition_to_skipped() {
+        let status = StageStatus::Executing;
+        assert!(!status.can_transition_to(&StageStatus::Skipped));
+
+        let mut stage = create_test_stage(StageStatus::Executing);
+        let result = stage.try_skip(Some("Cannot skip".to_string()));
+        assert!(result.is_err());
+        assert_eq!(stage.status, StageStatus::Executing); // Status unchanged
+    }
+
+    #[test]
+    fn test_valid_transitions_includes_skipped() {
+        let transitions = StageStatus::WaitingForDeps.valid_transitions();
+        assert!(transitions.contains(&StageStatus::Skipped));
+
+        let transitions = StageStatus::Queued.valid_transitions();
+        assert!(transitions.contains(&StageStatus::Skipped));
+
+        let transitions = StageStatus::Blocked.valid_transitions();
+        assert!(transitions.contains(&StageStatus::Skipped));
+
+        let transitions = StageStatus::Executing.valid_transitions();
+        assert!(!transitions.contains(&StageStatus::Skipped));
+    }
+
+    #[test]
+    fn test_skipped_display() {
+        assert_eq!(format!("{}", StageStatus::Skipped), "Skipped");
+    }
+
+    #[test]
+    fn test_stage_new_initializes_retry_fields() {
+        let stage = Stage::new("Test".to_string(), Some("Description".to_string()));
+        assert_eq!(stage.retry_count, 0);
+        assert_eq!(stage.max_retries, None);
+        assert_eq!(stage.last_failure_at, None);
+        assert_eq!(stage.failure_info, None);
     }
 }
