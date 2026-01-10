@@ -257,6 +257,7 @@ mod tests {
             resolved_base: None,
             base_branch: None,
             base_merged_from: vec![],
+            outputs: vec![],
         }
     }
 
