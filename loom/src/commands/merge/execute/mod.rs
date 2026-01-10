@@ -7,18 +7,19 @@
 //! 1. Recovery: Re-spawn conflict resolution session for failed/interrupted merges
 //! 2. Manual trigger: Force merge of a completed stage that wasn't auto-merged
 
-use anyhow::{bail, Context, Result};
-use std::path::PathBuf;
+mod operations;
+mod recovery;
+mod session;
+
+#[cfg(test)]
+mod tests;
+
+use anyhow::{bail, Result};
 
 use crate::git::{
-    cleanup_merged_branches, conflict_resolution_instructions, current_branch, default_branch,
-    ensure_work_symlink, merge_stage, remove_worktree, MergeResult,
+    cleanup_merged_branches, conflict_resolution_instructions, current_branch, ensure_work_symlink,
+    merge_stage, remove_worktree, MergeResult,
 };
-use crate::models::session::Session;
-use crate::models::stage::StageStatus;
-use crate::orchestrator::signals::generate_merge_signal;
-use crate::orchestrator::terminal::{create_backend, BackendType};
-use crate::verify::transitions::load_stage;
 
 use super::helpers::{
     auto_commit_changes, ensure_work_gitignored, get_uncommitted_files, has_merge_conflicts,
@@ -26,149 +27,9 @@ use super::helpers::{
 };
 use super::validation::{check_active_session, validate_stage_status};
 
-use crate::fs::stage_files::find_stage_file;
-
-/// Update stage status to Completed after successful merge
-fn mark_stage_merged(stage_id: &str, work_dir: &std::path::Path) -> Result<()> {
-    let stages_dir = work_dir.join("stages");
-
-    // Only update if stage file exists
-    if find_stage_file(&stages_dir, stage_id)?.is_none() {
-        // Stage file doesn't exist (might be a worktree without loom tracking)
-        return Ok(());
-    }
-
-    // Transition to Completed status (if not already)
-    let stage = load_stage(stage_id, work_dir)?;
-    if stage.status != StageStatus::Completed {
-        crate::verify::transitions::transition_stage(stage_id, StageStatus::Completed, work_dir)
-            .with_context(|| format!("Failed to update stage status for: {stage_id}"))?;
-        println!("Updated stage status to Completed");
-    }
-
-    Ok(())
-}
-
-/// Check if a merge conflict resolution session is already running for this stage
-fn find_active_merge_session(stage_id: &str, work_dir: &std::path::Path) -> Result<Option<String>> {
-    let sessions_dir = work_dir.join("sessions");
-    if !sessions_dir.exists() {
-        return Ok(None);
-    }
-
-    // Look for session files that match merge session patterns
-    for entry in std::fs::read_dir(&sessions_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.extension().and_then(|s| s.to_str()) != Some("md") {
-            continue;
-        }
-
-        let content = match std::fs::read_to_string(&path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-
-        // Check if this session is for our stage and is a merge session
-        if let Some(session_stage_id) =
-            super::validation::extract_frontmatter_field(&content, "stage_id")
-        {
-            if session_stage_id != stage_id {
-                continue;
-            }
-
-            // Check if tmux session name indicates merge session
-            if let Some(tmux_session) =
-                super::validation::extract_frontmatter_field(&content, "tmux_session")
-            {
-                if tmux_session.contains("merge")
-                    && crate::orchestrator::session_is_running(&tmux_session).unwrap_or(false)
-                {
-                    return Ok(Some(tmux_session));
-                }
-            }
-
-            // Check if PID indicates a running merge session
-            // (for native backend, we check if the session ID contains "merge")
-            if let Some(session_id) = super::validation::extract_frontmatter_field(&content, "id") {
-                if session_id.contains("merge") {
-                    if let Some(pid_str) =
-                        super::validation::extract_frontmatter_field(&content, "pid")
-                    {
-                        if let Ok(pid) = pid_str.parse::<u32>() {
-                            // Check if process is still alive
-                            if std::process::Command::new("kill")
-                                .arg("-0")
-                                .arg(pid.to_string())
-                                .output()
-                                .map(|output| output.status.success())
-                                .unwrap_or(false)
-                            {
-                                return Ok(Some(session_id));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(None)
-}
-
-/// Get current conflicting files in the repository
-fn get_current_conflicts(repo_root: &std::path::Path) -> Result<Vec<String>> {
-    let output = std::process::Command::new("git")
-        .args(["diff", "--name-only", "--diff-filter=U"])
-        .current_dir(repo_root)
-        .output()
-        .with_context(|| "Failed to get conflicting files")?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let files: Vec<String> = stdout
-        .lines()
-        .filter(|s| !s.is_empty())
-        .map(String::from)
-        .collect();
-
-    Ok(files)
-}
-
-/// Spawn a merge conflict resolution session
-fn spawn_merge_resolution_session(
-    stage_id: &str,
-    conflicts: &[String],
-    repo_root: &std::path::Path,
-    work_dir: &std::path::Path,
-) -> Result<String> {
-    // Load stage for signal generation
-    let stage = load_stage(stage_id, work_dir)?;
-
-    // Get target branch
-    let target_branch =
-        default_branch(repo_root).with_context(|| "Failed to detect default branch")?;
-
-    // Create a new merge session
-    let session = Session::new();
-    let source_branch = format!("loom/{stage_id}");
-
-    // Generate merge signal
-    let signal_path = generate_merge_signal(
-        &session,
-        &stage,
-        &source_branch,
-        &target_branch,
-        conflicts,
-        work_dir,
-    )?;
-
-    // Create terminal backend and spawn session
-    let backend = create_backend(BackendType::Native)?;
-    let spawned_session = backend.spawn_merge_session(&stage, session, &signal_path, repo_root)?;
-
-    Ok(spawned_session.id)
-}
+pub use operations::{mark_stage_merged, worktree_path};
+use recovery::{find_active_merge_session, get_current_conflicts};
+use session::spawn_merge_resolution_session;
 
 /// Merge worktree branch to main, with recovery support for conflict resolution
 ///
@@ -441,22 +302,4 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
     Ok(())
 }
 
-/// Get the worktree path for a stage
-pub fn worktree_path(stage_id: &str) -> PathBuf {
-    std::env::current_dir()
-        .unwrap_or_default()
-        .join(".worktrees")
-        .join(stage_id)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_worktree_path() {
-        let path = worktree_path("stage-1");
-        assert!(path.to_string_lossy().contains(".worktrees"));
-        assert!(path.to_string_lossy().contains("stage-1"));
-    }
-}
+use anyhow::Context;
