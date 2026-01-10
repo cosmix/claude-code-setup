@@ -1,3 +1,4 @@
+use crate::checkpoints::{TaskDefinition, TaskState};
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::HandoffV2;
 
@@ -16,6 +17,16 @@ pub struct EmbeddedContext {
     pub facts_content: Option<String>,
     /// Knowledge summary from .work/knowledge/ files
     pub knowledge_summary: Option<String>,
+    /// Task state for the stage (if tasks are defined)
+    pub task_state: Option<TaskState>,
+}
+
+/// Information about a task's lock status
+#[derive(Debug, Clone)]
+pub struct TaskStatus {
+    pub task: TaskDefinition,
+    pub is_unlocked: bool,
+    pub is_completed: bool,
 }
 
 #[derive(Debug, Clone)]

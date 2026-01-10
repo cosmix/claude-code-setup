@@ -1,6 +1,8 @@
+pub mod checkpoints;
 pub mod facts;
 pub mod knowledge;
 pub mod permissions;
 pub mod stage_files;
+pub mod task_state;
 pub mod work_dir;
 pub mod worktree_files;

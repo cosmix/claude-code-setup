@@ -1,4 +1,5 @@
 pub mod attach;
+pub mod checkpoint;
 pub mod clean;
 pub mod diagnose;
 pub mod fact;

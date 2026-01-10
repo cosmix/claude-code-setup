@@ -21,7 +21,7 @@ impl WorkDir {
 
         let subdirs = [
             "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
-            "crashes",
+            "crashes", "checkpoints", "task-state",
         ];
 
         for subdir in &subdirs {
@@ -59,7 +59,7 @@ impl WorkDir {
     fn validate_structure(&self) -> Result<()> {
         let required_dirs = [
             "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
-            "crashes",
+            "crashes", "checkpoints", "task-state",
         ];
 
         for dir in &required_dirs {
@@ -88,6 +88,8 @@ This directory is managed by loom CLI and contains:
 - `sessions/` - Active session tracking
 - `logs/` - Tmux session logs and crash reports
 - `knowledge/` - Curated codebase knowledge (entry points, patterns, conventions)
+- `checkpoints/` - Task completion checkpoints from agents
+- `task-state/` - Task progression tracking per stage
 
 Do not manually edit these files unless you know what you're doing.
 "#;
@@ -181,6 +183,14 @@ src/
 
     pub fn knowledge_dir(&self) -> PathBuf {
         self.root.join("knowledge")
+    }
+
+    pub fn checkpoints_dir(&self) -> PathBuf {
+        self.root.join("checkpoints")
+    }
+
+    pub fn task_state_dir(&self) -> PathBuf {
+        self.root.join("task-state")
     }
 
     pub fn root(&self) -> &Path {

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::fs::facts::FactsStore;
 use crate::fs::knowledge::KnowledgeDir;
+use crate::fs::task_state::read_task_state_if_exists;
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::ParsedHandoff;
 use crate::models::session::Session;
@@ -28,8 +29,8 @@ pub fn generate_signal(
         fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
     }
 
-    // Build embedded context by reading files
-    let embedded_context = build_embedded_context(work_dir, handoff_file, &stage.id);
+    // Build embedded context by reading files, including task state for this stage
+    let embedded_context = build_embedded_context_with_stage(work_dir, handoff_file, Some(&stage.id));
 
     let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_signal_content(
@@ -48,11 +49,21 @@ pub fn generate_signal(
     Ok(signal_path)
 }
 
-/// Build embedded context by reading handoff, structure.md, knowledge, facts, and plan overview files
+/// Build embedded context by reading handoff, structure.md, knowledge, facts, plan overview, and task state files
+#[allow(dead_code)]
 pub(super) fn build_embedded_context(
     work_dir: &Path,
     handoff_file: Option<&str>,
     stage_id: &str,
+) -> EmbeddedContext {
+    build_embedded_context_with_stage(work_dir, handoff_file, Some(stage_id))
+}
+
+/// Build embedded context with optional stage-specific task state
+pub fn build_embedded_context_with_stage(
+    work_dir: &Path,
+    handoff_file: Option<&str>,
+    stage_id: Option<&str>,
 ) -> EmbeddedContext {
     let mut context = EmbeddedContext::default();
 
@@ -86,15 +97,24 @@ pub(super) fn build_embedded_context(
     // Read plan overview from config.toml and the plan file
     context.plan_overview = read_plan_overview(work_dir);
 
-    // Read relevant facts for this stage
-    if let Ok(facts_store) = FactsStore::load(work_dir) {
-        context.facts_content = facts_store.format_for_signal(stage_id);
+    // Read relevant facts for this stage (uses stage_id for ownership filtering)
+    if let Some(stage_id) = stage_id {
+        if let Ok(facts_store) = FactsStore::load(work_dir) {
+            context.facts_content = facts_store.format_for_signal(stage_id);
+        }
     }
 
     // Read knowledge summary if knowledge directory exists
     let knowledge = KnowledgeDir::new(work_dir);
     if knowledge.exists() {
         context.knowledge_summary = knowledge.generate_summary().ok().filter(|s| !s.is_empty());
+    }
+
+    // Read task state if stage_id is provided
+    if let Some(stage_id) = stage_id {
+        if let Ok(Some(task_state)) = read_task_state_if_exists(work_dir, stage_id) {
+            context.task_state = Some(task_state);
+        }
     }
 
     context
