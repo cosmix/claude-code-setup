@@ -1,8 +1,9 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
+use loom::checkpoints::CheckpointStatus;
 use loom::commands::{
-    attach, clean, diagnose, graph, init, merge, resume, run, self_update, sessions, stage, status,
-    stop, worktree_cmd,
+    attach, checkpoint, clean, diagnose, graph, init, merge, resume, run, self_update, sessions,
+    stage, status, stop, worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use loom::validation::{clap_description_validator, clap_id_validator};
@@ -145,6 +146,12 @@ enum Commands {
 
     /// Stop the running daemon
     Stop,
+
+    /// Signal task completion with a checkpoint
+    Checkpoint {
+        #[command(subcommand)]
+        command: CheckpointCommands,
+    },
 
     /// Diagnose a failed stage with Claude Code
     Diagnose {
@@ -306,6 +313,39 @@ enum StageCommands {
 }
 
 #[derive(Subcommand)]
+enum CheckpointCommands {
+    /// Create a checkpoint to signal task completion
+    Create {
+        /// Task ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        task_id: String,
+
+        /// Status of the task (completed, blocked, needs_help)
+        #[arg(short, long, default_value = "completed")]
+        status: String,
+
+        /// Force checkpoint even if verification fails or checkpoint exists
+        #[arg(short, long)]
+        force: bool,
+
+        /// Output key=value pairs (can be repeated)
+        #[arg(short, long = "output", value_name = "KEY=VALUE")]
+        outputs: Vec<String>,
+
+        /// Optional notes about the task
+        #[arg(short, long)]
+        notes: Option<String>,
+    },
+
+    /// List checkpoints for the current session
+    List {
+        /// Session ID (defaults to current session)
+        #[arg(short, long, value_parser = clap_id_validator)]
+        session: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 enum AttachCommands {
     /// Attach to all running sessions in a unified tmux view
     All {
@@ -413,6 +453,19 @@ fn main() -> Result<()> {
             state,
         } => clean::execute(all, worktrees, sessions, state),
         Commands::Stop => stop::execute(),
+        Commands::Checkpoint { command } => match command {
+            CheckpointCommands::Create {
+                task_id,
+                status,
+                force,
+                outputs,
+                notes,
+            } => {
+                let status = status.parse::<CheckpointStatus>()?;
+                checkpoint::execute(task_id, status, force, outputs, notes)
+            }
+            CheckpointCommands::List { session } => checkpoint::list(session),
+        },
         Commands::Diagnose { stage_id } => diagnose::execute(&stage_id),
         Commands::Completions { shell } => {
             let shell = Shell::from_str(&shell)?;

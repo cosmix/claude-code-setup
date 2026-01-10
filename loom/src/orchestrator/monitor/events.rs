@@ -43,4 +43,12 @@ pub enum MonitorEvent {
         session_id: String,
         stage_id: String,
     },
+    /// Checkpoint created for a task
+    CheckpointCreated {
+        session_id: String,
+        task_id: String,
+        verification_passed: bool,
+        warnings: Vec<String>,
+        stage_complete: bool,
+    },
 }

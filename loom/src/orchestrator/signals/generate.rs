@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::fs::task_state::read_task_state_if_exists;
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::ParsedHandoff;
 use crate::models::session::Session;
@@ -26,8 +27,8 @@ pub fn generate_signal(
         fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
     }
 
-    // Build embedded context by reading files
-    let embedded_context = build_embedded_context(work_dir, handoff_file);
+    // Build embedded context by reading files, including task state for this stage
+    let embedded_context = build_embedded_context_with_stage(work_dir, handoff_file, Some(&stage.id));
 
     let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_signal_content(
@@ -46,10 +47,20 @@ pub fn generate_signal(
     Ok(signal_path)
 }
 
-/// Build embedded context by reading handoff, structure.md, and plan overview files
+/// Build embedded context by reading handoff, structure.md, plan overview, and task state files
+#[allow(dead_code)]
 pub(super) fn build_embedded_context(
     work_dir: &Path,
     handoff_file: Option<&str>,
+) -> EmbeddedContext {
+    build_embedded_context_with_stage(work_dir, handoff_file, None)
+}
+
+/// Build embedded context with optional stage-specific task state
+pub fn build_embedded_context_with_stage(
+    work_dir: &Path,
+    handoff_file: Option<&str>,
+    stage_id: Option<&str>,
 ) -> EmbeddedContext {
     let mut context = EmbeddedContext::default();
 
@@ -82,6 +93,13 @@ pub(super) fn build_embedded_context(
 
     // Read plan overview from config.toml and the plan file
     context.plan_overview = read_plan_overview(work_dir);
+
+    // Read task state if stage_id is provided
+    if let Some(stage_id) = stage_id {
+        if let Ok(Some(task_state)) = read_task_state_if_exists(work_dir, stage_id) {
+            context.task_state = Some(task_state);
+        }
+    }
 
     context
 }

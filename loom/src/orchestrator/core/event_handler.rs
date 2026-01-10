@@ -108,6 +108,29 @@ impl EventHandler for Orchestrator {
                 } => {
                     self.on_merge_session_completed(&session_id, &stage_id)?;
                 }
+                MonitorEvent::CheckpointCreated {
+                    session_id,
+                    task_id,
+                    verification_passed,
+                    warnings,
+                    stage_complete,
+                } => {
+                    clear_status_line();
+                    if !verification_passed && !warnings.is_empty() {
+                        eprintln!(
+                            "Checkpoint '{task_id}' (session {session_id}) created with {} warnings",
+                            warnings.len()
+                        );
+                    } else if stage_complete {
+                        eprintln!(
+                            "Checkpoint '{task_id}' (session {session_id}) completed - all tasks done!"
+                        );
+                    } else {
+                        eprintln!(
+                            "Checkpoint '{task_id}' (session {session_id}) completed successfully"
+                        );
+                    }
+                }
             }
         }
         Ok(())

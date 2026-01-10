@@ -168,6 +168,77 @@ pub fn format_signal_content(
         content.push('\n');
     }
 
+    // Task progression section (if task state is available)
+    if let Some(task_state) = &embedded_context.task_state {
+        content.push_str(&format_task_progression(task_state));
+    }
+
+    content
+}
+
+/// Format task progression information for inclusion in signals
+fn format_task_progression(task_state: &crate::checkpoints::TaskState) -> String {
+    let mut content = String::new();
+
+    if task_state.tasks.is_empty() {
+        return content;
+    }
+
+    content.push_str("## Task Progression\n\n");
+
+    // Current task
+    if let Some(current) = task_state.current_task() {
+        content.push_str(&format!("**Current Task**: `{}` - {}\n\n", current.id, current.instruction));
+    }
+
+    // Task status table
+    content.push_str("| Task | Status | Instruction |\n");
+    content.push_str("|------|--------|-------------|\n");
+
+    for task in &task_state.tasks {
+        let status = if task_state.completed_tasks.contains_key(&task.id) {
+            "✅ Completed"
+        } else if task_state.is_task_unlocked(&task.id) {
+            "🔓 Unlocked"
+        } else {
+            "🔒 Locked"
+        };
+
+        let instruction = task.instruction.replace('|', "\\|");
+        content.push_str(&format!("| {} | {} | {} |\n", task.id, status, instruction));
+    }
+    content.push('\n');
+
+    // Verification notes for current task
+    if let Some(current) = task_state.current_task() {
+        if !current.verification.is_empty() {
+            content.push_str("**Verification for current task:**\n\n");
+            for rule in &current.verification {
+                match rule {
+                    crate::checkpoints::VerificationRule::FileExists { path } => {
+                        content.push_str(&format!("- File must exist: `{path}`\n"));
+                    }
+                    crate::checkpoints::VerificationRule::Contains { path, pattern } => {
+                        content.push_str(&format!("- `{path}` must contain pattern: `{pattern}`\n"));
+                    }
+                    crate::checkpoints::VerificationRule::Command { cmd, expected_exit_code } => {
+                        content.push_str(&format!("- Command `{cmd}` must exit with code {expected_exit_code}\n"));
+                    }
+                    crate::checkpoints::VerificationRule::OutputSet { key } => {
+                        content.push_str(&format!("- Output `{key}` must be set\n"));
+                    }
+                }
+            }
+            content.push('\n');
+        }
+    }
+
+    // Checkpoint instructions
+    content.push_str("**To complete a task**, run:\n");
+    content.push_str("```bash\n");
+    content.push_str("loom checkpoint create <task-id> --status completed\n");
+    content.push_str("```\n\n");
+
     content
 }
 
