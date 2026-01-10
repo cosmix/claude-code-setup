@@ -238,6 +238,33 @@ pub fn is_ancestor_of(commit_sha: &str, branch: &str, repo_root: &Path) -> Resul
     Ok(status.success())
 }
 
+/// Get the HEAD commit SHA of a branch
+///
+/// Uses `git rev-parse` to resolve the branch name to its HEAD commit SHA.
+///
+/// # Arguments
+/// * `branch` - The branch name to get HEAD for (e.g., "loom/stage-1")
+/// * `repo_root` - Path to the git repository root
+///
+/// # Returns
+/// * `Ok(sha)` - The full commit SHA of the branch HEAD
+/// * `Err` if the branch doesn't exist or git command fails
+pub fn get_branch_head(branch: &str, repo_root: &Path) -> Result<String> {
+    let output = Command::new("git")
+        .args(["rev-parse", branch])
+        .current_dir(repo_root)
+        .output()
+        .with_context(|| format!("Failed to get HEAD of branch {branch}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git rev-parse {branch} failed: {stderr}");
+    }
+
+    let sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(sha)
+}
+
 /// Generate loom branch name from stage ID
 pub fn branch_name_for_stage(stage_id: &str) -> String {
     format!("loom/{stage_id}")
@@ -408,5 +435,70 @@ mod tests {
         // Test: second commit should NOT be an ancestor of first commit
         // (we need to use the first commit as the "branch" here)
         assert!(!is_ancestor_of(&second_commit, &first_commit, repo_path).unwrap());
+    }
+
+    #[test]
+    fn test_get_branch_head() {
+        use tempfile::TempDir;
+
+        // Create a temporary git repository for testing
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user for commits
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Get branch name
+        let output = Command::new("git")
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        let branch_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        // Get expected HEAD
+        let output = Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        let expected_sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        // Test get_branch_head returns correct SHA
+        let result = get_branch_head(&branch_name, repo_path).unwrap();
+        assert_eq!(result, expected_sha);
+
+        // Test get_branch_head fails for non-existent branch
+        let result = get_branch_head("nonexistent-branch", repo_path);
+        assert!(result.is_err());
     }
 }
