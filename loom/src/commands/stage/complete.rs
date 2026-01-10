@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::git::get_branch_head;
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
@@ -90,20 +91,27 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
         let repo_root = std::env::current_dir().context("Failed to get current directory")?;
         let merge_point = get_merge_point(work_dir)?;
 
+        // Capture the completed commit SHA before merge (the HEAD of the stage branch)
+        let branch_name = format!("loom/{stage_id}");
+        let completed_commit = get_branch_head(&branch_name, &repo_root).ok();
+
         println!("Attempting progressive merge into '{merge_point}'...");
         match merge_completed_stage(&stage, &repo_root, &merge_point) {
             Ok(ProgressiveMergeResult::Success { files_changed }) => {
                 println!("  ✓ Merged {files_changed} file(s) into '{merge_point}'");
+                stage.completed_commit = completed_commit;
                 stage.merged = true;
                 save_stage(&stage, work_dir)?;
             }
             Ok(ProgressiveMergeResult::FastForward) => {
                 println!("  ✓ Fast-forward merge into '{merge_point}'");
+                stage.completed_commit = completed_commit;
                 stage.merged = true;
                 save_stage(&stage, work_dir)?;
             }
             Ok(ProgressiveMergeResult::AlreadyMerged) => {
                 println!("  ✓ Already up to date with '{merge_point}'");
+                stage.completed_commit = completed_commit;
                 stage.merged = true;
                 save_stage(&stage, work_dir)?;
             }
