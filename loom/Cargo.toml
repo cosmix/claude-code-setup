@@ -38,3 +38,7 @@ tempfile = "3.24.0"
 [[test]]
 name = "e2e"
 path = "tests/e2e/mod.rs"
+
+[[test]]
+name = "integration"
+path = "tests/integration/mod.rs"
