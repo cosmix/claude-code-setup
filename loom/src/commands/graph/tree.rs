@@ -50,6 +50,47 @@ fn format_dep_annotation(
     format!("{:width$}← {}", "", colored_deps.join(", "), width = padding)
 }
 
+/// Format base branch info for a stage
+fn format_base_branch_info(stage: &Stage, stage_map: &HashMap<&str, &Stage>) -> Option<String> {
+    let base_branch = stage.base_branch.as_ref()?;
+
+    let base_info = if stage.base_merged_from.is_empty() {
+        // Single dependency - show which stage it inherited from
+        if let Some(dep_id) = stage.dependencies.first() {
+            let colored_dep = dep_id.color(stage_color(dep_id));
+            format!(
+                "  {} {} {}",
+                "Base:".dimmed(),
+                base_branch.cyan(),
+                format!("(inherited from {colored_dep})").dimmed()
+            )
+        } else {
+            format!("  {} {}", "Base:".dimmed(), base_branch.cyan())
+        }
+    } else {
+        // Multiple dependencies - show merged sources
+        let colored_sources: Vec<String> = stage
+            .base_merged_from
+            .iter()
+            .map(|dep| {
+                if stage_map.contains_key(dep.as_str()) {
+                    format!("{}", dep.color(stage_color(dep)))
+                } else {
+                    dep.clone()
+                }
+            })
+            .collect();
+        format!(
+            "  {} {} {}",
+            "Base:".dimmed(),
+            base_branch.cyan(),
+            format!("(merged from: {})", colored_sources.join(", ")).dimmed()
+        )
+    };
+
+    Some(base_info)
+}
+
 /// Render footer showing currently running and next ready stages
 fn render_footer(stages: &[Stage], stage_map: &HashMap<&str, &Stage>) -> String {
     let mut footer = String::new();
@@ -126,6 +167,13 @@ pub fn build_tree_display(stages: &[Stage]) -> String {
         let colored_name = stage.name.color(stage_color(&stage.id));
         let colored_id = stage.id.color(stage_color(&stage.id));
         output.push_str(&format!("{connector}{indicator} {colored_name} ({colored_id}){deps}\n"));
+
+        // Show base branch info for executing or queued stages with base branch set
+        if matches!(stage.status, StageStatus::Executing | StageStatus::Queued) {
+            if let Some(base_info) = format_base_branch_info(stage, &stage_map) {
+                output.push_str(&format!("{base_info}\n"));
+            }
+        }
     }
 
     output.push_str(&"─".repeat(50));
