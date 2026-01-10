@@ -40,6 +40,14 @@ pub fn stage_color(stage_id: &str) -> Color {
     STAGE_COLORS[index]
 }
 
+/// Get a color by index, cycling through the palette
+///
+/// Used for position-based color assignment where adjacent items
+/// should have different colors.
+pub fn color_by_index(index: usize) -> Color {
+    STAGE_COLORS[index % STAGE_COLORS.len()]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
