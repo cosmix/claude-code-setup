@@ -140,7 +140,11 @@ fn test_execution_graph_with_parallel_stages() {
         create_stage_def("stage-1", "Foundation", vec![]),
         create_stage_def("stage-2a", "Parallel A", vec!["stage-1".to_string()]),
         create_stage_def("stage-2b", "Parallel B", vec!["stage-1".to_string()]),
-        create_stage_def("stage-3", "Final", vec!["stage-2a".to_string(), "stage-2b".to_string()]),
+        create_stage_def(
+            "stage-3",
+            "Final",
+            vec!["stage-2a".to_string(), "stage-2b".to_string()],
+        ),
     ];
 
     let graph = ExecutionGraph::build(stage_defs).expect("Should build execution graph");
