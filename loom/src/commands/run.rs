@@ -41,17 +41,9 @@ pub fn execute_background(
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
 
-    // Stage filtering is not yet supported in daemon mode (stage_id is stored but not used)
-    if stage_id.is_some() {
-        println!(
-            "{} Stage filtering (--stage) not yet supported in daemon mode",
-            "⚠".yellow().bold()
-        );
-        println!(
-            "  {} Use {} for single-stage execution\n",
-            "→".dimmed(),
-            "--foreground".cyan()
-        );
+    // Log when running a specific stage
+    if let Some(ref id) = stage_id {
+        println!("{} Running single stage: {}", "→".cyan().bold(), id.bold());
     }
 
     // Check if daemon is already running
