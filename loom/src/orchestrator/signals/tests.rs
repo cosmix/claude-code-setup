@@ -800,7 +800,18 @@ fn test_signal_contains_knowledge_updates_section() {
 
     // Knowledge Updates section should always be present
     assert!(content.contains("## Knowledge Updates"));
-    assert!(content.contains("**Capture discoveries**"));
+    assert!(content.contains("**Build and maintain the knowledge base**"));
+    // Guidance for new codebases
+    assert!(content.contains("For new codebases"));
+    assert!(content.contains("Entry points:"));
+    assert!(content.contains("Patterns:"));
+    assert!(content.contains("Conventions:"));
+    // Guidance for established codebases
+    assert!(content.contains("For established codebases, capture discoveries"));
+    assert!(content.contains("New insights"));
+    assert!(content.contains("Undocumented patterns"));
+    assert!(content.contains("Edge cases"));
+    // Commands
     assert!(content.contains("loom knowledge update entry-points"));
     assert!(content.contains("loom knowledge update patterns"));
     assert!(content.contains("loom knowledge update conventions"));

@@ -93,7 +93,16 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
 
     // Add knowledge update instructions after knowledge summary
     content.push_str("## Knowledge Updates\n\n");
-    content.push_str("**Capture discoveries** to help future sessions. Use these commands:\n\n");
+    content.push_str("**Build and maintain the knowledge base** as you explore:\n\n");
+    content.push_str("For new codebases (no existing knowledge), capture:\n");
+    content.push_str("- Entry points: main files, API endpoints, CLI entry\n");
+    content.push_str("- Patterns: error handling, state management, data flow\n");
+    content.push_str("- Conventions: naming, file structure, testing patterns\n\n");
+    content.push_str("For established codebases, capture discoveries:\n");
+    content.push_str("- New insights about system behavior\n");
+    content.push_str("- Undocumented patterns you identify\n");
+    content.push_str("- Edge cases and gotchas for future sessions\n\n");
+    content.push_str("Commands:\n\n");
     content.push_str("| Discovery Type | Command |\n");
     content.push_str("|----------------|--------|\n");
     content.push_str("| Key entry point | `loom knowledge update entry-points \"## Section\\n\\n- path/file.rs - description\"` |\n");
