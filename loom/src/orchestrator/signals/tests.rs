@@ -162,6 +162,8 @@ fn test_format_signal_content_with_embedded_context() {
         plan_overview: Some("# Plan Title\n\n## Overview\nThis plan does X.".to_string()),
         facts_content: None,
         knowledge_summary: None,
+        knowledge_exists: false,
+        knowledge_is_empty: true,
         task_state: None,
         learnings_content: None,
         memory_content: None,
@@ -202,6 +204,8 @@ fn test_format_signal_content_with_facts() {
             "| Key | Value | Source | Confidence |\n|-----|-------|--------|------------|\n| auth_pattern | JWT tokens | implement-auth | high |\n".to_string(),
         ),
         knowledge_summary: None,
+        knowledge_exists: false,
+        knowledge_is_empty: true,
         task_state: None,
         learnings_content: None,
         memory_content: None,
@@ -782,10 +786,11 @@ fn test_signal_sections_ordering() {
 }
 
 #[test]
-fn test_signal_contains_knowledge_updates_section() {
+fn test_signal_contains_knowledge_management_section_empty() {
     let session = create_test_session();
     let stage = create_test_stage();
     let worktree = create_test_worktree();
+    // Default context has no knowledge (knowledge_exists: false, knowledge_is_empty: true)
     let embedded_context = EmbeddedContext::default();
 
     let content = format_signal_content(
@@ -798,20 +803,53 @@ fn test_signal_contains_knowledge_updates_section() {
         &embedded_context,
     );
 
-    // Knowledge Updates section should always be present
-    assert!(content.contains("## Knowledge Updates"));
-    assert!(content.contains("**Build and maintain the knowledge base**"));
-    // Guidance for new codebases
-    assert!(content.contains("For new codebases"));
-    assert!(content.contains("Entry points:"));
-    assert!(content.contains("Patterns:"));
-    assert!(content.contains("Conventions:"));
-    // Guidance for established codebases
-    assert!(content.contains("For established codebases, capture discoveries"));
-    assert!(content.contains("New insights"));
-    assert!(content.contains("Undocumented patterns"));
-    assert!(content.contains("Edge cases"));
-    // Commands
+    // Knowledge Management section should always be present
+    assert!(content.contains("## Knowledge Management"));
+    // For empty knowledge, should show CRITICAL warning box
+    assert!(content.contains("CRITICAL: KNOWLEDGE BASE IS EMPTY"));
+    assert!(content.contains("Before implementing ANYTHING"));
+    // Should show exploration order
+    assert!(content.contains("Exploration Order"));
+    assert!(content.contains("Entry Points First"));
+    assert!(content.contains("Core Modules"));
+    // Commands should always be present
+    assert!(content.contains("loom knowledge update entry-points"));
+    assert!(content.contains("loom knowledge update patterns"));
+    assert!(content.contains("loom knowledge update conventions"));
+}
+
+#[test]
+fn test_signal_contains_knowledge_management_section_populated() {
+    let session = create_test_session();
+    let stage = create_test_stage();
+    let worktree = create_test_worktree();
+    // Context with populated knowledge
+    let embedded_context = EmbeddedContext {
+        knowledge_exists: true,
+        knowledge_is_empty: false,
+        knowledge_summary: Some("## Entry Points\n\n- src/main.rs".to_string()),
+        ..Default::default()
+    };
+
+    let content = format_signal_content(
+        &session,
+        &stage,
+        &worktree,
+        &[],
+        None,
+        None,
+        &embedded_context,
+    );
+
+    // Knowledge Management section should always be present
+    assert!(content.contains("## Knowledge Management"));
+    // For populated knowledge, should NOT show CRITICAL warning
+    assert!(!content.contains("CRITICAL: KNOWLEDGE BASE IS EMPTY"));
+    // Should show standard guidance for established codebases
+    assert!(content.contains("Extend the knowledge base"));
+    assert!(content.contains("undocumented modules"));
+    assert!(content.contains("new insights"));
+    // Commands should always be present
     assert!(content.contains("loom knowledge update entry-points"));
     assert!(content.contains("loom knowledge update patterns"));
     assert!(content.contains("loom knowledge update conventions"));

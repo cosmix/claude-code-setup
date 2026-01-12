@@ -91,18 +91,45 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
         content.push_str("\n</knowledge>\n\n");
     }
 
-    // Add knowledge update instructions after knowledge summary
-    content.push_str("## Knowledge Updates\n\n");
-    content.push_str("**Build and maintain the knowledge base** as you explore:\n\n");
-    content.push_str("For new codebases (no existing knowledge), capture:\n");
-    content.push_str("- Entry points: main files, API endpoints, CLI entry\n");
-    content.push_str("- Patterns: error handling, state management, data flow\n");
-    content.push_str("- Conventions: naming, file structure, testing patterns\n\n");
-    content.push_str("For established codebases, capture discoveries:\n");
-    content.push_str("- New insights about system behavior\n");
-    content.push_str("- Undocumented patterns you identify\n");
-    content.push_str("- Edge cases and gotchas for future sessions\n\n");
-    content.push_str("Commands:\n\n");
+    // Knowledge Management section with conditional urgency
+    content.push_str("## Knowledge Management\n\n");
+
+    if !embedded_context.knowledge_exists || embedded_context.knowledge_is_empty {
+        // CRITICAL warning for missing/empty knowledge
+        content.push_str("```\n");
+        content.push_str("┌────────────────────────────────────────────────────────────────────┐\n");
+        content.push_str("│  CRITICAL: KNOWLEDGE BASE IS EMPTY                                 │\n");
+        content.push_str("│                                                                    │\n");
+        content.push_str("│  Before implementing ANYTHING, you MUST explore and document:     │\n");
+        content.push_str("│                                                                    │\n");
+        content.push_str("│  1. Entry Points                                                   │\n");
+        content.push_str("│     - Main files, CLI entry, API endpoints                         │\n");
+        content.push_str("│                                                                    │\n");
+        content.push_str("│  2. Architectural Patterns                                         │\n");
+        content.push_str("│     - Error handling, state management, data flow                  │\n");
+        content.push_str("│                                                                    │\n");
+        content.push_str("│  3. Coding Conventions                                             │\n");
+        content.push_str("│     - Naming, file structure, testing patterns                     │\n");
+        content.push_str("│                                                                    │\n");
+        content.push_str("│  This prevents wasted context on repeated exploration.             │\n");
+        content.push_str("└────────────────────────────────────────────────────────────────────┘\n");
+        content.push_str("```\n\n");
+
+        content.push_str("**Exploration Order (hierarchical):**\n\n");
+        content.push_str("1. **Entry Points First** - Find main.rs, index.ts, app.py, etc.\n");
+        content.push_str("2. **Core Modules** - Identify the key abstractions and data flow\n");
+        content.push_str("3. **Patterns** - Document error handling, logging, config approaches\n");
+        content.push_str("4. **Conventions** - Note naming, file organization, test patterns\n\n");
+    } else {
+        // Standard instructions for established knowledge base
+        content.push_str("**Extend the knowledge base** as you work:\n\n");
+        content.push_str("- Check for undocumented modules in your working area\n");
+        content.push_str("- Record new insights about system behavior\n");
+        content.push_str("- Document edge cases and gotchas for future sessions\n\n");
+    }
+
+    // Always show commands table at the end
+    content.push_str("**Commands:**\n\n");
     content.push_str("| Discovery Type | Command |\n");
     content.push_str("|----------------|--------|\n");
     content.push_str("| Key entry point | `loom knowledge update entry-points \"## Section\\n\\n- path/file.rs - description\"` |\n");
