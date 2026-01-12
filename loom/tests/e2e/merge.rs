@@ -43,19 +43,19 @@ fn create_test_stage(id: &str, auto_merge: Option<bool>) -> Stage {
 }
 
 #[test]
-fn test_auto_merge_disabled_by_default() {
+fn test_auto_merge_enabled_by_default() {
     let stage = create_test_stage("test-1", None);
 
-    // With no config enabled, auto-merge should be disabled
-    assert!(!is_auto_merge_enabled(&stage, false, None));
+    // With orchestrator default (now true), auto-merge should be enabled
+    assert!(is_auto_merge_enabled(&stage, true, None));
 }
 
 #[test]
-fn test_auto_merge_enabled_via_orchestrator_config() {
+fn test_auto_merge_disabled_via_orchestrator_config() {
     let stage = create_test_stage("test-1", None);
 
-    // Orchestrator config enables it
-    assert!(is_auto_merge_enabled(&stage, true, None));
+    // Orchestrator config disables it (--no-merge flag)
+    assert!(!is_auto_merge_enabled(&stage, false, None));
 }
 
 #[test]

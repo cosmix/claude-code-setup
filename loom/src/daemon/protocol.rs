@@ -19,7 +19,7 @@ pub struct DaemonConfig {
     pub max_parallel: Option<usize>,
     /// Watch mode - monitor for changes (maps to --watch)
     pub watch_mode: bool,
-    /// Auto-merge completed stages (maps to --auto-merge)
+    /// Auto-merge completed stages (default: true, disable with --no-merge)
     pub auto_merge: bool,
 }
 
@@ -30,7 +30,7 @@ impl Default for DaemonConfig {
             manual_mode: false,
             max_parallel: None,
             watch_mode: true,
-            auto_merge: false,
+            auto_merge: true,
         }
     }
 }
@@ -229,7 +229,7 @@ mod tests {
         assert!(!config.manual_mode);
         assert!(config.max_parallel.is_none());
         assert!(config.watch_mode);
-        assert!(!config.auto_merge);
+        assert!(config.auto_merge);
     }
 
     #[test]

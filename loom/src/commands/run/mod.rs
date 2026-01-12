@@ -20,7 +20,7 @@ use crate::fs::work_dir::WorkDir;
 pub use foreground::execute;
 
 /// Execute orchestrator in background (daemon mode)
-/// Usage: loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--auto-merge]
+/// Usage: loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--no-merge]
 pub fn execute_background(
     stage_id: Option<String>,
     manual: bool,
@@ -55,8 +55,8 @@ pub fn execute_background(
     daemon.start()?;
 
     println!("{} Daemon started", "✓".green().bold());
-    if auto_merge {
-        println!("  {} Auto-merge enabled", "→".dimmed());
+    if !auto_merge {
+        println!("  {} Auto-merge disabled", "→".dimmed());
     }
     println!();
     println!("  {}  Monitor progress", "loom status".cyan());

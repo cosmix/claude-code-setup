@@ -13,7 +13,7 @@ fn test_orchestrator_config_default_values() {
     assert_eq!(config.poll_interval, Duration::from_secs(5));
     assert!(!config.manual_mode);
     assert!(!config.watch_mode);
-    assert!(!config.auto_merge);
+    assert!(config.auto_merge);
     assert_eq!(config.status_update_interval, Duration::from_secs(30));
     assert_eq!(config.backend_type, BackendType::Native);
 }

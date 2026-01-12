@@ -34,7 +34,7 @@ fn parse_base_branch_from_config(work_dir: &WorkDir) -> Result<Option<String>> {
 }
 
 /// Execute plan stages in foreground (for --foreground flag)
-/// Usage: loom run --foreground [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--auto-merge]
+/// Usage: loom run --foreground [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--no-merge]
 pub fn execute(
     stage_id: Option<String>,
     manual: bool,

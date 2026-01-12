@@ -58,9 +58,9 @@ enum Commands {
         #[arg(short, long)]
         watch: bool,
 
-        /// Auto-merge completed stages to target branch
+        /// Disable auto-merge of completed stages (merge is enabled by default)
         #[arg(long)]
-        auto_merge: bool,
+        no_merge: bool,
     },
 
     /// Show dashboard with context health
@@ -649,8 +649,9 @@ fn main() -> Result<()> {
             attach,
             foreground,
             watch,
-            auto_merge,
+            no_merge,
         } => {
+            let auto_merge = !no_merge;
             if attach {
                 attach::execute_logs()
             } else if foreground {
