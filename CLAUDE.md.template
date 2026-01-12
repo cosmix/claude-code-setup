@@ -96,9 +96,9 @@ Maximize parallel execution at TWO levels:
 ```
 
 ┌─────────────────────────────────────────────────────────────┐
-│ SAME FILES? │
-│ NO → Same stage, parallel subagents (or single stage) │
-│ YES → Separate stages, loom merges later │
+│ SAME FILES?                                                 │
+│ NO → Same stage, parallel subagents (or single stage)       │
+│ YES → Separate stages, loom merges later                    │
 └─────────────────────────────────────────────────────────────┘
 
 ````
