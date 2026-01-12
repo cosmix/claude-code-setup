@@ -101,7 +101,8 @@ pub fn generate_stable_prefix() -> String {
         "- **All context is embedded above** - you have everything you need in this signal\n",
     );
     content.push_str("- **No path escaping** - do not use `../..`, `cd` to parent directories, or absolute paths outside worktree\n\n");
-    content.push_str("**Delegation & Efficiency:**\n");
+    content.push_str("**Delegation & Efficiency (CRITICAL):**\n\n");
+    content.push_str("**Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE.**\n\n");
     content.push_str(
         "- **Use PARALLEL subagents** - spawn multiple appropriate subagents concurrently when tasks are independent\n",
     );
@@ -170,6 +171,8 @@ mod tests {
         assert!(prefix.contains("## Execution Rules"));
         assert!(prefix.contains("STAY IN THIS WORKTREE"));
         assert!(prefix.contains("git add <specific-files>"));
+        // Critical: parallel subagents guidance must be verbatim
+        assert!(prefix.contains("Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE."));
     }
 
     #[test]
