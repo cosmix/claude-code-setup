@@ -16,6 +16,10 @@ pub struct EmbeddedContext {
     pub facts_content: Option<String>,
     /// Knowledge summary from .work/knowledge/ files
     pub knowledge_summary: Option<String>,
+    /// Whether the knowledge directory exists
+    pub knowledge_exists: bool,
+    /// Whether the knowledge is empty (only placeholder content or no real content)
+    pub knowledge_is_empty: bool,
     /// Task state for the stage (if tasks are defined)
     pub task_state: Option<TaskState>,
     /// Recent learnings for recitation (formatted as markdown)

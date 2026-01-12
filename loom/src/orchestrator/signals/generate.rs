@@ -119,8 +119,14 @@ pub fn build_embedded_context_with_stage_and_session(
 
     // Read knowledge summary if knowledge directory exists
     let knowledge = KnowledgeDir::new(work_dir);
-    if knowledge.exists() {
-        context.knowledge_summary = knowledge.generate_summary().ok().filter(|s| !s.is_empty());
+    context.knowledge_exists = knowledge.exists();
+    if context.knowledge_exists {
+        let summary = knowledge.generate_summary().ok().filter(|s| !s.is_empty());
+        // Knowledge is considered empty if there's no summary or the summary is only placeholder content
+        context.knowledge_is_empty = summary.is_none();
+        context.knowledge_summary = summary;
+    } else {
+        context.knowledge_is_empty = true;
     }
 
     // Read task state if stage_id is provided
