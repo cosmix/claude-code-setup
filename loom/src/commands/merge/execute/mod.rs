@@ -213,7 +213,8 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
         }
     };
 
-    match merge_result {
+    // Helper to handle post-merge cleanup with stash safety
+    let cleanup_result = match merge_result {
         MergeResult::Success {
             files_changed,
             insertions,
@@ -236,6 +237,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             // Update stage status
             mark_stage_merged(&stage_id, &work_dir)?;
             println!("\nStage '{stage_id}' merged successfully!");
+            Ok(())
         }
         MergeResult::FastForward => {
             println!("Fast-forward merge completed!");
@@ -250,6 +252,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
 
             mark_stage_merged(&stage_id, &work_dir)?;
             println!("\nStage '{stage_id}' merged successfully!");
+            Ok(())
         }
         MergeResult::AlreadyUpToDate => {
             println!("Branch is already up to date with {target_branch}.");
@@ -265,6 +268,7 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
             }
 
             mark_stage_merged(&stage_id, &work_dir)?;
+            Ok(())
         }
         MergeResult::Conflict { conflicting_files } => {
             // Restore .work symlink so worktree remains functional for conflict resolution
@@ -296,6 +300,15 @@ pub fn execute(stage_id: String, force: bool) -> Result<()> {
 
             return Ok(());
         }
+    };
+
+    // If cleanup failed, pop stash before propagating error
+    if let Err(e) = cleanup_result {
+        if main_repo_stashed {
+            eprintln!("\nPost-merge cleanup failed, restoring stashed changes...");
+            pop_stash(&repo_root)?;
+        }
+        return Err(e);
     }
 
     // Restore stashed changes after successful merge
