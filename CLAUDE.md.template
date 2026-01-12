@@ -72,6 +72,22 @@ loom:
         - "cargo test"
       files:
         - "src/**/*.rs"
+
+    # REQUIRED LAST STAGE - integration-verify MUST be final
+    - id: integration-verify
+      name: "Integration Verification"
+      description: |
+        Final integration verification - runs AFTER all feature stages complete.
+        1. Run full test suite (all tests, not just affected)
+        2. Run linting with warnings as errors
+        3. Verify build succeeds
+        4. Check for unintended regressions
+      dependencies: ["implement-feature"]  # List ALL feature stages here
+      acceptance:
+        - "cargo test"
+        - "cargo clippy -- -D warnings"
+        - "cargo build"
+      files: []  # Verification only - no file modifications
 ```
 
 <!-- END loom METADATA -->
@@ -258,27 +274,59 @@ Build and maintain the `.work/knowledge/` base BEFORE and DURING every session.
 
 **EVERY PLAN MUST include `knowledge-bootstrap` as the first stage** (unless knowledge already exists and is complete). See Plan Format section for the required stage definition.
 
+### 10. INTEGRATION VERIFICATION (MANDATORY)
+
+**Every plan MUST end with an `integration-verify` stage.**
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  PLAN STRUCTURE CHECK                                               │
+│                                                                    │
+│  FIRST STAGE: knowledge-bootstrap (unless knowledge exists)        │
+│  LAST STAGE:  integration-verify (ALWAYS - no exceptions)          │
+│                                                                    │
+│  integration-verify MUST depend on ALL feature stages.             │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Why integration-verify is mandatory:**
+
+- Feature stages run in **isolated worktrees** with limited test scope
+- Individual stage acceptance criteria verify **local** correctness only
+- Integration-verify runs **after merge** to catch cross-stage regressions
+- Without it, merged code may fail tests that passed in isolation
+
+**integration-verify stage requirements:**
+
+| Requirement | Details |
+| ----------- | ------- |
+| Dependencies | ALL feature/implementation stages |
+| Acceptance | Full test suite, linting, build verification |
+| Files | Empty (verification only, no modifications) |
+
+See **Plan Format** section for the required `integration-verify` stage template.
+
 ---
 
 ## STANDARD RULES
 
-### 10. QUALITY GATES
+### 11. QUALITY GATES
 
 Before completion: zero lint errors, tests passing, self-reviewed for security.
 
-### 11. DEPENDENCIES
+### 12. DEPENDENCIES
 
 Never hand-edit manifests. Use: `bun add`, `cargo add`, `uv add`, `go get`
 
-### 12. CODE SIZE LIMITS
+### 13. CODE SIZE LIMITS
 
 File: 400 lines | Function: 50 lines | Class: 300 lines — Exceed = refactor immediately.
 
-### 13. SESSION STATE
+### 14. SESSION STATE
 
 Update `CLAUDE.md` during work. On completion, replace updates with summary.
 
-### 14. MISTAKES LOG
+### 15. MISTAKES LOG
 
 On any mistake: append to "MISTAKES AND LESSONS LEARNT" section. Never delete.
 
@@ -399,6 +447,8 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 │  4. IN WORKTREE: Commit + complete stage or hook BLOCKS exit.      │
 │                                                                    │
 │  5. KNOWLEDGE: Bootstrap if empty. Update discoveries. ALWAYS.     │
+│                                                                    │
+│  6. PLANS: integration-verify LAST. No exceptions.                 │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
