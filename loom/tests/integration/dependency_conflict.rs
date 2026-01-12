@@ -11,10 +11,14 @@ use loom::git::worktree::resolve_base_branch;
 
 use super::helpers::*;
 
-/// Test 5: Multi-dep conflict returns error
+/// Test 5: Multi-dep not merged returns scheduling error
+///
+/// With progressive merge, stages can only be scheduled after ALL their dependencies
+/// are completed AND merged. If deps are completed but not merged, this is a
+/// scheduling error (not a merge conflict - that would be detected during merge).
 #[test]
 #[serial]
-fn test_multi_dep_conflict_returns_error() {
+fn test_multi_dep_not_merged_returns_scheduling_error() {
     let temp_dir = init_test_repo();
     let repo_root = temp_dir.path();
 
@@ -29,6 +33,7 @@ fn test_multi_dep_conflict_returns_error() {
 
     complete_stage(&mut graph, "stage-a");
     complete_stage(&mut graph, "stage-b");
+    // Note: deps are completed but NOT merged - this is a scheduling error
 
     let result = resolve_base_branch(
         "stage-c",
@@ -38,12 +43,12 @@ fn test_multi_dep_conflict_returns_error() {
         None,
     );
 
-    assert!(result.is_err(), "Should fail due to merge conflict");
+    assert!(result.is_err(), "Should fail due to unmerged dependencies");
 
     let err_msg = result.unwrap_err().to_string();
     assert!(
-        err_msg.contains("Merge conflict") || err_msg.contains("merge failed"),
-        "Error should mention merge conflict: {err_msg}"
+        err_msg.contains("Scheduling error") && err_msg.contains("merged=false"),
+        "Error should mention scheduling error with unmerged deps: {err_msg}"
     );
 }
 
