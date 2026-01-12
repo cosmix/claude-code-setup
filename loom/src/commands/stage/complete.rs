@@ -3,7 +3,6 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::fs::learnings::{append_learning, Learning, LearningCategory};
 use crate::fs::memory::{extract_key_notes, read_journal};
@@ -11,6 +10,7 @@ use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::task_state::read_task_state_if_exists;
 use crate::git::get_branch_head;
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
+use crate::verify::criteria::run_acceptance;
 use crate::verify::task_verification::run_task_verifications;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
@@ -60,32 +60,24 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
             println!("  (working directory: {})", dir.display());
         }
 
-        let mut all_passed = true;
-        for criterion in &stage.acceptance {
-            println!("  → {criterion}");
-            let mut cmd = Command::new("sh");
-            cmd.arg("-c").arg(criterion);
+        let result = run_acceptance(&stage, working_dir.as_deref())
+            .context("Failed to run acceptance criteria")?;
 
-            if let Some(ref dir) = working_dir {
-                cmd.current_dir(dir);
+        // Print results for each criterion
+        for criterion_result in result.results() {
+            if criterion_result.success {
+                println!("  ✓ passed: {}", criterion_result.command);
+            } else if criterion_result.timed_out {
+                println!("  ✗ TIMEOUT: {}", criterion_result.command);
+            } else {
+                println!("  ✗ FAILED: {}", criterion_result.command);
             }
-
-            let status = cmd
-                .status()
-                .with_context(|| format!("Failed to run: {criterion}"))?;
-
-            if !status.success() {
-                all_passed = false;
-                println!("  ✗ FAILED: {criterion}");
-                break;
-            }
-            println!("  ✓ passed");
         }
 
-        if all_passed {
+        if result.all_passed() {
             println!("All acceptance criteria passed!");
         }
-        Some(all_passed)
+        Some(result.all_passed())
     } else {
         // No acceptance criteria defined - treat as passed
         Some(true)
