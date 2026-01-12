@@ -205,6 +205,45 @@ block_with_reason() {
     exit 2
 }
 
+# Non-blocking reminder about knowledge capture
+# Called after blocking checks pass, outputs to stderr
+remind_knowledge_capture() {
+    local project_root="$1"
+
+    # Only show if knowledge directory exists
+    local knowledge_dir="$project_root/$WORK_DIR/knowledge"
+    if [[ ! -d "$knowledge_dir" ]]; then
+        return
+    fi
+
+    # Check if any knowledge file has content beyond template
+    local has_content=false
+    for file in entry-points.md patterns.md conventions.md; do
+        local filepath="$knowledge_dir/$file"
+        if [[ -f "$filepath" ]]; then
+            # Check if file has more than just template content (>10 lines)
+            local lines
+            lines=$(wc -l < "$filepath")
+            if [[ "$lines" -gt 15 ]]; then
+                has_content=true
+                break
+            fi
+        fi
+    done
+
+    # Always show reminder (soft prompt, not blocking)
+    printf '\n' >&2
+    printf '%s\n' "------------------------------------------------------------" >&2
+    printf '%s\n' "Knowledge Capture Reminder" >&2
+    printf '%s\n' "------------------------------------------------------------" >&2
+    printf '%s\n' "Did you discover anything worth sharing with future sessions?" >&2
+    printf '%s\n' "" >&2
+    printf '%s\n' "  loom knowledge update entry-points \"## Section\\n- file - desc\"" >&2
+    printf '%s\n' "  loom knowledge update patterns \"## Pattern\\n- description\"" >&2
+    printf '%s\n' "  loom knowledge update conventions \"## Convention\\n- details\"" >&2
+    printf '%s\n' "------------------------------------------------------------" >&2
+}
+
 # Main hook logic
 main() {
     debug_log "=== loom-stop hook starting ==="
@@ -224,6 +263,9 @@ main() {
         debug_log "Project root not found (.work missing), allowing stop"
         exit 0
     fi
+
+    # Show knowledge reminder (non-blocking, informational)
+    remind_knowledge_capture "$project_root"
 
     # Collect issues
     local issues=()
