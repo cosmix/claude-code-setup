@@ -31,6 +31,7 @@ libc = "0.2.180"
 ctrlc = "3.5.1"
 which = "8.0.0"
 regex = "1.12.2"
+fs2 = "0.4"
 
 [dev-dependencies]
 serial_test = "3.3.1"
