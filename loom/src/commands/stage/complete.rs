@@ -9,6 +9,7 @@ use crate::fs::memory::{extract_key_notes, read_journal};
 use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::task_state::read_task_state_if_exists;
 use crate::git::get_branch_head;
+use crate::git::worktree::find_worktree_root_from_cwd;
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
 use crate::verify::criteria::run_acceptance;
 use crate::verify::task_verification::run_task_verifications;
@@ -29,26 +30,18 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
         .or_else(|| stage.session.clone())
         .or_else(|| find_session_for_stage(&stage_id, work_dir));
 
-    // Resolve worktree path from stage's worktree field
-    // First check if we're already inside the worktree (e.g., cwd contains .worktrees/)
+    // Resolve worktree path: first try detecting from cwd, then fall back to stage.worktree field
     let cwd = std::env::current_dir().ok();
-    let inside_worktree = cwd
+    let working_dir: Option<PathBuf> = cwd
         .as_ref()
-        .and_then(|p| p.to_str())
-        .map(|s| s.contains(".worktrees/"))
-        .unwrap_or(false);
-
-    let working_dir: Option<PathBuf> = if inside_worktree {
-        // Already inside a worktree, use current directory
-        Some(PathBuf::from("."))
-    } else {
-        // Try to find the worktree relative to repo root
-        stage
-            .worktree
-            .as_ref()
-            .map(|w| PathBuf::from(".worktrees").join(w))
-            .filter(|p| p.exists())
-    };
+        .and_then(|p| find_worktree_root_from_cwd(p))
+        .or_else(|| {
+            stage
+                .worktree
+                .as_ref()
+                .map(|w| PathBuf::from(".worktrees").join(w))
+                .filter(|p| p.exists())
+        });
 
     // Track whether acceptance criteria passed (None = skipped via --no-verify)
     let acceptance_result: Option<bool> = if no_verify {
@@ -86,7 +79,16 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
     // Sync worktree permissions to main repo (non-fatal - warn on error)
     if acceptance_result != Some(false) {
         if let Some(ref dir) = working_dir {
-            let repo_root = std::env::current_dir().ok();
+            // When inside a worktree, repo_root should be the parent of .worktrees
+            // The worktree path is like /path/to/repo/.worktrees/stage-id
+            // So we need to go up to the directory containing .worktrees
+            let repo_root = dir
+                .ancestors()
+                .find(|p| p.file_name().map(|n| n == ".worktrees").unwrap_or(false))
+                .and_then(|p| p.parent())
+                .map(PathBuf::from)
+                .or_else(|| std::env::current_dir().ok());
+
             if let Some(ref root) = repo_root {
                 match sync_worktree_permissions(dir, root) {
                     Ok(result) => {
