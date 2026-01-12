@@ -4,9 +4,11 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 
 use crate::git;
+use crate::git::worktree::setup_worktree_hooks;
 use crate::models::failure::{FailureInfo, FailureType};
 use crate::models::session::Session;
 use crate::models::stage::{Stage, StageStatus};
+use crate::orchestrator::hooks::find_hooks_dir;
 use crate::orchestrator::signals::{generate_signal, DependencyStatus};
 
 use super::persistence::Persistence;
@@ -124,6 +126,20 @@ impl StageExecutor for Orchestrator {
         };
 
         let session = Session::new();
+
+        // Set up Claude Code hooks for this session
+        if let Some(hooks_dir) = find_hooks_dir() {
+            if let Err(e) = setup_worktree_hooks(
+                &worktree.path,
+                stage_id,
+                &session.id,
+                &self.config.work_dir,
+                &hooks_dir,
+            ) {
+                eprintln!("Warning: Failed to set up hooks for stage '{stage_id}': {e}");
+                // Continue anyway - hooks are optional enhancement
+            }
+        }
 
         let deps = get_dependency_status(&stage, &self.graph);
 

@@ -6,6 +6,7 @@ use anyhow::{bail, Context, Result};
 use std::path::Path;
 
 use crate::models::stage::StageStatus;
+use crate::orchestrator::hooks::read_stage_events;
 use crate::orchestrator::monitor::failure_tracking::FailureTracker;
 use crate::orchestrator::signals::{
     generate_recovery_signal, LastHeartbeatInfo, RecoveryReason, RecoverySignalContent,
@@ -67,6 +68,10 @@ pub fn recover(stage_id: String, force: bool) -> Result<()> {
 
     // Try to load last heartbeat for context
     let last_heartbeat = load_last_heartbeat(work_dir, &stage_id);
+
+    // Get recent hook events for recovery context
+    let recent_events = read_stage_events(work_dir, &stage_id).unwrap_or_default();
+    let last_event = recent_events.last().map(|e| format!("{}: {}", e.event, e.timestamp));
 
     // Determine recovery reason based on stage state
     let recovery_reason = determine_recovery_reason(&stage);
@@ -134,6 +139,9 @@ pub fn recover(stage_id: String, force: bool) -> Result<()> {
     println!("  New session: {}", new_session_id);
     println!("  Recovery reason: {}", recovery_reason);
     println!("  Attempt: #{}", recovery_attempt);
+    if let Some(event) = &last_event {
+        println!("  Last hook event: {}", event);
+    }
     println!();
     println!("The stage will be picked up by the next orchestrator poll.");
     println!("Run 'loom run' to start the orchestrator if not running.");
