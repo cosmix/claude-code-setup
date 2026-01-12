@@ -13,8 +13,8 @@ impl StageStatus {
     /// - `NeedsHandoff` -> `Queued` (when resumed)
     /// - `WaitingForInput` -> `Executing` (when input provided)
     /// - `MergeConflict` -> `Completed` | `Blocked` (when conflicts resolved or resolution fails)
-    /// - `CompletedWithFailures` -> `Executing` (for retry)
-    /// - `MergeBlocked` -> `Executing` (for retry)
+    /// - `CompletedWithFailures` -> `Queued` | `Executing` (for retry)
+    /// - `MergeBlocked` -> `Queued` | `Executing` (for retry)
     /// - `Completed` is a terminal state
     /// - `Skipped` is a terminal state
     ///
@@ -60,10 +60,10 @@ impl StageStatus {
                 matches!(new_status, StageStatus::Completed | StageStatus::Blocked)
             }
             StageStatus::CompletedWithFailures => {
-                matches!(new_status, StageStatus::Executing)
+                matches!(new_status, StageStatus::Queued | StageStatus::Executing)
             }
             StageStatus::MergeBlocked => {
-                matches!(new_status, StageStatus::Executing)
+                matches!(new_status, StageStatus::Queued | StageStatus::Executing)
             }
         }
     }
@@ -109,8 +109,8 @@ impl StageStatus {
             StageStatus::NeedsHandoff => vec![StageStatus::Queued],
             StageStatus::Skipped => vec![], // Terminal state
             StageStatus::MergeConflict => vec![StageStatus::Completed, StageStatus::Blocked],
-            StageStatus::CompletedWithFailures => vec![StageStatus::Executing],
-            StageStatus::MergeBlocked => vec![StageStatus::Executing],
+            StageStatus::CompletedWithFailures => vec![StageStatus::Queued, StageStatus::Executing],
+            StageStatus::MergeBlocked => vec![StageStatus::Queued, StageStatus::Executing],
         }
     }
 }

@@ -674,10 +674,15 @@ fn test_completed_with_failures_can_transition_to_executing() {
 }
 
 #[test]
+fn test_completed_with_failures_can_transition_to_queued() {
+    let status = StageStatus::CompletedWithFailures;
+    assert!(status.can_transition_to(&StageStatus::Queued));
+}
+
+#[test]
 fn test_completed_with_failures_cannot_transition_to_other_states() {
     let status = StageStatus::CompletedWithFailures;
     assert!(!status.can_transition_to(&StageStatus::WaitingForDeps));
-    assert!(!status.can_transition_to(&StageStatus::Queued));
     assert!(!status.can_transition_to(&StageStatus::Completed));
     assert!(!status.can_transition_to(&StageStatus::Blocked));
     assert!(!status.can_transition_to(&StageStatus::NeedsHandoff));
@@ -696,8 +701,9 @@ fn test_valid_transitions_executing_includes_completed_with_failures() {
 #[test]
 fn test_valid_transitions_completed_with_failures() {
     let transitions = StageStatus::CompletedWithFailures.valid_transitions();
+    assert!(transitions.contains(&StageStatus::Queued));
     assert!(transitions.contains(&StageStatus::Executing));
-    assert_eq!(transitions.len(), 1);
+    assert_eq!(transitions.len(), 2);
 }
 
 #[test]
@@ -764,10 +770,15 @@ fn test_merge_blocked_can_transition_to_executing() {
 }
 
 #[test]
+fn test_merge_blocked_can_transition_to_queued() {
+    let status = StageStatus::MergeBlocked;
+    assert!(status.can_transition_to(&StageStatus::Queued));
+}
+
+#[test]
 fn test_merge_blocked_cannot_transition_to_other_states() {
     let status = StageStatus::MergeBlocked;
     assert!(!status.can_transition_to(&StageStatus::WaitingForDeps));
-    assert!(!status.can_transition_to(&StageStatus::Queued));
     assert!(!status.can_transition_to(&StageStatus::Completed));
     assert!(!status.can_transition_to(&StageStatus::Blocked));
     assert!(!status.can_transition_to(&StageStatus::NeedsHandoff));
@@ -786,8 +797,9 @@ fn test_valid_transitions_executing_includes_merge_blocked() {
 #[test]
 fn test_valid_transitions_merge_blocked() {
     let transitions = StageStatus::MergeBlocked.valid_transitions();
+    assert!(transitions.contains(&StageStatus::Queued));
     assert!(transitions.contains(&StageStatus::Executing));
-    assert_eq!(transitions.len(), 1);
+    assert_eq!(transitions.len(), 2);
 }
 
 #[test]

@@ -22,15 +22,21 @@ pub fn skip(stage_id: String, reason: Option<String>) -> Result<()> {
     Ok(())
 }
 
-/// Retry a blocked stage
+/// Retry a stage that is blocked, completed with failures, or merge-blocked
 pub fn retry(stage_id: String, force: bool) -> Result<()> {
     let work_dir = Path::new(".work");
 
     let mut stage = load_stage(&stage_id, work_dir)?;
 
-    if stage.status != StageStatus::Blocked {
+    // Allow retry for Blocked, CompletedWithFailures, and MergeBlocked states
+    let retryable = matches!(
+        stage.status,
+        StageStatus::Blocked | StageStatus::CompletedWithFailures | StageStatus::MergeBlocked
+    );
+
+    if !retryable {
         bail!(
-            "Cannot retry stage in status: {}. Only blocked stages can be retried.",
+            "Cannot retry stage in status: {}. Only blocked, completed-with-failures, or merge-blocked stages can be retried.",
             stage.status
         );
     }

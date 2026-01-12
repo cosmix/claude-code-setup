@@ -30,11 +30,25 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
         .or_else(|| find_session_for_stage(&stage_id, work_dir));
 
     // Resolve worktree path from stage's worktree field
-    let working_dir: Option<PathBuf> = stage
-        .worktree
+    // First check if we're already inside the worktree (e.g., cwd contains .worktrees/)
+    let cwd = std::env::current_dir().ok();
+    let inside_worktree = cwd
         .as_ref()
-        .map(|w| PathBuf::from(".worktrees").join(w))
-        .filter(|p| p.exists());
+        .and_then(|p| p.to_str())
+        .map(|s| s.contains(".worktrees/"))
+        .unwrap_or(false);
+
+    let working_dir: Option<PathBuf> = if inside_worktree {
+        // Already inside a worktree, use current directory
+        Some(PathBuf::from("."))
+    } else {
+        // Try to find the worktree relative to repo root
+        stage
+            .worktree
+            .as_ref()
+            .map(|w| PathBuf::from(".worktrees").join(w))
+            .filter(|p| p.exists())
+    };
 
     // Track whether acceptance criteria passed (None = skipped via --no-verify)
     let acceptance_result: Option<bool> = if no_verify {
