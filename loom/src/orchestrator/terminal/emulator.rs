@@ -227,6 +227,9 @@ mod tests {
     #[test]
     fn test_display() {
         assert_eq!(TerminalEmulator::Kitty.to_string(), "kitty");
-        assert_eq!(TerminalEmulator::GnomeTerminal.to_string(), "gnome-terminal");
+        assert_eq!(
+            TerminalEmulator::GnomeTerminal.to_string(),
+            "gnome-terminal"
+        );
     }
 }

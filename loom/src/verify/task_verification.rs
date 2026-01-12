@@ -85,7 +85,10 @@ fn verify_contains(
         Ok(content) => match Regex::new(pattern) {
             Ok(regex) => {
                 if regex.is_match(&content) {
-                    CheckpointVerificationResult::passed(rule, format!("Pattern '{pattern}' found in {path}"))
+                    CheckpointVerificationResult::passed(
+                        rule,
+                        format!("Pattern '{pattern}' found in {path}"),
+                    )
                 } else {
                     CheckpointVerificationResult::failed(
                         rule,
@@ -93,7 +96,9 @@ fn verify_contains(
                     )
                 }
             }
-            Err(e) => CheckpointVerificationResult::failed(rule, format!("Invalid regex pattern: {e}")),
+            Err(e) => {
+                CheckpointVerificationResult::failed(rule, format!("Invalid regex pattern: {e}"))
+            }
         },
         Err(e) => CheckpointVerificationResult::failed(rule, format!("Failed to read {path}: {e}")),
     }
@@ -116,9 +121,17 @@ fn verify_command(
                 )
             } else {
                 let output = if !stderr.is_empty() {
-                    stderr.lines().take(MAX_ERROR_OUTPUT_LINES).collect::<Vec<_>>().join("\n")
+                    stderr
+                        .lines()
+                        .take(MAX_ERROR_OUTPUT_LINES)
+                        .collect::<Vec<_>>()
+                        .join("\n")
                 } else if !stdout.is_empty() {
-                    stdout.lines().take(MAX_ERROR_OUTPUT_LINES).collect::<Vec<_>>().join("\n")
+                    stdout
+                        .lines()
+                        .take(MAX_ERROR_OUTPUT_LINES)
+                        .collect::<Vec<_>>()
+                        .join("\n")
                 } else {
                     String::new()
                 };
@@ -130,7 +143,9 @@ fn verify_command(
                 )
             }
         }
-        Err(e) => CheckpointVerificationResult::failed(rule, format!("Command failed to execute: {e}")),
+        Err(e) => {
+            CheckpointVerificationResult::failed(rule, format!("Command failed to execute: {e}"))
+        }
     }
 }
 
@@ -222,7 +237,9 @@ fn collect_output(child: &mut std::process::Child) -> Result<(String, String)> {
 }
 
 /// Get a summary of verification results
-pub fn summarize_verifications(results: &[CheckpointVerificationResult]) -> (usize, usize, Vec<String>) {
+pub fn summarize_verifications(
+    results: &[CheckpointVerificationResult],
+) -> (usize, usize, Vec<String>) {
     let passed = results.iter().filter(|r| r.passed).count();
     let failed = results.iter().filter(|r| !r.passed).count();
     let warnings: Vec<String> = results

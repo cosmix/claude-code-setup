@@ -36,10 +36,7 @@ impl NativeBackend {
     /// Create a new native backend, detecting the available terminal
     pub fn new(work_dir: PathBuf) -> Result<Self> {
         let terminal = detect_terminal()?;
-        Ok(Self {
-            terminal,
-            work_dir,
-        })
+        Ok(Self { terminal, work_dir })
     }
 
     /// Get the detected terminal emulator

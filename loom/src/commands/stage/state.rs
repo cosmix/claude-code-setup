@@ -34,7 +34,10 @@ pub fn reset(stage_id: String, hard: bool, _kill_session: bool) -> Result<()> {
     // INTENTIONAL STATE MACHINE BYPASS: WaitingForDeps is the initial state
     // and has no valid incoming transitions. This manual recovery command
     // allows resetting stages to their initial state for recovery scenarios.
-    eprintln!("Warning: Bypassing state machine to reset stage to initial state (was: {:?})", stage.status);
+    eprintln!(
+        "Warning: Bypassing state machine to reset stage to initial state (was: {:?})",
+        stage.status
+    );
     stage.status = StageStatus::WaitingForDeps;
     stage.completed_at = None;
     stage.close_reason = None;

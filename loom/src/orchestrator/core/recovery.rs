@@ -148,7 +148,34 @@ impl Recovery for Orchestrator {
                             let _ = self.graph.mark_blocked(&stage.id);
                         }
                     }
-                    _ => {}
+                    StageStatus::WaitingForInput => {
+                        // Stage is paused waiting for user input
+                        let _ = self.graph.mark_waiting_for_input(&stage.id);
+                    }
+                    StageStatus::NeedsHandoff => {
+                        // Stage hit context limit and needs handoff to new session
+                        let _ = self.graph.mark_needs_handoff(&stage.id);
+                    }
+                    StageStatus::MergeConflict => {
+                        // Stage has merge conflicts that need resolution
+                        let _ = self.graph.mark_merge_conflict(&stage.id);
+                    }
+                    StageStatus::CompletedWithFailures => {
+                        // Stage completed but acceptance criteria failed
+                        let _ = self.graph.mark_completed_with_failures(&stage.id);
+                    }
+                    StageStatus::MergeBlocked => {
+                        // Stage merge failed with error (not conflicts)
+                        let _ = self.graph.mark_merge_blocked(&stage.id);
+                    }
+                    StageStatus::Skipped => {
+                        // Stage was intentionally skipped
+                        let _ = self.graph.mark_skipped(&stage.id);
+                    }
+                    StageStatus::WaitingForDeps => {
+                        // Stage is still waiting for dependencies
+                        let _ = self.graph.mark_waiting_for_deps(&stage.id);
+                    }
                 }
             }
         }
@@ -247,7 +274,10 @@ impl Recovery for Orchestrator {
                             if let Err(e) = stage.try_mark_queued() {
                                 // Log a warning that validation was bypassed for recovery
                                 eprintln!("Warning: State transition validation failed during orphaned session recovery: {e}");
-                                eprintln!("         Bypassing validation for recovery (was: {:?})", stage.status);
+                                eprintln!(
+                                    "         Bypassing validation for recovery (was: {:?})",
+                                    stage.status
+                                );
                                 stage.status = StageStatus::Queued;
                             }
                             stage.session = None;
@@ -297,7 +327,14 @@ impl Recovery for Orchestrator {
                 NodeStatus::Completed => continue,
                 NodeStatus::Blocked => continue,
                 NodeStatus::Skipped => continue,
-                NodeStatus::WaitingForDeps | NodeStatus::Queued | NodeStatus::Executing => {
+                NodeStatus::MergeConflict => continue, // Terminal until resolved
+                NodeStatus::CompletedWithFailures => continue, // Terminal until retried
+                NodeStatus::MergeBlocked => continue,  // Terminal until fixed
+                NodeStatus::WaitingForDeps
+                | NodeStatus::Queued
+                | NodeStatus::Executing
+                | NodeStatus::WaitingForInput
+                | NodeStatus::NeedsHandoff => {
                     // Need to check the actual stage file for held status
                     if let Ok(stage) = self.load_stage(&node.id) {
                         match stage.status {
@@ -332,6 +369,11 @@ impl Recovery for Orchestrator {
                 NodeStatus::Completed => completed += 1,
                 NodeStatus::Blocked => blocked += 1,
                 NodeStatus::Skipped => completed += 1, // Count skipped as completed for status display
+                NodeStatus::WaitingForInput => running += 1, // Paused but still active
+                NodeStatus::NeedsHandoff => running += 1, // Needs continuation but still in progress
+                NodeStatus::MergeConflict => blocked += 1, // Blocked on conflict resolution
+                NodeStatus::CompletedWithFailures => blocked += 1, // Failed acceptance, needs retry
+                NodeStatus::MergeBlocked => blocked += 1, // Blocked on merge error
             }
         }
 

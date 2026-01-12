@@ -179,7 +179,9 @@ mod tests {
             "Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE."
         ));
         // Critical: worktree root directory reminder for loom stage complete
-        assert!(prefix.contains("Before running `loom stage complete`, ensure you are at the worktree root directory"));
+        assert!(prefix.contains(
+            "Before running `loom stage complete`, ensure you are at the worktree root directory"
+        ));
     }
 
     #[test]

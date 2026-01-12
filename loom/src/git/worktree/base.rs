@@ -485,5 +485,4 @@ mod tests {
         // All deps merged AND init_base_branch provided - use init_base_branch
         assert_eq!(result, ResolvedBase::Main("feat-my-feature".to_string()));
     }
-
 }

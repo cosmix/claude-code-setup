@@ -134,7 +134,8 @@ pub fn recover(stage_id: String, force: bool) -> Result<()> {
         .context("Failed to generate recovery signal")?;
 
     // Reset stage to Queued for the new session using validated transition
-    stage.try_mark_queued()
+    stage
+        .try_mark_queued()
         .context("Failed to transition stage to Queued for recovery")?;
     stage.session = Some(new_session_id.clone());
     stage.close_reason = Some(format!("Recovery initiated (attempt #{recovery_attempt})"));

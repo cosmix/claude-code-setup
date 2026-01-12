@@ -37,9 +37,12 @@ pub fn spawn_in_terminal(
 ) -> Result<u32> {
     let mut command = terminal.build_command(title, workdir, cmd);
 
-    let child = command
-        .spawn()
-        .with_context(|| format!("Failed to spawn terminal '{}'. Is it installed?", terminal.binary()))?;
+    let child = command.spawn().with_context(|| {
+        format!(
+            "Failed to spawn terminal '{}'. Is it installed?",
+            terminal.binary()
+        )
+    })?;
 
     let terminal_pid = child.id();
 
@@ -57,8 +60,10 @@ pub fn spawn_in_terminal(
         }
 
         // Fallback: try to discover the Claude process by scanning /proc
-        if let Some(claude_pid) = pid_tracking::discover_claude_pid(workdir, Duration::from_secs(PID_DISCOVERY_TIMEOUT_SECS))
-        {
+        if let Some(claude_pid) = pid_tracking::discover_claude_pid(
+            workdir,
+            Duration::from_secs(PID_DISCOVERY_TIMEOUT_SECS),
+        ) {
             return Ok(claude_pid);
         }
 

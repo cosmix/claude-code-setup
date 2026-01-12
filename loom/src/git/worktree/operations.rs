@@ -369,12 +369,7 @@ pub fn find_worktree_root_from_cwd(cwd: &Path) -> Option<PathBuf> {
         .filter(|s| !s.is_empty())?;
 
     // Construct the worktree root path: everything up to and including .worktrees/stage_id
-    let worktree_root_str = format!(
-        "{}{}{}",
-        &path_str[..idx],
-        worktrees_marker,
-        stage_id
-    );
+    let worktree_root_str = format!("{}{}{}", &path_str[..idx], worktrees_marker, stage_id);
 
     let worktree_root = PathBuf::from(&worktree_root_str);
 

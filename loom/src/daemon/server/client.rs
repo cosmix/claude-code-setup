@@ -85,22 +85,6 @@ pub fn handle_client_connection(
                 write_message(&mut stream, &Response::Ok)?;
                 break;
             }
-            Request::StartWithConfig(new_config) => {
-                // Log the config update request
-                // Note: Config updates take effect on next daemon restart
-                // The currently running orchestrator continues with its original config
-                println!(
-                    "Received config update: max_parallel={:?}, manual={}, watch={}, auto_merge={}",
-                    new_config.max_parallel,
-                    new_config.manual_mode,
-                    new_config.watch_mode,
-                    new_config.auto_merge
-                );
-                if let Some(ref stage_id) = new_config.stage_id {
-                    println!("  stage_id: {stage_id}");
-                }
-                write_message(&mut stream, &Response::ConfigApplied)?;
-            }
         }
     }
 

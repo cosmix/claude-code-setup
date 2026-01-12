@@ -188,6 +188,66 @@ impl ExecutionGraph {
         Ok(())
     }
 
+    /// Mark a stage as waiting for input
+    pub fn mark_waiting_for_input(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::WaitingForInput;
+        Ok(())
+    }
+
+    /// Mark a stage as needs handoff
+    pub fn mark_needs_handoff(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::NeedsHandoff;
+        Ok(())
+    }
+
+    /// Mark a stage as having merge conflicts
+    pub fn mark_merge_conflict(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::MergeConflict;
+        Ok(())
+    }
+
+    /// Mark a stage as completed with failures
+    pub fn mark_completed_with_failures(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::CompletedWithFailures;
+        Ok(())
+    }
+
+    /// Mark a stage as merge blocked
+    pub fn mark_merge_blocked(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::MergeBlocked;
+        Ok(())
+    }
+
+    /// Mark a stage as waiting for dependencies
+    pub fn mark_waiting_for_deps(&mut self, stage_id: &str) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+        node.status = NodeStatus::WaitingForDeps;
+        Ok(())
+    }
+
     /// Mark a stage as queued for execution.
     ///
     /// Used to reset orphaned/blocked stages back to queued state.
@@ -240,7 +300,10 @@ impl ExecutionGraph {
         self.nodes.values().collect()
     }
 
-    /// Check if all stages are completed or skipped
+    /// Check if all stages are completed or skipped.
+    ///
+    /// Note: Stages with failures (CompletedWithFailures, MergeConflict, MergeBlocked)
+    /// are not considered complete since they may need retry or manual intervention.
     pub fn is_complete(&self) -> bool {
         self.nodes
             .values()

@@ -25,7 +25,10 @@ const WORKTREE_PATH_PATTERNS: &[&str] = &["../../", ".worktrees/"];
 /// 4. Acquires an exclusive file lock on the main settings
 /// 5. Merges new permissions (skipping duplicates)
 /// 6. Writes back atomically
-pub fn sync_worktree_permissions(worktree_path: &Path, main_repo_path: &Path) -> Result<SyncResult> {
+pub fn sync_worktree_permissions(
+    worktree_path: &Path,
+    main_repo_path: &Path,
+) -> Result<SyncResult> {
     let worktree_settings_path = worktree_path.join(".claude/settings.local.json");
     let main_settings_path = main_repo_path.join(".claude/settings.local.json");
 

@@ -319,7 +319,6 @@ impl Detection {
 
         events
     }
-
 }
 
 impl Default for Detection {

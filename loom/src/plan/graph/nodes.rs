@@ -40,13 +40,18 @@ pub struct StageNode {
 
 /// Status of a node in the execution graph.
 ///
-/// Mirrors StageStatus but only includes states relevant to scheduling:
+/// Mirrors StageStatus to accurately reflect all possible stage states:
 /// - `WaitingForDeps` - Dependencies not yet satisfied
 /// - `Queued` - Dependencies satisfied AND merged, ready to execute
 /// - `Executing` - Currently running
+/// - `WaitingForInput` - Paused waiting for user input
 /// - `Completed` - Work done (but may not yet be merged to main)
 /// - `Blocked` - Hit an error
+/// - `NeedsHandoff` - Context limit reached, needs new session
 /// - `Skipped` - Intentionally skipped (does NOT satisfy dependencies)
+/// - `MergeConflict` - Completed but merge has conflicts
+/// - `CompletedWithFailures` - Completed but acceptance criteria failed
+/// - `MergeBlocked` - Merge failed with error (not conflicts)
 ///
 /// # Scheduling Invariant
 ///
@@ -69,6 +74,11 @@ pub enum NodeStatus {
     #[serde(rename = "executing")]
     Executing,
 
+    /// Stage needs user input/decision before continuing.
+    /// Execution is paused until input is provided.
+    #[serde(rename = "waiting-for-input")]
+    WaitingForInput,
+
     /// Successfully completed. Work is done but may not be merged yet.
     /// Does NOT satisfy dependent stages until `merged: true` is set.
     #[serde(rename = "completed")]
@@ -78,7 +88,27 @@ pub enum NodeStatus {
     #[serde(rename = "blocked")]
     Blocked,
 
+    /// Session hit context limit; needs new session to continue.
+    /// Will transition back to Queued when ready to resume.
+    #[serde(rename = "needs-handoff", alias = "needshandoff")]
+    NeedsHandoff,
+
     /// Intentionally skipped (does NOT satisfy dependencies).
     #[serde(rename = "skipped")]
     Skipped,
+
+    /// Stage completed work but has merge conflicts to resolve.
+    /// Spawns a conflict resolution session to handle the merge.
+    #[serde(rename = "merge-conflict")]
+    MergeConflict,
+
+    /// Stage finished executing but acceptance criteria failed.
+    /// Can be retried by transitioning back to Executing.
+    #[serde(rename = "completed-with-failures")]
+    CompletedWithFailures,
+
+    /// Stage merge failed with an actual error (not conflicts).
+    /// Can be retried by transitioning back to Executing.
+    #[serde(rename = "merge-blocked")]
+    MergeBlocked,
 }

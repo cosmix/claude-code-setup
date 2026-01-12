@@ -40,7 +40,9 @@ pub fn create_tiled_overview(
     _layout: &str,
     _detach_existing: bool,
 ) -> Result<String> {
-    bail!("Tiled overview is not supported with native backend. Use 'loom attach all --gui' instead.")
+    bail!(
+        "Tiled overview is not supported with native backend. Use 'loom attach all --gui' instead."
+    )
 }
 
 /// Print tiled overview instructions (not supported with native backend)
