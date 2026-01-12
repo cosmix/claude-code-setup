@@ -10,6 +10,7 @@ use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::task_state::read_task_state_if_exists;
 use crate::git::get_branch_head;
 use crate::git::worktree::find_worktree_root_from_cwd;
+use crate::models::stage::StageStatus;
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
 use crate::verify::criteria::run_acceptance;
 use crate::verify::task_verification::run_task_verifications;
@@ -20,10 +21,40 @@ use super::session::{cleanup_session_resources, find_session_for_stage};
 /// Mark a stage as complete, optionally running acceptance criteria.
 /// If acceptance criteria pass, auto-verifies the stage and triggers dependents.
 /// If --no-verify is used or criteria fail, marks as CompletedWithFailures for retry.
-pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -> Result<()> {
+/// If --force is used, bypasses state machine and marks stage as Completed from any state.
+pub fn complete(
+    stage_id: String,
+    session_id: Option<String>,
+    no_verify: bool,
+    force: bool,
+) -> Result<()> {
     let work_dir = Path::new(".work");
 
     let mut stage = load_stage(&stage_id, work_dir)?;
+
+    // Handle --force: bypass state machine and mark as completed directly
+    if force {
+        println!(
+            "Force-completing stage '{}' (was: {:?})",
+            stage_id, stage.status
+        );
+        stage.status = StageStatus::Completed;
+        stage.merged = true; // Assume manual merge was done
+        save_stage(&stage, work_dir)?;
+        println!("Stage '{stage_id}' force-completed!");
+
+        // Trigger dependent stages
+        let triggered = trigger_dependents(&stage_id, work_dir)
+            .context("Failed to trigger dependent stages")?;
+
+        if !triggered.is_empty() {
+            println!("Triggered {} dependent stage(s):", triggered.len());
+            for dep_id in &triggered {
+                println!("  → {dep_id}");
+            }
+        }
+        return Ok(());
+    }
 
     // Resolve session_id: CLI arg > stage.session field > scan sessions directory
     let session_id = session_id

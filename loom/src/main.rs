@@ -267,6 +267,10 @@ enum StageCommands {
         /// Skip acceptance criteria verification
         #[arg(long)]
         no_verify: bool,
+
+        /// Force completion from any state, bypassing state machine checks
+        #[arg(long)]
+        force: bool,
     },
 
     /// Block a stage with a reason
@@ -730,7 +734,8 @@ fn main() -> Result<()> {
                 stage_id,
                 session,
                 no_verify,
-            } => stage::complete(stage_id, session, no_verify),
+                force,
+            } => stage::complete(stage_id, session, no_verify, force),
             StageCommands::Block { stage_id, reason } => stage::block(stage_id, reason),
             StageCommands::Reset {
                 stage_id,
