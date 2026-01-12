@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use super::cleanup::{
     cleanup_orphaned_sessions, cleanup_work_directory, cleanup_worktrees_directory,
-    prune_stale_worktrees,
+    prune_stale_worktrees, remove_work_directory_on_failure,
 };
 use super::plan_setup::initialize_with_plan;
 
@@ -51,8 +51,25 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
     println!("  {} Worktrees directory trusted", "✓".green().bold());
 
     if let Some(path) = plan_path {
-        let stage_count = initialize_with_plan(&work_dir, &path)?;
-        print_summary(Some(&path), stage_count);
+        match initialize_with_plan(&work_dir, &path) {
+            Ok(stage_count) => {
+                print_summary(Some(&path), stage_count);
+            }
+            Err(e) => {
+                println!(
+                    "\n  {} Plan parsing failed: {}",
+                    "✗".red().bold(),
+                    e.to_string().red()
+                );
+                println!(
+                    "  {} Cleaning up {}",
+                    "→".yellow().bold(),
+                    ".work/".dimmed()
+                );
+                remove_work_directory_on_failure(&repo_root);
+                return Err(e);
+            }
+        }
     } else {
         print_summary(None, 0);
     }

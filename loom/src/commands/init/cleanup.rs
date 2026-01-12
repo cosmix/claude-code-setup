@@ -62,6 +62,15 @@ pub fn cleanup_work_directory(repo_root: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Remove the .work/ directory silently (used for cleanup on initialization failure)
+pub fn remove_work_directory_on_failure(repo_root: &Path) {
+    let work_dir = repo_root.join(".work");
+
+    if work_dir.exists() {
+        let _ = fs::remove_dir_all(&work_dir);
+    }
+}
+
 /// Remove existing loom worktrees and the .worktrees/ directory
 pub fn cleanup_worktrees_directory(repo_root: &Path) -> Result<()> {
     let worktrees_dir = repo_root.join(".worktrees");

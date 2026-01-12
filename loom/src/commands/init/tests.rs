@@ -331,3 +331,34 @@ fn test_cleanup_orphaned_sessions_does_not_fail() {
 
     assert!(result.is_ok());
 }
+
+#[test]
+fn test_remove_work_directory_on_failure_removes_directory() {
+    use super::cleanup::remove_work_directory_on_failure;
+
+    let temp_dir = TempDir::new().unwrap();
+    let work_dir = temp_dir.path().join(".work");
+
+    fs::create_dir_all(&work_dir).unwrap();
+    fs::write(work_dir.join("test.txt"), "content").unwrap();
+
+    assert!(work_dir.exists());
+
+    remove_work_directory_on_failure(temp_dir.path());
+
+    assert!(!work_dir.exists());
+}
+
+#[test]
+fn test_remove_work_directory_on_failure_nonexistent_ok() {
+    use super::cleanup::remove_work_directory_on_failure;
+
+    let temp_dir = TempDir::new().unwrap();
+    let work_dir = temp_dir.path().join(".work");
+
+    assert!(!work_dir.exists());
+
+    remove_work_directory_on_failure(temp_dir.path());
+
+    assert!(!work_dir.exists());
+}
