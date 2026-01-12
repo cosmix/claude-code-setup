@@ -4,7 +4,7 @@
 //! We curate high-level knowledge that helps agents know WHERE to look,
 //! not raw indexing.
 
-use crate::fs::knowledge::{KnowledgeDir, KnowledgeFile};
+use crate::fs::knowledge::{KnowledgeDir, KnowledgeFile, MigrationResult};
 use crate::fs::work_dir::WorkDir;
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
@@ -84,7 +84,7 @@ pub fn init() -> Result<()> {
     let project_root = work_dir
         .project_root()
         .context("Could not determine project root")?;
-    let knowledge = KnowledgeDir::new(project_root);
+    let knowledge = KnowledgeDir::new(&project_root);
 
     if knowledge.exists() {
         println!(
@@ -95,13 +95,37 @@ pub fn init() -> Result<()> {
         return Ok(());
     }
 
-    knowledge.initialize()?;
+    // Check for migration from old .work/knowledge/ location
+    let migration_result = KnowledgeDir::migrate_from_work_dir(&project_root)?;
 
-    println!("{} Initialized knowledge directory", "✓".green().bold());
-    println!();
-    println!("Created files:");
-    for file_type in KnowledgeFile::all() {
-        println!("  {} - {}", file_type.filename(), file_type.description());
+    match migration_result {
+        MigrationResult::Migrated { files_copied } => {
+            println!(
+                "{} Migrated {} knowledge file{} from .work/knowledge/ to doc/loom/knowledge/",
+                "✓".green().bold(),
+                files_copied,
+                if files_copied == 1 { "" } else { "s" }
+            );
+            println!();
+            println!(
+                "{} Old .work/knowledge/ directory preserved. You can delete it manually after verifying migration.",
+                "─".dimmed()
+            );
+
+            // Initialize any missing default files after migration
+            knowledge.initialize()?;
+        }
+        MigrationResult::NotNeeded => {
+            // No migration needed, just initialize normally
+            knowledge.initialize()?;
+
+            println!("{} Initialized knowledge directory", "✓".green().bold());
+            println!();
+            println!("Created files:");
+            for file_type in KnowledgeFile::all() {
+                println!("  {} - {}", file_type.filename(), file_type.description());
+            }
+        }
     }
 
     Ok(())
@@ -275,6 +299,50 @@ mod tests {
             fs::read_to_string(test_dir.join("doc/loom/knowledge/entry-points.md")).unwrap();
         assert!(content.contains("## New Section"));
         assert!(content.contains("- New entry"));
+
+        std::env::set_current_dir(original_dir).expect("Failed to restore dir");
+    }
+
+    #[test]
+    #[serial]
+    fn test_knowledge_init_with_migration() {
+        let (_temp_dir, test_dir) = setup_test_env();
+
+        let original_dir = std::env::current_dir().expect("Failed to get current dir");
+        std::env::set_current_dir(&test_dir).expect("Failed to change dir");
+
+        // Create old .work/knowledge/ directory with content
+        let old_knowledge_dir = test_dir.join(".work/knowledge");
+        fs::create_dir_all(&old_knowledge_dir).expect("Failed to create old knowledge dir");
+
+        // Write some knowledge files to old location
+        let old_entry_points = "# Entry Points\n\n## Main\n\n- src/main.rs - entry point";
+        fs::write(old_knowledge_dir.join("entry-points.md"), old_entry_points)
+            .expect("Failed to write old entry-points");
+
+        let old_patterns = "# Patterns\n\n## Error Handling\n\n- Uses anyhow";
+        fs::write(old_knowledge_dir.join("patterns.md"), old_patterns)
+            .expect("Failed to write old patterns");
+
+        // Run init - should trigger migration
+        let result = init();
+        assert!(result.is_ok());
+
+        // Verify files were migrated to new location
+        let new_knowledge_dir = test_dir.join("doc/loom/knowledge");
+        assert!(new_knowledge_dir.exists());
+        assert!(new_knowledge_dir.join("entry-points.md").exists());
+        assert!(new_knowledge_dir.join("patterns.md").exists());
+        assert!(new_knowledge_dir.join("conventions.md").exists()); // default file created
+
+        // Verify migrated content was preserved
+        let new_content =
+            fs::read_to_string(new_knowledge_dir.join("entry-points.md")).unwrap();
+        assert_eq!(new_content, old_entry_points);
+
+        // Verify old files still exist (not deleted)
+        assert!(old_knowledge_dir.join("entry-points.md").exists());
+        assert!(old_knowledge_dir.join("patterns.md").exists());
 
         std::env::set_current_dir(original_dir).expect("Failed to restore dir");
     }

@@ -8,6 +8,15 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Result of attempting knowledge migration
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MigrationResult {
+    /// Migration was performed successfully
+    Migrated { files_copied: usize },
+    /// No migration needed (either no old dir or new dir already exists)
+    NotNeeded,
+}
+
 /// Known knowledge file types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KnowledgeFile {
@@ -95,6 +104,66 @@ impl KnowledgeDir {
         }
 
         Ok(())
+    }
+
+    /// Migrate knowledge files from old .work/knowledge/ location to new doc/loom/knowledge/ location.
+    ///
+    /// This one-time migration preserves existing knowledge when users upgrade.
+    /// Migration only runs when:
+    /// - .work/knowledge/ exists (old location has content)
+    /// - doc/loom/knowledge/ does NOT exist (new location hasn't been created)
+    ///
+    /// The old directory is NOT deleted - users can clean it manually.
+    pub fn migrate_from_work_dir<P: AsRef<Path>>(project_root: P) -> Result<MigrationResult> {
+        let project_root = project_root.as_ref();
+        let old_knowledge_dir = project_root.join(".work/knowledge");
+        let new_knowledge_dir = project_root.join("doc/loom/knowledge");
+
+        // Migration only runs if old dir exists AND new dir doesn't
+        if !old_knowledge_dir.exists() || new_knowledge_dir.exists() {
+            return Ok(MigrationResult::NotNeeded);
+        }
+
+        // Create the new directory structure
+        fs::create_dir_all(&new_knowledge_dir)
+            .context("Failed to create doc/loom/knowledge directory")?;
+
+        let mut files_copied = 0;
+
+        // Copy all known knowledge files from old to new location
+        for file_type in KnowledgeFile::all() {
+            let old_path = old_knowledge_dir.join(file_type.filename());
+            let new_path = new_knowledge_dir.join(file_type.filename());
+
+            if old_path.exists() {
+                let content = fs::read_to_string(&old_path)
+                    .with_context(|| format!("Failed to read {}", old_path.display()))?;
+                fs::write(&new_path, content)
+                    .with_context(|| format!("Failed to write {}", new_path.display()))?;
+                files_copied += 1;
+            }
+        }
+
+        // Also copy any additional .md files that might exist (custom knowledge files)
+        if let Ok(entries) = fs::read_dir(&old_knowledge_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "md") {
+                    let filename = path.file_name().unwrap();
+                    // Skip if already copied (known file types)
+                    let new_path = new_knowledge_dir.join(filename);
+                    if !new_path.exists() {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            if fs::write(&new_path, content).is_ok() {
+                                files_copied += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(MigrationResult::Migrated { files_copied })
     }
 
     /// Get the path to a specific knowledge file
@@ -346,5 +415,95 @@ mod tests {
         let summary = knowledge.generate_summary().unwrap();
         assert!(summary.contains("Knowledge Summary"));
         assert!(summary.contains("CLI Entry Point"));
+    }
+
+    #[test]
+    fn test_migration_from_work_dir() {
+        let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
+
+        // Create old .work/knowledge/ directory with content
+        let old_knowledge_dir = project_root.join(".work/knowledge");
+        fs::create_dir_all(&old_knowledge_dir).unwrap();
+
+        // Write some knowledge files to old location
+        let old_entry_points = "# Entry Points\n\n## Main\n\n- src/main.rs - entry point";
+        fs::write(
+            old_knowledge_dir.join("entry-points.md"),
+            old_entry_points,
+        )
+        .unwrap();
+
+        let old_patterns = "# Patterns\n\n## Error Handling\n\n- Uses anyhow";
+        fs::write(old_knowledge_dir.join("patterns.md"), old_patterns).unwrap();
+
+        // Run migration
+        let result = KnowledgeDir::migrate_from_work_dir(project_root).unwrap();
+        assert_eq!(result, MigrationResult::Migrated { files_copied: 2 });
+
+        // Verify files were copied to new location
+        let new_knowledge_dir = project_root.join("doc/loom/knowledge");
+        assert!(new_knowledge_dir.exists());
+        assert!(new_knowledge_dir.join("entry-points.md").exists());
+        assert!(new_knowledge_dir.join("patterns.md").exists());
+
+        // Verify content was preserved
+        let new_content = fs::read_to_string(new_knowledge_dir.join("entry-points.md")).unwrap();
+        assert_eq!(new_content, old_entry_points);
+
+        // Verify old files still exist (not deleted)
+        assert!(old_knowledge_dir.join("entry-points.md").exists());
+        assert!(old_knowledge_dir.join("patterns.md").exists());
+    }
+
+    #[test]
+    fn test_migration_not_needed_no_old_dir() {
+        let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
+
+        // No .work/knowledge/ exists - migration should not be needed
+        let result = KnowledgeDir::migrate_from_work_dir(project_root).unwrap();
+        assert_eq!(result, MigrationResult::NotNeeded);
+    }
+
+    #[test]
+    fn test_migration_not_needed_new_dir_exists() {
+        let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
+
+        // Create both old and new directories
+        let old_knowledge_dir = project_root.join(".work/knowledge");
+        let new_knowledge_dir = project_root.join("doc/loom/knowledge");
+        fs::create_dir_all(&old_knowledge_dir).unwrap();
+        fs::create_dir_all(&new_knowledge_dir).unwrap();
+
+        // Migration should not run when new dir already exists
+        let result = KnowledgeDir::migrate_from_work_dir(project_root).unwrap();
+        assert_eq!(result, MigrationResult::NotNeeded);
+    }
+
+    #[test]
+    fn test_migration_copies_custom_files() {
+        let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
+
+        // Create old .work/knowledge/ directory with custom file
+        let old_knowledge_dir = project_root.join(".work/knowledge");
+        fs::create_dir_all(&old_knowledge_dir).unwrap();
+
+        // Write a custom knowledge file (not one of the known types)
+        let custom_content = "# Custom Knowledge\n\nSome custom content";
+        fs::write(old_knowledge_dir.join("custom.md"), custom_content).unwrap();
+
+        // Run migration
+        let result = KnowledgeDir::migrate_from_work_dir(project_root).unwrap();
+        assert_eq!(result, MigrationResult::Migrated { files_copied: 1 });
+
+        // Verify custom file was copied
+        let new_knowledge_dir = project_root.join("doc/loom/knowledge");
+        let new_custom_path = new_knowledge_dir.join("custom.md");
+        assert!(new_custom_path.exists());
+        let new_content = fs::read_to_string(new_custom_path).unwrap();
+        assert_eq!(new_content, custom_content);
     }
 }
