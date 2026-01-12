@@ -6,6 +6,7 @@
 mod constants;
 mod hooks;
 mod settings;
+mod sync;
 mod trust;
 
 #[cfg(test)]
@@ -15,4 +16,5 @@ mod tests;
 pub use constants::{LOOM_PERMISSIONS, LOOM_PERMISSIONS_WORKTREE};
 pub use hooks::{get_installed_hooks_dir, install_loom_hooks};
 pub use settings::{create_worktree_settings, ensure_loom_permissions};
+pub use sync::{sync_worktree_permissions, SyncResult};
 pub use trust::add_worktrees_to_global_trust;
