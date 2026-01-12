@@ -89,6 +89,7 @@ pub fn display_stages(work_dir: &WorkDir) -> Result<()> {
                         FailureType::ContextExhausted => "context",
                         FailureType::UserBlocked => "user",
                         FailureType::MergeConflict => "merge",
+                        FailureType::InfrastructureError => "infra",
                         FailureType::Unknown => "error",
                     })
                     .unwrap_or("error");

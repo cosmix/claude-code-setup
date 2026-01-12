@@ -34,6 +34,9 @@ pub enum FailureType {
     /// Merge conflict occurred (handled by dedicated merge session)
     MergeConflict,
 
+    /// Infrastructure error (git, worktree, filesystem issues)
+    InfrastructureError,
+
     /// Unknown or unclassified failure
     Unknown,
 }
