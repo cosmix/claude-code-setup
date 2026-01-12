@@ -69,7 +69,20 @@ fn run_orchestrator(
         .unwrap_or_else(|| PathBuf::from("."));
 
     // Parse base_branch from config.toml
-    let base_branch = parse_base_branch_from_config(work_dir).ok().flatten();
+    let base_branch = match parse_base_branch_from_config(work_dir) {
+        Ok(branch) => {
+            if let Some(ref b) = branch {
+                eprintln!("Loaded base_branch from config: {b}");
+            } else {
+                eprintln!("Warning: No base_branch in config.toml, will use default_branch()");
+            }
+            branch
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to parse base_branch from config.toml: {e}");
+            None
+        }
+    };
 
     // Configure orchestrator using daemon config
     let config = OrchestratorConfig {

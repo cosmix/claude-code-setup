@@ -286,9 +286,12 @@ impl Orchestrator {
             return;
         }
 
-        // Get target branch (default branch of the repo)
-        let target_branch =
-            default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string());
+        // Get target branch (from config or default branch of the repo)
+        let target_branch = self
+            .config
+            .base_branch
+            .clone()
+            .unwrap_or_else(|| default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string()));
 
         clear_status_line();
         eprintln!("Auto-merging stage '{stage_id}'...");

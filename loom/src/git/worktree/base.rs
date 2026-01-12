@@ -62,11 +62,17 @@ pub fn resolve_base_branch(
     repo_root: &Path,
     init_base_branch: Option<&str>,
 ) -> Result<ResolvedBase> {
+    eprintln!(
+        "[resolve_base_branch] stage={}, deps={:?}, init_base_branch={:?}",
+        stage_id, dependencies, init_base_branch
+    );
+
     // No deps → use init_base_branch if provided, otherwise fall back to default
     if dependencies.is_empty() {
         let base = init_base_branch
             .map(String::from)
             .unwrap_or_else(|| default_branch(repo_root).unwrap_or_else(|_| "main".to_string()));
+        eprintln!("[resolve_base_branch] No deps, using base: {}", base);
         return Ok(ResolvedBase::Main(base));
     }
 
@@ -81,15 +87,26 @@ pub fn resolve_base_branch(
         let is_completed = dep_node.status == NodeStatus::Completed;
         let is_merged = dep_node.merged;
 
+        eprintln!(
+            "[resolve_base_branch] Dep '{}': status={:?}, completed={}, merged={}",
+            dep, dep_node.status, is_completed, is_merged
+        );
+
         if !is_completed || !is_merged {
             unmerged_deps.push((dep.as_str(), is_completed, is_merged));
         }
     }
 
-    // All deps completed and merged - use main (merge point)
+    // All deps completed and merged - use merge point (init_base_branch or default)
     if unmerged_deps.is_empty() {
-        let main = default_branch(repo_root)?;
-        return Ok(ResolvedBase::Main(main));
+        let base = init_base_branch
+            .map(String::from)
+            .unwrap_or_else(|| default_branch(repo_root).unwrap_or_else(|_| "main".to_string()));
+        eprintln!(
+            "[resolve_base_branch] All deps merged, using base: {}",
+            base
+        );
+        return Ok(ResolvedBase::Main(base));
     }
 
     // Single dependency that's completed but not merged - use its branch directly
@@ -463,6 +480,65 @@ mod tests {
 
         let branch = ResolvedBase::Branch("loom/stage-1".to_string());
         assert_eq!(branch.branch_name(), "loom/stage-1");
+    }
+
+    #[test]
+    fn test_empty_deps_uses_init_base_branch_when_provided() {
+        let temp_dir = init_test_repo();
+        let repo_root = temp_dir.path();
+
+        // Create the feature branch so it exists
+        Command::new("git")
+            .args(["branch", "feat-my-feature"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        let graph = build_test_graph(vec![("stage-1", vec![])]);
+
+        // When init_base_branch is provided, use it instead of default_branch
+        let result = resolve_base_branch(
+            "stage-1",
+            &[],
+            &graph,
+            repo_root,
+            Some("feat-my-feature"),
+        )
+        .unwrap();
+
+        assert_eq!(result, ResolvedBase::Main("feat-my-feature".to_string()));
+    }
+
+    #[test]
+    fn test_merged_deps_uses_init_base_branch_when_provided() {
+        let temp_dir = init_test_repo();
+        let repo_root = temp_dir.path();
+
+        // Create the feature branch so it exists
+        Command::new("git")
+            .args(["branch", "feat-my-feature"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        // With progressive merge, completed+merged deps should use init_base_branch
+        let mut graph = build_test_graph(vec![("dep-1", vec![]), ("stage-1", vec!["dep-1"])]);
+        graph.mark_executing("dep-1").unwrap();
+        graph.mark_completed("dep-1").unwrap();
+        graph.mark_merged("dep-1").unwrap();
+
+        // When init_base_branch is provided, use it instead of default_branch
+        let result = resolve_base_branch(
+            "stage-1",
+            &["dep-1".to_string()],
+            &graph,
+            repo_root,
+            Some("feat-my-feature"),
+        )
+        .unwrap();
+
+        // All deps merged AND init_base_branch provided - use init_base_branch
+        assert_eq!(result, ResolvedBase::Main("feat-my-feature".to_string()));
     }
 
     #[test]

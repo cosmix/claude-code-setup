@@ -101,6 +101,10 @@ impl Recovery for Orchestrator {
             // NOTE: We use stage.id (from YAML frontmatter) for graph operations,
             // not stage_id (from filename), because the graph is built using frontmatter IDs.
             if let Ok(mut stage) = self.load_stage(stage_id) {
+                eprintln!(
+                    "[sync_graph_with_stage_files] Loaded stage '{}': status={:?}, merged={}",
+                    stage.id, stage.status, stage.merged
+                );
                 // Always sync outputs to the graph so they're available for dependent stages
                 if !stage.outputs.is_empty() {
                     self.graph
@@ -111,6 +115,12 @@ impl Recovery for Orchestrator {
                     StageStatus::Completed => {
                         // Mark as completed in graph (ignore errors for stages not in graph)
                         let _ = self.graph.mark_completed(&stage.id);
+                        // Sync merged status from file to graph so dependent stages can be scheduled
+                        eprintln!(
+                            "[sync_graph_with_stage_files] Completed stage '{}': merged={}",
+                            stage.id, stage.merged
+                        );
+                        self.graph.set_node_merged(&stage.id, stage.merged);
                     }
                     StageStatus::Queued => {
                         // Sync Ready status from stage files to graph
