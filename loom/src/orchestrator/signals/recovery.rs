@@ -351,14 +351,6 @@ fn format_recovery_signal(
         signal.push_str("\n");
     }
 
-    // Embedded context - structure map
-    if let Some(ref structure) = embedded_context.structure_content {
-        signal.push_str("## Codebase Structure\n\n");
-        signal.push_str("<structure-map>\n");
-        signal.push_str(structure);
-        signal.push_str("\n</structure-map>\n\n");
-    }
-
     // Embedded context - handoff
     if let Some(ref handoff) = embedded_context.handoff_content {
         signal.push_str("## Previous Session Handoff\n\n");
