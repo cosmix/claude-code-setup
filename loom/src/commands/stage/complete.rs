@@ -7,6 +7,7 @@ use std::process::Command;
 
 use crate::fs::learnings::{append_learning, Learning, LearningCategory};
 use crate::fs::memory::{extract_key_notes, read_journal};
+use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::task_state::read_task_state_if_exists;
 use crate::git::get_branch_head;
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
@@ -75,6 +76,28 @@ pub fn complete(stage_id: String, session_id: Option<String>, no_verify: bool) -
         // No acceptance criteria defined - treat as passed
         Some(true)
     };
+
+    // Sync worktree permissions to main repo (non-fatal - warn on error)
+    if acceptance_result != Some(false) {
+        if let Some(ref dir) = working_dir {
+            let repo_root = std::env::current_dir().ok();
+            if let Some(ref root) = repo_root {
+                match sync_worktree_permissions(dir, root) {
+                    Ok(result) => {
+                        if result.allow_added > 0 || result.deny_added > 0 {
+                            println!(
+                                "Synced permissions from worktree: {} allow, {} deny",
+                                result.allow_added, result.deny_added
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: Failed to sync worktree permissions: {e}");
+                    }
+                }
+            }
+        }
+    }
 
     // Cleanup terminal resources based on backend type
     cleanup_terminal_for_stage(&stage_id, session_id.as_deref(), work_dir);
