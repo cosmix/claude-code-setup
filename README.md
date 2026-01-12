@@ -379,17 +379,19 @@ loom init <plan-path> [--clean]
 # - --clean: remove old .work/, prune worktrees, kill orphaned sessions first
 
 # Execute stages (starts daemon, spawns sessions in native terminals)
-loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground] [--attach]
+loom run [--stage <id>] [--manual] [--max-parallel <n>] [--watch] [--foreground] [--attach] [--no-merge]
 # - Starts background daemon if not running
 # - Creates git worktrees for ready parallel stages
 # - Spawns Claude sessions in native terminal windows (unless --manual)
 # - Monitors progress, triggers dependent stages
+# - Auto-merges completed stages to target branch (enabled by default)
 # - --stage: run only specific stage
 # - --manual: don't spawn sessions, just prepare signals
 # - --max-parallel: max parallel sessions (default: 4)
 # - --watch: continuous mode - keep running until all stages terminal
 # - --foreground: run orchestrator in foreground (for debugging)
 # - --attach: attach to existing orchestrator (shows logs)
+# - --no-merge: disable auto-merge of completed stages
 
 # Live dashboard - shows plan progress and session health
 loom status
