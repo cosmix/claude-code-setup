@@ -20,10 +20,10 @@ use super::hooks::{configure_loom_hooks, install_loom_hooks, loom_hooks_config};
 /// Since worktrees symlink `.claude/` to the main repo, these permissions
 /// automatically propagate to all loom sessions.
 pub fn ensure_loom_permissions(repo_root: &Path) -> Result<()> {
-    // Install loom hooks to ~/.claude/hooks/
+    // Install loom hooks to ~/.claude/hooks/ and ~/.claude/hooks/loom/
     let hooks_installed = install_loom_hooks()?;
-    if hooks_installed {
-        println!("  Installed loom-stop.sh hook to ~/.claude/hooks/");
+    if hooks_installed > 0 {
+        println!("  Installed {hooks_installed} loom hook(s) to ~/.claude/hooks/");
     }
 
     let claude_dir = repo_root.join(".claude");

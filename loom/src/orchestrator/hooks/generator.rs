@@ -104,11 +104,12 @@ pub fn setup_hooks_for_worktree(worktree_path: &Path, config: &HooksConfig) -> R
 /// Find the loom hooks directory
 ///
 /// Looks for hooks in:
-/// 1. `$LOOM_HOOKS_DIR` environment variable
-/// 2. Relative to loom binary: `../hooks/` or `./hooks/`
-/// 3. Standard installation paths
+/// 1. `$LOOM_HOOKS_DIR` environment variable (for testing/override)
+/// 2. `~/.claude/hooks/loom/` (standard installation location)
+///
+/// Returns None if hooks are not installed. Run `loom init` to install hooks.
 pub fn find_hooks_dir() -> Option<std::path::PathBuf> {
-    // Check environment variable first
+    // Check environment variable first (for testing/override)
     if let Ok(dir) = std::env::var("LOOM_HOOKS_DIR") {
         let path = std::path::PathBuf::from(dir);
         if path.exists() {
@@ -116,35 +117,12 @@ pub fn find_hooks_dir() -> Option<std::path::PathBuf> {
         }
     }
 
-    // Try relative to current executable
-    if let Ok(exe_path) = std::env::current_exe() {
-        // Try sibling hooks/ directory (development layout)
-        if let Some(parent) = exe_path.parent() {
-            let hooks_dir = parent.join("hooks");
-            if hooks_dir.exists() {
-                return Some(hooks_dir);
-            }
-
-            // Try ../hooks/ (installed layout)
-            if let Some(grandparent) = parent.parent() {
-                let hooks_dir = grandparent.join("hooks");
-                if hooks_dir.exists() {
-                    return Some(hooks_dir);
-                }
-            }
+    // Check standard installation location: ~/.claude/hooks/loom/
+    if let Some(home_dir) = dirs::home_dir() {
+        let installed_hooks = home_dir.join(".claude/hooks/loom");
+        if installed_hooks.exists() {
+            return Some(installed_hooks);
         }
-    }
-
-    // Try relative to current directory (for development)
-    let cwd_hooks = std::path::PathBuf::from("hooks");
-    if cwd_hooks.exists() {
-        return Some(cwd_hooks);
-    }
-
-    // Try loom/hooks from project root
-    let loom_hooks = std::path::PathBuf::from("loom/hooks");
-    if loom_hooks.exists() {
-        return Some(loom_hooks);
     }
 
     None

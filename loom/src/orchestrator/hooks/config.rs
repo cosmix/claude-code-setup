@@ -46,7 +46,7 @@ impl HookEvent {
             HookEvent::PostToolUse => "post-tool-use.sh",
             HookEvent::PreCompact => "pre-compact.sh",
             HookEvent::SessionEnd => "session-end.sh",
-            HookEvent::Stop => "stop.sh",
+            HookEvent::Stop => "learning-validator.sh",
             HookEvent::SubagentStop => "subagent-stop.sh",
         }
     }

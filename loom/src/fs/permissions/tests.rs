@@ -1,6 +1,6 @@
 //! Tests for permissions module
 
-use super::constants::{LOOM_PERMISSIONS, LOOM_PERMISSIONS_WORKTREE, LOOM_STOP_HOOK};
+use super::constants::{HOOK_COMMIT_GUARD, LOOM_PERMISSIONS, LOOM_PERMISSIONS_WORKTREE};
 use super::hooks::{install_loom_hooks, loom_hooks_config};
 use super::settings::{create_worktree_settings, ensure_loom_permissions};
 use serde_json::{json, Value};
@@ -153,7 +153,7 @@ fn test_hooks_config_structure() {
     assert!(stop[0]["hooks"][0]["command"]
         .as_str()
         .unwrap()
-        .contains("loom-stop.sh"));
+        .contains("commit-guard.sh"));
 }
 
 #[test]
@@ -212,30 +212,38 @@ fn test_worktree_settings_includes_hooks() {
 }
 
 #[test]
-fn test_embedded_loom_stop_hook_is_valid() {
+fn test_embedded_commit_guard_hook_is_valid() {
     // Verify the embedded hook script has correct shebang and key functions
-    assert!(LOOM_STOP_HOOK.starts_with("#!/usr/bin/env bash"));
+    assert!(HOOK_COMMIT_GUARD.starts_with("#!/usr/bin/env bash"));
     // Check for key functions that should exist
-    assert!(LOOM_STOP_HOOK.contains("detect_loom_worktree"));
-    assert!(LOOM_STOP_HOOK.contains("check_git_clean"));
-    assert!(LOOM_STOP_HOOK.contains("get_stage_status"));
-    assert!(LOOM_STOP_HOOK.contains("block_with_reason"));
+    assert!(HOOK_COMMIT_GUARD.contains("detect_loom_worktree"));
+    assert!(HOOK_COMMIT_GUARD.contains("check_git_clean"));
+    assert!(HOOK_COMMIT_GUARD.contains("get_stage_status"));
+    assert!(HOOK_COMMIT_GUARD.contains("block_with_reason"));
 }
 
 #[test]
-fn test_install_loom_hooks_creates_hook_file() {
+fn test_install_loom_hooks_creates_hook_files() {
     // This test modifies ~/.claude/hooks/ which is a real directory
-    // We'll verify the hook content matches what we expect
+    // We'll verify the hooks are installed correctly
     let result = install_loom_hooks();
     assert!(result.is_ok());
 
     let home_dir = dirs::home_dir().expect("should have home dir");
-    let hook_path = home_dir.join(".claude/hooks/loom-stop.sh");
 
-    if hook_path.exists() {
-        let content = fs::read_to_string(&hook_path).unwrap();
-        // Verify the hook has the expected content
+    // Check global hooks are installed
+    let commit_guard_path = home_dir.join(".claude/hooks/commit-guard.sh");
+    if commit_guard_path.exists() {
+        let content = fs::read_to_string(&commit_guard_path).unwrap();
         assert!(content.contains("detect_loom_worktree"));
         assert!(content.contains("LOOM WORKTREE EXIT BLOCKED"));
+    }
+
+    // Check worktree hooks are installed to loom/ subdirectory
+    let worktree_hooks_dir = home_dir.join(".claude/hooks/loom");
+    if worktree_hooks_dir.exists() {
+        assert!(worktree_hooks_dir.join("post-tool-use.sh").exists());
+        assert!(worktree_hooks_dir.join("session-start.sh").exists());
+        assert!(worktree_hooks_dir.join("learning-validator.sh").exists());
     }
 }

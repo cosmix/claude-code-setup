@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
-use super::constants::LOOM_STOP_HOOK;
+use super::constants::{LOOM_GLOBAL_HOOKS, LOOM_WORKTREE_HOOKS};
 
 /// Generate hooks configuration for loom
 /// Hooks reference scripts at ~/.claude/hooks/ (installed by loom init)
@@ -38,7 +38,7 @@ pub fn loom_hooks_config() -> Value {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.claude/hooks/loom-stop.sh"
+                        "command": "~/.claude/hooks/commit-guard.sh"
                     }
                 ]
             }
@@ -46,42 +46,66 @@ pub fn loom_hooks_config() -> Value {
     })
 }
 
-/// Install the loom stop hook to ~/.claude/hooks/
+/// Install all loom hooks to ~/.claude/hooks/
 ///
-/// This creates the hook script that enforces commit and stage completion
-/// in loom worktrees before allowing Claude to stop.
+/// This installs:
+/// - Global hooks (commit-guard.sh, ask-user-*.sh) to ~/.claude/hooks/
+/// - Worktree hooks (session-start.sh, post-tool-use.sh, etc.) to ~/.claude/hooks/loom/
 ///
 /// # Returns
-/// - `Ok(true)` if the hook was installed or updated
-/// - `Ok(false)` if already up to date
+/// - `Ok(count)` - number of hooks installed or updated
 /// - `Err` if installation failed
-pub fn install_loom_hooks() -> Result<bool> {
+pub fn install_loom_hooks() -> Result<usize> {
     let home_dir = dirs::home_dir().context("Failed to determine home directory")?;
     let hooks_dir = home_dir.join(".claude/hooks");
-    let hook_path = hooks_dir.join("loom-stop.sh");
+    let worktree_hooks_dir = hooks_dir.join("loom");
 
-    // Create hooks directory if needed
-    if !hooks_dir.exists() {
-        fs::create_dir_all(&hooks_dir).with_context(|| {
-            format!(
-                "Failed to create hooks directory at {}",
-                hooks_dir.display()
-            )
-        })?;
+    // Create hooks directories if needed
+    for dir in [&hooks_dir, &worktree_hooks_dir] {
+        if !dir.exists() {
+            fs::create_dir_all(dir).with_context(|| {
+                format!("Failed to create hooks directory at {}", dir.display())
+            })?;
+        }
     }
+
+    let mut installed_count = 0;
+
+    // Install global hooks to ~/.claude/hooks/
+    for (filename, content) in LOOM_GLOBAL_HOOKS {
+        if install_hook_script(&hooks_dir, filename, content)? {
+            installed_count += 1;
+        }
+    }
+
+    // Install worktree hooks to ~/.claude/hooks/loom/
+    for (filename, content) in LOOM_WORKTREE_HOOKS {
+        if install_hook_script(&worktree_hooks_dir, filename, content)? {
+            installed_count += 1;
+        }
+    }
+
+    Ok(installed_count)
+}
+
+/// Install a single hook script to a directory
+///
+/// Returns true if the hook was installed or updated, false if already up to date.
+fn install_hook_script(dir: &std::path::Path, filename: &str, content: &str) -> Result<bool> {
+    let hook_path = dir.join(filename);
 
     // Check if hook already exists with same content
     if hook_path.exists() {
         let existing_content = fs::read_to_string(&hook_path)
             .with_context(|| format!("Failed to read existing hook at {}", hook_path.display()))?;
 
-        if existing_content == LOOM_STOP_HOOK {
+        if existing_content == content {
             return Ok(false); // Already up to date
         }
     }
 
     // Write the hook script
-    fs::write(&hook_path, LOOM_STOP_HOOK)
+    fs::write(&hook_path, content)
         .with_context(|| format!("Failed to write hook to {}", hook_path.display()))?;
 
     // Make executable (chmod +x)
@@ -93,6 +117,13 @@ pub fn install_loom_hooks() -> Result<bool> {
         .with_context(|| format!("Failed to set permissions on {}", hook_path.display()))?;
 
     Ok(true)
+}
+
+/// Get the path to the installed worktree hooks directory
+///
+/// Returns ~/.claude/hooks/loom/ where worktree hook scripts are installed.
+pub fn get_installed_hooks_dir() -> Option<std::path::PathBuf> {
+    dirs::home_dir().map(|home| home.join(".claude/hooks/loom"))
 }
 
 /// Remove duplicate hook entries from a hooks array
