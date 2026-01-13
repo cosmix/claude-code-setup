@@ -31,18 +31,17 @@ pub const HOOK_ASK_USER_PRE: &str = include_str!("../../../../hooks/ask-user-pre
 /// AskUserQuestion post hook - resumes stage after user input
 pub const HOOK_ASK_USER_POST: &str = include_str!("../../../../hooks/ask-user-post.sh");
 
-/// All worktree hook scripts with their filenames (installed to ~/.claude/hooks/loom/)
-pub const LOOM_WORKTREE_HOOKS: &[(&str, &str)] = &[
+/// All loom hook scripts with their filenames (installed to ~/.claude/hooks/loom/)
+/// All hooks are installed to the loom/ subdirectory to keep them separate from user hooks.
+pub const LOOM_HOOKS: &[(&str, &str)] = &[
+    // Session lifecycle hooks
     ("post-tool-use.sh", HOOK_POST_TOOL_USE),
     ("session-start.sh", HOOK_SESSION_START),
     ("pre-compact.sh", HOOK_PRE_COMPACT),
     ("session-end.sh", HOOK_SESSION_END),
     ("learning-validator.sh", HOOK_LEARNING_VALIDATOR),
     ("subagent-stop.sh", HOOK_SUBAGENT_STOP),
-];
-
-/// Global hook scripts with their filenames (installed to ~/.claude/hooks/)
-pub const LOOM_GLOBAL_HOOKS: &[(&str, &str)] = &[
+    // Global hooks (commit enforcement, user question handling)
     ("commit-guard.sh", HOOK_COMMIT_GUARD),
     ("ask-user-pre.sh", HOOK_ASK_USER_PRE),
     ("ask-user-post.sh", HOOK_ASK_USER_POST),

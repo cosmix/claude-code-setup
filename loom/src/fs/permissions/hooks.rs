@@ -5,15 +5,16 @@ use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
-use super::constants::{LOOM_GLOBAL_HOOKS, LOOM_WORKTREE_HOOKS};
+use super::constants::LOOM_HOOKS;
 
 /// Generate hooks configuration for loom
-/// Hooks reference scripts at ~/.claude/hooks/ (installed by loom init)
+/// Hooks reference scripts at ~/.claude/hooks/loom/ (installed by loom init)
 pub fn loom_hooks_config() -> Value {
     // Get home directory for full path expansion (~ may not work in all contexts)
+    // All hooks are in the loom/ subdirectory to separate from user hooks
     let hooks_dir = dirs::home_dir()
-        .map(|h| h.join(".claude/hooks").display().to_string())
-        .unwrap_or_else(|| "~/.claude/hooks".to_string());
+        .map(|h| h.join(".claude/hooks/loom").display().to_string())
+        .unwrap_or_else(|| "~/.claude/hooks/loom".to_string());
 
     json!({
         "PreToolUse": [
@@ -52,41 +53,30 @@ pub fn loom_hooks_config() -> Value {
     })
 }
 
-/// Install all loom hooks to ~/.claude/hooks/
+/// Install all loom hooks to ~/.claude/hooks/loom/
 ///
-/// This installs:
-/// - Global hooks (commit-guard.sh, ask-user-*.sh) to ~/.claude/hooks/
-/// - Worktree hooks (session-start.sh, post-tool-use.sh, etc.) to ~/.claude/hooks/loom/
+/// All hooks are installed to the loom/ subdirectory to keep them
+/// separate from any user-defined hooks.
 ///
 /// # Returns
 /// - `Ok(count)` - number of hooks installed or updated
 /// - `Err` if installation failed
 pub fn install_loom_hooks() -> Result<usize> {
     let home_dir = dirs::home_dir().context("Failed to determine home directory")?;
-    let hooks_dir = home_dir.join(".claude/hooks");
-    let worktree_hooks_dir = hooks_dir.join("loom");
+    let hooks_dir = home_dir.join(".claude/hooks/loom");
 
-    // Create hooks directories if needed
-    for dir in [&hooks_dir, &worktree_hooks_dir] {
-        if !dir.exists() {
-            fs::create_dir_all(dir).with_context(|| {
-                format!("Failed to create hooks directory at {}", dir.display())
-            })?;
-        }
+    // Create hooks directory if needed
+    if !hooks_dir.exists() {
+        fs::create_dir_all(&hooks_dir).with_context(|| {
+            format!("Failed to create hooks directory at {}", hooks_dir.display())
+        })?;
     }
 
     let mut installed_count = 0;
 
-    // Install global hooks to ~/.claude/hooks/
-    for (filename, content) in LOOM_GLOBAL_HOOKS {
+    // Install all hooks to ~/.claude/hooks/loom/
+    for (filename, content) in LOOM_HOOKS {
         if install_hook_script(&hooks_dir, filename, content)? {
-            installed_count += 1;
-        }
-    }
-
-    // Install worktree hooks to ~/.claude/hooks/loom/
-    for (filename, content) in LOOM_WORKTREE_HOOKS {
-        if install_hook_script(&worktree_hooks_dir, filename, content)? {
             installed_count += 1;
         }
     }
