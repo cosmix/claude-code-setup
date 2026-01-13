@@ -44,6 +44,7 @@ fn test_create_stage_from_definition_no_dependencies() {
         setup: vec![],
         files: vec!["src/*.rs".to_string()],
         auto_merge: None,
+        working_dir: ".".to_string(),
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-001");
@@ -68,6 +69,7 @@ fn test_create_stage_from_definition_with_dependencies() {
         setup: vec!["cargo build".to_string()],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-002");
@@ -101,6 +103,7 @@ fn test_serialize_stage_to_markdown_minimal() {
         completed_at: None,
         close_reason: None,
         auto_merge: None,
+        working_dir: None,
         retry_count: 0,
         max_retries: None,
         last_failure_at: None,
@@ -144,6 +147,7 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         completed_at: None,
         close_reason: None,
         auto_merge: None,
+        working_dir: None,
         retry_count: 0,
         max_retries: None,
         last_failure_at: None,
@@ -201,6 +205,7 @@ fn test_initialize_with_plan_creates_config() {
         setup: vec![],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);
@@ -235,6 +240,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -246,6 +252,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
     ];
 

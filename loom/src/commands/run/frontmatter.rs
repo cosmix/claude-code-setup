@@ -22,6 +22,8 @@ pub struct StageFrontmatter {
     pub setup: Vec<String>,
     #[serde(default)]
     pub files: Vec<String>,
+    #[serde(default)]
+    pub working_dir: Option<String>,
 }
 
 /// Extract YAML frontmatter from stage markdown file
@@ -86,6 +88,7 @@ pub fn load_stages_from_work_dir(stages_dir: &PathBuf) -> Result<Vec<StageDefini
             setup: frontmatter.setup,
             files: frontmatter.files,
             auto_merge: None,
+            working_dir: frontmatter.working_dir.unwrap_or_else(|| ".".to_string()),
         };
 
         stages.push(stage_def);

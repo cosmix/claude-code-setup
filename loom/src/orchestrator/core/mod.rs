@@ -60,6 +60,7 @@ mod tests {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         }];
 
         ExecutionGraph::build(stages).unwrap()

@@ -43,6 +43,10 @@ pub struct Stage {
     pub close_reason: Option<String>,
     #[serde(default)]
     pub auto_merge: Option<bool>,
+    /// Working directory for acceptance criteria, relative to worktree root.
+    /// If set, criteria run from this subdirectory instead of worktree root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub working_dir: Option<String>,
     /// Number of retry attempts for this stage
     #[serde(default)]
     pub retry_count: u32,

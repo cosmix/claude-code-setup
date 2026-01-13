@@ -14,7 +14,7 @@ pub struct EmbeddedContext {
     pub plan_overview: Option<String>,
     /// Relevant facts for this stage (formatted as markdown table)
     pub facts_content: Option<String>,
-    /// Knowledge summary from .work/knowledge/ files
+    /// Knowledge summary from doc/loom/knowledge/ files
     pub knowledge_summary: Option<String>,
     /// Whether the knowledge directory exists
     pub knowledge_exists: bool,

@@ -42,6 +42,7 @@ fn setup_work_dir_with_plan(temp_dir: &TempDir) -> (PathBuf, WorkDir) {
         setup: vec![],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);

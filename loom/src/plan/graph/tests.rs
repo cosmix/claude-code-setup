@@ -14,6 +14,7 @@ fn make_stage(id: &str, deps: Vec<&str>, group: Option<&str>) -> StageDefinition
         setup: vec![],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     }
 }
 

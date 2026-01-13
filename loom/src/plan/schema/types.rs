@@ -36,6 +36,10 @@ pub struct StageDefinition {
     pub files: Vec<String>,
     #[serde(default)]
     pub auto_merge: Option<bool>,
+    /// Working directory for acceptance criteria, relative to worktree root.
+    /// REQUIRED field - forces explicit choice of execution directory.
+    /// Use "." for worktree root, or a subdirectory like "loom".
+    pub working_dir: String,
 }
 
 /// Validation error with context

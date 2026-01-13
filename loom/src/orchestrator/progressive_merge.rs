@@ -278,6 +278,7 @@ mod tests {
             completed_at: Some(Utc::now()),
             close_reason: None,
             auto_merge: None,
+            working_dir: None,
             retry_count: 0,
             max_retries: None,
             last_failure_at: None,

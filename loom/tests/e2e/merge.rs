@@ -28,6 +28,7 @@ fn create_test_stage(id: &str, auto_merge: Option<bool>) -> Stage {
         completed_at: Some(Utc::now()),
         close_reason: None,
         auto_merge,
+        working_dir: None,
         retry_count: 0,
         max_retries: None,
         last_failure_at: None,
@@ -113,8 +114,10 @@ loom:
     - id: stage-1
       name: "First Stage"
       auto_merge: false
+      working_dir: "."
     - id: stage-2
       name: "Second Stage"
+      working_dir: "."
 "#;
 
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();
@@ -168,6 +171,7 @@ fn test_stage_definition_with_auto_merge() {
 id: test-stage
 name: Test Stage
 auto_merge: true
+working_dir: "."
 "#;
     let stage: StageDefinition = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(stage.auto_merge, Some(true));
@@ -178,6 +182,7 @@ fn test_stage_definition_without_auto_merge() {
     let yaml = r#"
 id: test-stage
 name: Test Stage
+working_dir: "."
 "#;
     let stage: StageDefinition = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(stage.auto_merge, None);
@@ -192,6 +197,7 @@ loom:
   stages:
     - id: stage-1
       name: "Stage 1"
+      working_dir: "."
 "#;
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(metadata.loom.auto_merge, Some(false));
@@ -207,11 +213,14 @@ loom:
     - id: stage-1
       name: "Force Disabled"
       auto_merge: false
+      working_dir: "."
     - id: stage-2
       name: "Force Enabled"
       auto_merge: true
+      working_dir: "."
     - id: stage-3
       name: "Use Default"
+      working_dir: "."
 "#;
 
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();

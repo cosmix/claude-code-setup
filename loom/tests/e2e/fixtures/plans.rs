@@ -30,6 +30,7 @@ loom:
         - "Setup complete"
       files:
         - "src/main.rs"
+      working_dir: "."
     - id: stage-2
       name: "Second Stage"
       description: "Build on first stage"
@@ -39,6 +40,7 @@ loom:
         - "Build succeeds"
       files:
         - "Cargo.toml"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -83,6 +85,7 @@ loom:
         - "Foundation ready"
       files:
         - "README.md"
+      working_dir: "."
     - id: stage-2
       name: "Parallel Stage A"
       description: "First parallel task"
@@ -93,6 +96,7 @@ loom:
         - "Task A complete"
       files:
         - "src/module_a.rs"
+      working_dir: "."
     - id: stage-3
       name: "Parallel Stage B"
       description: "Second parallel task"
@@ -103,6 +107,7 @@ loom:
         - "Task B complete"
       files:
         - "src/module_b.rs"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -155,6 +160,7 @@ loom:
         - "Foundation established"
       files:
         - "src/core.rs"
+      working_dir: "."
     - id: stage-2
       name: "Left Branch"
       description: "Left side of diamond"
@@ -165,6 +171,7 @@ loom:
         - "Left branch complete"
       files:
         - "src/left.rs"
+      working_dir: "."
     - id: stage-3
       name: "Right Branch"
       description: "Right side of diamond"
@@ -175,6 +182,7 @@ loom:
         - "Right branch complete"
       files:
         - "src/right.rs"
+      working_dir: "."
     - id: stage-4
       name: "Convergence"
       description: "Merges both branches"
@@ -185,6 +193,7 @@ loom:
         - "Integration complete"
       files:
         - "src/integration.rs"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -242,6 +251,7 @@ loom:
         - "src/**/*.rs"
         - "tests/**/*.rs"
         - "Cargo.toml"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -276,6 +286,7 @@ loom:
   stages:
     - id: stage-1
       name: "Minimal Stage"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -314,6 +325,7 @@ loom:
       dependencies: []
       acceptance:
         - "Stage 1 complete"
+      working_dir: "."
     - id: stage-2
       name: "Stage 2"
       description: "Second in chain"
@@ -321,6 +333,7 @@ loom:
         - stage-1
       acceptance:
         - "Stage 2 complete"
+      working_dir: "."
     - id: stage-3
       name: "Stage 3"
       description: "Third in chain"
@@ -328,6 +341,7 @@ loom:
         - stage-2
       acceptance:
         - "Stage 3 complete"
+      working_dir: "."
     - id: stage-4
       name: "Stage 4"
       description: "Fourth in chain"
@@ -335,6 +349,7 @@ loom:
         - stage-3
       acceptance:
         - "Stage 4 complete"
+      working_dir: "."
     - id: stage-5
       name: "Stage 5"
       description: "Fifth in chain"
@@ -342,6 +357,7 @@ loom:
         - stage-4
       acceptance:
         - "Stage 5 complete"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->

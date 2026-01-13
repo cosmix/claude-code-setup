@@ -194,9 +194,11 @@ loom:
     - id: stage-1
       name: "Stage One"
       dependencies: []
+      working_dir: "."
     - id: stage-2
       name: "Stage Two"
       dependencies: [stage-1]
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -234,6 +236,7 @@ loom:
         - "cargo test"
       files:
         - "src/*.rs"
+      working_dir: "."
     - id: stage-2
       name: "Second Stage"
       description: "Build on first stage"
@@ -244,6 +247,7 @@ loom:
         - "cargo clippy"
       files:
         - "Cargo.toml"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -334,6 +338,7 @@ loom:
     - id: stage-1
       name: "Stage One"
       dependencies: ["nonexistent-stage"]
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -361,6 +366,7 @@ loom:
     - id: stage-1
       name: "Stage One"
       dependencies: ["stage-1"]
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -387,6 +393,7 @@ loom:
   stages:
     - id: stage-1
       name: ""
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->
@@ -410,6 +417,7 @@ loom:
   stages:
     - id: stage-1
       name: "Stage One"
+      working_dir: "."
 ```
 
 <!-- END loom METADATA -->

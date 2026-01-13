@@ -253,6 +253,8 @@ fn extract_stage_frontmatter(content: &str) -> Result<StageDefinition> {
         setup: Vec<String>,
         #[serde(default)]
         files: Vec<String>,
+        #[serde(default)]
+        working_dir: Option<String>,
     }
 
     let fm: StageFrontmatter =
@@ -268,5 +270,6 @@ fn extract_stage_frontmatter(content: &str) -> Result<StageDefinition> {
         setup: fm.setup,
         files: fm.files,
         auto_merge: None,
+        working_dir: fm.working_dir.unwrap_or_else(|| ".".to_string()),
     })
 }

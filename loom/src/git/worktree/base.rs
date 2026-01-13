@@ -239,6 +239,7 @@ mod tests {
                 files: vec![],
                 parallel_group: None,
                 auto_merge: None,
+                working_dir: ".".to_string(),
             })
             .collect();
 

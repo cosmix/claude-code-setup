@@ -74,6 +74,7 @@ loom:
         - "grep -q '## ' doc/loom/knowledge/conventions.md"
       files:
         - "doc/loom/knowledge/**"
+      working_dir: "."  # REQUIRED: "." for worktree root
 
     # Subsequent stages depend on knowledge-bootstrap
     - id: implement-feature
@@ -86,8 +87,7 @@ loom:
         - "cargo test"
       files:
         - "src/**/*.rs"
-      # Optional: subdirectory to run acceptance criteria from (relative to worktree root)
-      # working_dir: "loom"  # Use when Cargo.toml/package.json is in a subdirectory
+      working_dir: "."  # REQUIRED: "." for worktree root, or subdirectory like "loom"
 
     # REQUIRED LAST STAGE - integration-verify MUST be final
     - id: integration-verify
@@ -104,6 +104,7 @@ loom:
         - "cargo clippy -- -D warnings"
         - "cargo build"
       files: []  # Verification only - no file modifications
+      working_dir: "."  # REQUIRED: "." for worktree root, or subdirectory like "loom"
 ```
 
 <!-- END loom METADATA -->
@@ -143,25 +144,31 @@ Stage definitions become agent signals: `description` â†’ tasks, `acceptance` â†
 
 #### Acceptance Criteria Working Directory
 
-Acceptance criteria run from the **worktree root** by default. If your project structure has code in a subdirectory (e.g., `loom/` containing `Cargo.toml`), use one of these approaches:
+The `working_dir` field is **REQUIRED** on every stage. This forces explicit choice of where acceptance criteria run:
 
-**Option 1 (Recommended): Use `working_dir` field**
 ```yaml
-- id: my-stage
+working_dir: "."      # Run from worktree root
+working_dir: "loom"   # Run from loom/ subdirectory
+```
+
+**Why required?** Prevents acceptance failures due to forgotten directory context. Every stage must consciously declare its execution directory.
+
+**Examples:**
+```yaml
+# Project with Cargo.toml at root
+- id: build-check
   acceptance:
     - "cargo test"
-    - "cargo clippy"
-  working_dir: "loom"  # Run all criteria from this subdirectory
-```
+  working_dir: "."
 
-**Option 2: Inline `cd` in command**
-```yaml
-- id: my-stage
+# Project with Cargo.toml in loom/ subdirectory
+- id: build-check
   acceptance:
-    - "(cd loom && cargo test)"  # Parentheses prevent directory leakage
+    - "cargo test"
+  working_dir: "loom"
 ```
 
-The `working_dir` field is cleaner when ALL criteria need the same subdirectory. Use inline `cd` when only some criteria need it.
+**Mixed directories?** Create separate stages instead of inline `cd`. Each stage = one working directory.
 
 #### Parallelization Strategy
 

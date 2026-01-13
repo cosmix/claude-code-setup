@@ -29,6 +29,7 @@ pub(crate) fn create_valid_stage(id: &str, name: &str) -> StageDefinition {
         setup: vec![],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     }
 }
 

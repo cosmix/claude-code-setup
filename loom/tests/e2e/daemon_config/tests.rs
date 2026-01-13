@@ -63,6 +63,7 @@ fn test_auto_merge_config_cascade() {
         setup: vec![],
         files: vec![],
         auto_merge: Some(true), // Stage-level override
+        working_dir: ".".to_string(),
     };
 
     assert_eq!(stage_with_auto_merge.auto_merge, Some(true));
@@ -78,6 +79,7 @@ fn test_auto_merge_config_cascade() {
         setup: vec![],
         files: vec![],
         auto_merge: None, // Uses plan default
+        working_dir: ".".to_string(),
     };
 
     assert_eq!(stage_without_override.auto_merge, None);

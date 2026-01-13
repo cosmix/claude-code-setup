@@ -242,7 +242,7 @@ mod tests {
         let result = init();
         assert!(result.is_ok());
 
-        // Verify files were created at doc/loom/knowledge (not .work/knowledge)
+        // Verify files were created at doc/loom/knowledge
         let knowledge_dir = test_dir.join("doc/loom/knowledge");
         assert!(knowledge_dir.exists());
         assert!(knowledge_dir.join("entry-points.md").exists());
@@ -270,7 +270,7 @@ mod tests {
         );
         assert!(result.is_ok());
 
-        // Verify content was appended at doc/loom/knowledge (not .work/knowledge)
+        // Verify content was appended at doc/loom/knowledge
         let content =
             fs::read_to_string(test_dir.join("doc/loom/knowledge/entry-points.md")).unwrap();
         assert!(content.contains("## New Section"));

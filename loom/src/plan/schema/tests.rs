@@ -19,6 +19,7 @@ fn create_valid_metadata() -> LoomMetadata {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -30,6 +31,7 @@ fn create_valid_metadata() -> LoomMetadata {
                     setup: vec!["source .venv/bin/activate".to_string()],
                     files: vec!["src/*.rs".to_string()],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
             ],
         },
@@ -88,6 +90,7 @@ fn test_validate_empty_stage_id() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -116,6 +119,7 @@ fn test_validate_empty_stage_name() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -144,6 +148,7 @@ fn test_validate_unknown_dependency() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -173,6 +178,7 @@ fn test_validate_self_dependency() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -202,6 +208,7 @@ fn test_validate_multiple_errors() {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -213,6 +220,7 @@ fn test_validate_multiple_errors() {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
             ],
         },
@@ -245,6 +253,7 @@ fn test_stage_definition_serde_defaults() {
     let yaml = r#"
 id: test-stage
 name: Test Stage
+working_dir: "."
 "#;
     let stage: StageDefinition = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(stage.id, "test-stage");
@@ -256,6 +265,7 @@ name: Test Stage
     assert_eq!(stage.setup.len(), 0);
     assert_eq!(stage.files.len(), 0);
     assert_eq!(stage.auto_merge, None);
+    assert_eq!(stage.working_dir, ".");
 }
 
 #[test]
@@ -275,6 +285,7 @@ fn test_complex_dependency_chain() {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -286,6 +297,7 @@ fn test_complex_dependency_chain() {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
                 StageDefinition {
                     id: "stage-3".to_string(),
@@ -297,6 +309,7 @@ fn test_complex_dependency_chain() {
                     setup: vec![],
                     files: vec![],
                     auto_merge: None,
+                    working_dir: ".".to_string(),
                 },
             ],
         },
@@ -321,6 +334,7 @@ fn test_validate_stage_id_path_traversal() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -349,6 +363,7 @@ fn test_validate_stage_id_with_slashes() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -377,6 +392,7 @@ fn test_validate_stage_id_with_dots() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -405,6 +421,7 @@ fn test_validate_stage_id_reserved_name_dotdot() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -429,6 +446,7 @@ fn test_validate_stage_id_reserved_name_con() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -455,6 +473,7 @@ fn test_validate_dependency_id_path_traversal() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -484,6 +503,7 @@ fn test_validate_stage_id_too_long() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -510,6 +530,7 @@ fn test_validate_stage_id_with_spaces() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -580,6 +601,7 @@ fn test_validate_metadata_with_empty_acceptance() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -612,6 +634,7 @@ fn test_validate_metadata_with_valid_acceptance() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -636,6 +659,7 @@ fn test_validate_metadata_multiple_invalid_acceptance() {
                 setup: vec![],
                 files: vec![],
                 auto_merge: None,
+                working_dir: ".".to_string(),
             }],
         },
     };
@@ -660,6 +684,7 @@ loom:
   stages:
     - id: stage-1
       name: "Test Stage"
+      working_dir: "."
 "#;
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(metadata.loom.auto_merge, Some(true));
@@ -674,6 +699,7 @@ loom:
     - id: stage-1
       name: "Test Stage"
       auto_merge: false
+      working_dir: "."
 "#;
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(metadata.loom.stages[0].auto_merge, Some(false));
@@ -687,6 +713,7 @@ loom:
   stages:
     - id: stage-1
       name: "Test Stage"
+      working_dir: "."
 "#;
     let metadata: LoomMetadata = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(metadata.loom.auto_merge, None);
@@ -708,6 +735,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -719,6 +747,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
     ];
 
@@ -740,6 +769,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -751,6 +781,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
     ];
 
@@ -771,6 +802,7 @@ fn test_knowledge_recommendations_has_knowledge_name() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
     ];
 
@@ -791,6 +823,7 @@ fn test_knowledge_recommendations_case_insensitive() {
             setup: vec![],
             files: vec![],
             auto_merge: None,
+            working_dir: ".".to_string(),
         },
     ];
 
@@ -812,6 +845,7 @@ fn test_knowledge_recommendations_no_root_stages() {
         setup: vec![],
         files: vec![],
         auto_merge: None,
+        working_dir: ".".to_string(),
     }];
 
     let warnings = check_knowledge_recommendations(&stages);

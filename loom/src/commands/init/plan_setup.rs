@@ -162,6 +162,7 @@ pub(crate) fn create_stage_from_definition(stage_def: &StageDefinition, plan_id:
         completed_at: None,
         close_reason: None,
         auto_merge: stage_def.auto_merge,
+        working_dir: Some(stage_def.working_dir.clone()),
         retry_count: 0,
         max_retries: None,
         last_failure_at: None,

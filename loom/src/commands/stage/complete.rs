@@ -103,17 +103,34 @@ pub fn complete(
                 .filter(|p| p.exists())
         });
 
+    // Resolve acceptance criteria working directory:
+    // If stage has a working_dir set, join it with the worktree root
+    let acceptance_dir: Option<PathBuf> = match (&working_dir, &stage.working_dir) {
+        (Some(worktree_root), Some(subdir)) => {
+            let full_path = worktree_root.join(subdir);
+            if full_path.exists() {
+                Some(full_path)
+            } else {
+                eprintln!(
+                    "Warning: stage working_dir '{subdir}' does not exist in worktree, using worktree root"
+                );
+                working_dir.clone()
+            }
+        }
+        _ => working_dir.clone(),
+    };
+
     // Track whether acceptance criteria passed (None = skipped via --no-verify)
     let acceptance_result: Option<bool> = if no_verify {
         // --no-verify means we skip criteria entirely (deliberate skip)
         None
     } else if !stage.acceptance.is_empty() {
         println!("Running acceptance criteria for stage '{stage_id}'...");
-        if let Some(ref dir) = working_dir {
+        if let Some(ref dir) = acceptance_dir {
             println!("  (working directory: {})", dir.display());
         }
 
-        let result = run_acceptance(&stage, working_dir.as_deref())
+        let result = run_acceptance(&stage, acceptance_dir.as_deref())
             .context("Failed to run acceptance criteria")?;
 
         // Print results for each criterion
