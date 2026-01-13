@@ -217,3 +217,183 @@ pub fn collect_status_data(work_dir: &WorkDir) -> Result<StatusData> {
         progress,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::stage::StageType;
+    use chrono::Utc;
+
+    fn make_test_stage(id: &str, status: StageStatus) -> Stage {
+        Stage {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: None,
+            status,
+            dependencies: vec![],
+            parallel_group: None,
+            acceptance: vec![],
+            setup: vec![],
+            files: vec![],
+            stage_type: StageType::default(),
+            plan_id: None,
+            worktree: None,
+            session: None,
+            held: false,
+            parent_stage: None,
+            child_stages: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            completed_at: None,
+            close_reason: None,
+            auto_merge: None,
+            working_dir: None,
+            retry_count: 0,
+            max_retries: None,
+            last_failure_at: None,
+            failure_info: None,
+            resolved_base: None,
+            base_branch: None,
+            base_merged_from: vec![],
+            outputs: vec![],
+            completed_commit: None,
+            merged: false,
+            merge_conflict: false,
+        }
+    }
+
+    #[test]
+    fn test_calculate_progress() {
+        let stages = vec![
+            make_test_stage("stage-1", StageStatus::Completed),
+            make_test_stage("stage-2", StageStatus::Executing),
+            make_test_stage("stage-3", StageStatus::WaitingForDeps),
+            make_test_stage("stage-4", StageStatus::Queued),
+            make_test_stage("stage-5", StageStatus::Blocked),
+        ];
+
+        let progress = calculate_progress(&stages);
+
+        assert_eq!(progress.total, 5);
+        assert_eq!(progress.completed, 1);
+        assert_eq!(progress.executing, 1);
+        assert_eq!(progress.pending, 2); // WaitingForDeps + Queued
+        assert_eq!(progress.blocked, 1);
+    }
+
+    #[test]
+    fn test_calculate_progress_with_needs_handoff() {
+        let stages = vec![
+            make_test_stage("stage-1", StageStatus::NeedsHandoff),
+            make_test_stage("stage-2", StageStatus::WaitingForInput),
+        ];
+
+        let progress = calculate_progress(&stages);
+
+        assert_eq!(progress.total, 2);
+        assert_eq!(progress.executing, 2); // Both count as executing
+    }
+
+    #[test]
+    fn test_calculate_progress_with_failures() {
+        let stages = vec![
+            make_test_stage("stage-1", StageStatus::CompletedWithFailures),
+            make_test_stage("stage-2", StageStatus::MergeConflict),
+            make_test_stage("stage-3", StageStatus::MergeBlocked),
+        ];
+
+        let progress = calculate_progress(&stages);
+
+        assert_eq!(progress.total, 3);
+        assert_eq!(progress.blocked, 3); // All count as blocked
+    }
+
+    #[test]
+    fn test_build_stage_summary_with_session() {
+        let stage = make_test_stage("test-stage", StageStatus::Executing);
+        let mut session = Session::new();
+        session.assign_to_stage("test-stage".to_string());
+        session.context_tokens = 50000;
+        session.context_limit = 200000;
+
+        let summary = build_stage_summary(&stage, &[session]);
+
+        assert_eq!(summary.id, "test-stage");
+        assert_eq!(summary.status, StageStatus::Executing);
+        assert!(summary.context_pct.is_some());
+        assert_eq!(summary.context_pct.unwrap(), 0.25); // 50000/200000
+        assert!(summary.elapsed_secs.is_some());
+    }
+
+    #[test]
+    fn test_build_stage_summary_without_session() {
+        let stage = make_test_stage("test-stage", StageStatus::WaitingForDeps);
+
+        let summary = build_stage_summary(&stage, &[]);
+
+        assert_eq!(summary.id, "test-stage");
+        assert_eq!(summary.status, StageStatus::WaitingForDeps);
+        assert!(summary.context_pct.is_none());
+        assert!(summary.elapsed_secs.is_some());
+    }
+
+    #[test]
+    fn test_build_session_summary() {
+        let mut session = Session::new();
+        session.assign_to_stage("test-stage".to_string());
+        session.pid = Some(12345);
+        session.context_tokens = 100000;
+        session.context_limit = 200000;
+
+        let summary = build_session_summary(&session);
+
+        assert_eq!(summary.stage_id, Some("test-stage".to_string()));
+        assert_eq!(summary.pid, Some(12345));
+        assert_eq!(summary.context_tokens, 100000);
+        assert_eq!(summary.context_limit, 200000);
+        assert!(summary.uptime_secs >= 0);
+    }
+
+    #[test]
+    fn test_build_merge_summary_from_report() {
+        let mut report = crate::commands::status::merge_status::MergeStatusReport::new();
+        report.merged.push("stage-1".to_string());
+        report.pending.push("stage-2".to_string());
+        report.conflicts.push("stage-3".to_string());
+
+        let summary = build_merge_summary_from_report(&report);
+
+        assert_eq!(summary.merged, vec!["stage-1"]);
+        assert_eq!(summary.pending, vec!["stage-2"]);
+        assert_eq!(summary.conflicts, vec!["stage-3"]);
+    }
+
+    #[test]
+    fn test_extract_yaml_frontmatter() {
+        let content = r#"---
+id: test
+status: executing
+---
+
+# Stage content"#;
+
+        let result = extract_yaml_frontmatter(content);
+        assert!(result.is_ok());
+        let yaml = result.unwrap();
+        assert_eq!(yaml["id"], "test");
+        assert_eq!(yaml["status"], "executing");
+    }
+
+    #[test]
+    fn test_extract_yaml_frontmatter_missing_delimiter() {
+        let content = r#"id: test
+status: executing"#;
+
+        let result = extract_yaml_frontmatter(content);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing YAML frontmatter delimiter"));
+    }
+}

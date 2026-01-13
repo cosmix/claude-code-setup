@@ -1,3 +1,4 @@
+pub mod data;
 mod diagnostics;
 mod display;
 pub mod merge_status;
