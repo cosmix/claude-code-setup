@@ -532,10 +532,7 @@ impl Orchestrator {
             // Spawn a merge resolution session
             if let Err(e) = self.spawn_merge_resolution_session(&stage) {
                 clear_status_line();
-                eprintln!(
-                    "Warning: Failed to spawn merge resolution session for '{}': {e}",
-                    stage_id
-                );
+                eprintln!("Warning: Failed to spawn merge resolution session for '{stage_id}': {e}");
             } else {
                 spawned += 1;
             }
