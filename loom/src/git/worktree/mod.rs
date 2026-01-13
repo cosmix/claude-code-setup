@@ -22,8 +22,8 @@ pub use base::{resolve_base_branch, ResolvedBase};
 pub use checks::{check_git_available, check_worktree_support, get_worktree_path, worktree_exists};
 pub use operations::{
     clean_worktrees, create_worktree, extract_stage_id_from_path, extract_worktree_stage_id,
-    find_worktree_by_prefix, find_worktree_root_from_cwd, get_or_create_worktree, list_worktrees,
-    remove_worktree,
+    find_repo_root_from_cwd, find_worktree_by_prefix, find_worktree_root_from_cwd,
+    get_or_create_worktree, list_worktrees, remove_worktree,
 };
 pub use parser::WorktreeInfo;
 pub use settings::{ensure_work_symlink, setup_worktree_hooks};
