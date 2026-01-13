@@ -37,6 +37,7 @@ pub fn collect_status(work_dir: &Path) -> Result<Response> {
                             let session_pid =
                                 get_session_pid(&sessions_dir, parsed.session.as_deref());
                             let started_at = get_stage_started_at(&content);
+                            let completed_at = get_stage_completed_at(&content);
                             let worktree_status =
                                 detect_worktree_status(&parsed.id, &repo_root);
 
@@ -61,6 +62,7 @@ pub fn collect_status(work_dir: &Path) -> Result<Response> {
                                 name: parsed.name,
                                 session_pid,
                                 started_at,
+                                completed_at,
                                 worktree_status,
                                 status: status_enum.clone(),
                                 merged: parsed.merged,
@@ -278,6 +280,20 @@ pub fn get_stage_started_at(content: &str) -> chrono::DateTime<chrono::Utc> {
         }
     }
     chrono::Utc::now()
+}
+
+/// Get stage completed_at timestamp from stage file content.
+///
+/// Extracts the `completed_at` field from YAML frontmatter using proper parsing.
+pub fn get_stage_completed_at(content: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    if let Ok(yaml) = extract_yaml_frontmatter(content) {
+        if let Some(completed_at) = yaml.get("completed_at").and_then(|v| v.as_str()) {
+            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(completed_at) {
+                return Some(dt.with_timezone(&chrono::Utc));
+            }
+        }
+    }
+    None
 }
 
 /// Get session PID from session file.

@@ -49,6 +49,7 @@ struct UnifiedStage {
     status: StageStatus,
     merged: bool,
     started_at: Option<chrono::DateTime<chrono::Utc>>,
+    completed_at: Option<chrono::DateTime<chrono::Utc>>,
     level: usize,
     dependencies: Vec<String>,
 }
@@ -155,6 +156,7 @@ impl LiveStatus {
                 status: stage.status.clone(),
                 merged: stage.merged,
                 started_at: Some(stage.started_at),
+                completed_at: stage.completed_at,
                 level: levels.get(&stage.id).copied().unwrap_or(0),
                 dependencies: stage.dependencies.clone(),
             }
@@ -369,25 +371,31 @@ impl TuiApp {
             let num_levels = max_level + 1;
             let graph_height = (num_levels as u16).clamp(1, 8);
 
-            // New unified layout:
-            // - Compact header (1 line with inline progress)
-            // - Execution graph (dynamic based on levels)
+            // Layout with breathing room:
+            // - Compact header (1 line)
+            // - Spacer (1 line)
+            // - Execution graph (dynamic)
+            // - Spacer (1 line)
             // - Unified stage table (remaining space)
             // - Footer (1 line)
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(1),            // Compact header with inline progress
+                    Constraint::Length(1),            // Spacer
                     Constraint::Length(graph_height), // Execution graph (dynamic)
+                    Constraint::Length(1),            // Spacer
                     Constraint::Min(8),               // Unified stage table
                     Constraint::Length(1),            // Footer
                 ])
                 .split(area);
 
             render_compact_header(frame, chunks[0], spinner, pct, completed_count, total);
-            render_graph(frame, chunks[1], &unified_stages);
-            render_unified_table(frame, chunks[2], &unified_stages);
-            render_compact_footer(frame, chunks[3], &last_error);
+            // chunks[1] is spacer - left empty
+            render_graph(frame, chunks[2], &unified_stages);
+            // chunks[3] is spacer - left empty
+            render_unified_table(frame, chunks[4], &unified_stages);
+            render_compact_footer(frame, chunks[5], &last_error);
         })?;
 
         Ok(())
@@ -460,6 +468,9 @@ fn render_graph(frame: &mut Frame, area: Rect, stages: &[UnifiedStage]) {
     let mut lines: Vec<Line<'static>> = Vec::new();
     for level_stages in by_level.values() {
         let mut spans: Vec<Span<'static>> = Vec::new();
+
+        // Indent
+        spans.push(Span::raw("  "));
 
         for (i, stage) in level_stages.iter().enumerate() {
             if i > 0 {
@@ -539,13 +550,21 @@ fn render_unified_table(frame: &mut Frame, area: Rect, stages: &[UnifiedStage]) 
 
             let level_str = stage.level.to_string();
 
-            let elapsed_str = stage
-                .started_at
-                .map(|t| {
-                    let elapsed = chrono::Utc::now().signed_duration_since(t).num_seconds();
+            // Show elapsed time: live for executing, final duration for completed
+            let elapsed_str = match (&stage.status, stage.started_at, stage.completed_at) {
+                // Executing: show live elapsed time
+                (StageStatus::Executing, Some(start), _) => {
+                    let elapsed = chrono::Utc::now().signed_duration_since(start).num_seconds();
                     format_elapsed(elapsed)
-                })
-                .unwrap_or_else(|| "-".to_string());
+                }
+                // Completed/blocked/etc with completed_at: show final duration
+                (_, Some(start), Some(end)) => {
+                    let elapsed = end.signed_duration_since(start).num_seconds();
+                    format_elapsed(elapsed)
+                }
+                // No timing info available
+                _ => "-".to_string(),
+            };
 
             let style = match stage.status {
                 StageStatus::Executing => Theme::status_executing(),
