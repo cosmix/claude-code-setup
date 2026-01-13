@@ -6,6 +6,7 @@
 mod foreground;
 mod frontmatter;
 mod graph_loader;
+mod plan_lifecycle;
 
 #[cfg(test)]
 mod tests;
@@ -30,6 +31,9 @@ pub fn execute_background(
 ) -> Result<()> {
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
+
+    // Mark plan as in-progress when starting execution
+    plan_lifecycle::mark_plan_in_progress(&work_dir)?;
 
     if let Some(ref id) = stage_id {
         println!("{} Running single stage: {}", "→".cyan().bold(), id.bold());

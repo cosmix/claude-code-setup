@@ -9,6 +9,7 @@ use crate::orchestrator::terminal::BackendType;
 use crate::orchestrator::{Orchestrator, OrchestratorConfig, OrchestratorResult};
 
 use super::graph_loader::build_execution_graph;
+use super::plan_lifecycle;
 
 /// Parse base_branch from config.toml
 fn parse_base_branch_from_config(work_dir: &WorkDir) -> Result<Option<String>> {
@@ -44,6 +45,9 @@ pub fn execute(
 ) -> Result<()> {
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
+
+    // Mark plan as in-progress when starting execution
+    plan_lifecycle::mark_plan_in_progress(&work_dir)?;
 
     execute_foreground(stage_id, manual, max_parallel, watch, auto_merge, &work_dir)
 }
@@ -97,7 +101,9 @@ fn execute_foreground(
 
     print_result(&result);
 
+    // If successful, check if all stages are merged and mark plan as done
     if result.is_success() {
+        plan_lifecycle::mark_plan_done_if_all_merged(work_dir)?;
         Ok(())
     } else {
         bail!("Orchestration completed with failures")
