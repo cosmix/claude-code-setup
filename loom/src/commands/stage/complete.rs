@@ -9,7 +9,7 @@ use crate::fs::memory::{extract_key_notes, read_journal};
 use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::task_state::read_task_state_if_exists;
 use crate::git::get_branch_head;
-use crate::git::worktree::find_worktree_root_from_cwd;
+use crate::git::worktree::{find_repo_root_from_cwd, find_worktree_root_from_cwd};
 use crate::models::stage::{StageStatus, StageType};
 use crate::orchestrator::{get_merge_point, merge_completed_stage, ProgressiveMergeResult};
 use crate::verify::criteria::run_acceptance;
@@ -262,15 +262,8 @@ pub fn complete(
     // Sync worktree permissions to main repo (non-fatal - warn on error)
     if acceptance_result != Some(false) {
         if let Some(ref dir) = working_dir {
-            // When inside a worktree, repo_root should be the parent of .worktrees
-            // The worktree path is like /path/to/repo/.worktrees/stage-id
-            // So we need to go up to the directory containing .worktrees
-            let repo_root = dir
-                .ancestors()
-                .find(|p| p.file_name().map(|n| n == ".worktrees").unwrap_or(false))
-                .and_then(|p| p.parent())
-                .map(PathBuf::from)
-                .or_else(|| std::env::current_dir().ok());
+            // Find the main repo root from the worktree path
+            let repo_root = find_repo_root_from_cwd(dir);
 
             if let Some(ref root) = repo_root {
                 match sync_worktree_permissions(dir, root) {
@@ -359,7 +352,12 @@ pub fn complete(
         // - merged=true ONLY if git merge succeeds (or fast-forward/already-merged)
         // - merged=false if merge has conflicts or errors
         // - merged=true even if NoBranch (branch was already cleaned up)
-        let repo_root = std::env::current_dir().context("Failed to get current directory")?;
+        //
+        // Find the main repo root (not the worktree root) for merge operations.
+        // When running from within a worktree, we need to merge from the main repo.
+        let cwd = std::env::current_dir().context("Failed to get current directory")?;
+        let repo_root = find_repo_root_from_cwd(&cwd)
+            .unwrap_or_else(|| cwd.clone());
         let merge_point = get_merge_point(work_dir)?;
 
         // Capture the completed commit SHA before merge (the HEAD of the stage branch)
