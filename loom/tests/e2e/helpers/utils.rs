@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 /// Also sets merged = true which is required for dependents to be triggered.
 /// Returns the completed stage
 pub fn complete_stage(stage_id: &str, work_dir: &Path) -> Result<Stage> {
-    use loom::verify::transitions::{load_stage, save_stage};
+    use loom::verify::transitions::save_stage;
 
     // First transition to Executing (required before Completed)
     transition_stage(stage_id, StageStatus::Executing, work_dir)

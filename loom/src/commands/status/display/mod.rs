@@ -10,7 +10,6 @@ mod tests;
 use anyhow::Result;
 use std::fs;
 
-pub use merge_status::display_merge_status;
 pub use runners::{display_runner_health, load_runners};
 pub use sessions::display_sessions;
 pub use stages::display_stages;

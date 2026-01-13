@@ -71,7 +71,7 @@ impl LiveMode {
                 }
                 Err(e) => {
                     eprintln!("\n{}", "Connection to daemon lost".red());
-                    eprintln!("{}", format!("Error: {}", e).dimmed());
+                    eprintln!("{}", format!("Error: {e}").dimmed());
                     break;
                 }
             }
@@ -102,7 +102,7 @@ impl LiveMode {
         match response {
             Response::Pong => {}
             Response::Error { message } => {
-                anyhow::bail!("Daemon returned error: {}", message);
+                anyhow::bail!("Daemon returned error: {message}");
             }
             _ => {
                 anyhow::bail!("Unexpected response from daemon");
@@ -126,7 +126,7 @@ impl LiveMode {
         match response {
             Response::Ok => Ok(()),
             Response::Error { message } => {
-                anyhow::bail!("Subscription failed: {}", message);
+                anyhow::bail!("Subscription failed: {message}");
             }
             _ => {
                 anyhow::bail!("Unexpected subscription response");
@@ -165,7 +165,7 @@ impl LiveMode {
                 );
             }
             Response::Error { message } => {
-                eprintln!("\n{}", format!("Daemon error: {}", message).red());
+                eprintln!("\n{}", format!("Daemon error: {message}").red());
                 self.running.store(false, Ordering::SeqCst);
             }
             _ => {}
@@ -182,12 +182,12 @@ impl LiveMode {
         for stage_id in completed.iter().take(1) {
             self.activity.push(
                 ActivityType::StageCompleted,
-                format!("Stage {} completed", stage_id),
+                format!("Stage {stage_id} completed"),
             );
         }
         for stage_id in blocked.iter().take(1) {
             self.activity
-                .push(ActivityType::StageBlocked, format!("Stage {} blocked", stage_id));
+                .push(ActivityType::StageBlocked, format!("Stage {stage_id} blocked"));
         }
         for stage in executing.iter().take(1) {
             self.activity.push(
@@ -219,7 +219,7 @@ impl LiveMode {
         println!("{}", "═".repeat(50));
 
         let total = executing.len() + pending.len() + completed.len() + blocked.len();
-        println!("\n{}", format!("Summary: {} stages", total).bold());
+        println!("\n{}", format!("Summary: {total} stages").bold());
 
         if !executing.is_empty() {
             println!(
@@ -269,14 +269,14 @@ impl LiveMode {
                 format!("✗ Blocked ({})", blocked.len()).red().bold()
             );
             for stage_id in blocked {
-                println!("    {}", stage_id);
+                println!("    {stage_id}");
             }
         }
 
         if !self.activity.is_empty() {
             println!("\n{}", "Recent Activity".bold());
             for line in self.activity.render(5) {
-                println!("  {}", line);
+                println!("  {line}");
             }
         }
 
@@ -293,7 +293,7 @@ impl Default for LiveMode {
 
 fn format_elapsed(seconds: i64) -> String {
     if seconds < 60 {
-        format!("{}s", seconds)
+        format!("{seconds}s")
     } else if seconds < 3600 {
         format!("{}m{}s", seconds / 60, seconds % 60)
     } else {

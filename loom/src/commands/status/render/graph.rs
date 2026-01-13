@@ -56,7 +56,7 @@ fn render_stage_line<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::Resu
         _ => stage.name.clone(),
     };
 
-    write!(w, "  {} {}", indicator, name)?;
+    write!(w, "  {indicator} {name}")?;
 
     // Context percentage if executing
     if let Some(ctx_pct) = stage.context_pct {
@@ -68,7 +68,7 @@ fn render_stage_line<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::Resu
         } else {
             ctx_str.dimmed()
         };
-        write!(w, "{}", colored_ctx)?;
+        write!(w, "{colored_ctx}")?;
     }
 
     // Elapsed time
@@ -80,7 +80,7 @@ fn render_stage_line<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::Resu
     // Base branch for executing stages
     if matches!(stage.status, StageStatus::Executing | StageStatus::Queued) {
         if let Some(ref base) = stage.base_branch {
-            write!(w, " {}", format!("({})", base).dimmed())?;
+            write!(w, " {}", format!("({base})").dimmed())?;
         }
     }
 
@@ -90,7 +90,7 @@ fn render_stage_line<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::Resu
 
 fn format_elapsed(seconds: i64) -> String {
     if seconds < 60 {
-        format!("{}s", seconds)
+        format!("{seconds}s")
     } else if seconds < 3600 {
         format!("{}m{}s", seconds / 60, seconds % 60)
     } else {

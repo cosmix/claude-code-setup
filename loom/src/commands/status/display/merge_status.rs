@@ -5,6 +5,7 @@ use crate::commands::status::merge_status::MergeStatusReport;
 /// Display the merge status report in a formatted way.
 ///
 /// Shows merged stages, conflict stages, pending merges, and any warnings.
+#[allow(dead_code)]
 pub fn display_merge_status(report: &MergeStatusReport) {
     // Skip section entirely if nothing to show
     if report.total() == 0 && report.warnings.is_empty() {

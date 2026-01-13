@@ -68,7 +68,7 @@ fn render_problem_stage<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::R
         StageStatus::MergeConflict => format!("loom merge {}", stage.id),
         StageStatus::CompletedWithFailures => format!("loom stage retry {}", stage.id),
         StageStatus::MergeBlocked => format!("loom merge {} --force", stage.id),
-        _ => format!("loom status"),
+        _ => "loom status".to_string(),
     };
     writeln!(w, "    {}: {}", "Hint".cyan(), hint.dimmed())?;
 

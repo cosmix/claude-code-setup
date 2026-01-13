@@ -37,7 +37,7 @@ pub fn render_progress<W: Write>(w: &mut W, progress: &ProgressSummary) -> std::
     }
 
     if progress.blocked > 0 {
-        write!(w, " | {} {} {}", progress.blocked, "blocked".red().bold(), "(!)")?;
+        write!(w, " | {} {} (!)", progress.blocked, "blocked".red().bold())?;
     }
 
     writeln!(w)?;

@@ -26,7 +26,7 @@ pub fn render_compact<W: Write>(w: &mut W, data: &StatusData) -> std::io::Result
         .filter(|s| matches!(s.status, crate::models::stage::StageStatus::NeedsHandoff))
         .count();
     if handoff_count > 0 {
-        write!(w, " ⟳{}", handoff_count)?;
+        write!(w, " ⟳{handoff_count}")?;
     }
 
     // Max context usage
@@ -42,13 +42,13 @@ pub fn render_compact<W: Write>(w: &mut W, data: &StatusData) -> std::io::Result
         } else {
             ctx_str.normal()
         };
-        write!(w, " | ctx:{}", colored)?;
+        write!(w, " | ctx:{colored}")?;
     }
 
     // Conflict count
     let conflicts = data.merge.conflicts.len();
     if conflicts > 0 {
-        write!(w, " | {}", format!("conflicts:{}", conflicts).red())?;
+        write!(w, " | {}", format!("conflicts:{conflicts}").red())?;
     }
 
     writeln!(w)?;

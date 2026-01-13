@@ -41,7 +41,7 @@ impl ActivityEntry {
     pub fn format(&self) -> String {
         let elapsed = self.timestamp.elapsed().as_secs();
         let time_str = if elapsed < 60 {
-            format!("{}s ago", elapsed)
+            format!("{elapsed}s ago")
         } else {
             format!("{}m ago", elapsed / 60)
         };

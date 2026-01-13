@@ -74,7 +74,7 @@ fn render_mini_bar(pct: f32, width: usize) -> String {
 
 fn format_uptime(seconds: i64) -> String {
     if seconds < 60 {
-        format!("{}s", seconds)
+        format!("{seconds}s")
     } else if seconds < 3600 {
         format!("{}m", seconds / 60)
     } else {
