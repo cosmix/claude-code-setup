@@ -15,6 +15,26 @@
 
 set -euo pipefail
 
+# === NO CLAUDE ATTRIBUTION CHECK ===
+# Block git commits that contain Claude attribution (forbidden per CLAUDE.md rule 7)
+if [[ "${TOOL_NAME:-}" == "Bash" ]]; then
+    if echo "${TOOL_INPUT:-}" | grep -qi 'git commit'; then
+        if echo "${TOOL_INPUT:-}" | grep -Ei -q 'co-authored-by.*claude|claude.*(noreply|anthropic)'; then
+            echo ""
+            echo "═══════════════════════════════════════════════════════════════"
+            echo "BLOCKED: Claude attribution detected in commit message."
+            echo ""
+            echo "Remove the Co-Authored-By line. AI attribution is FORBIDDEN"
+            echo "per CLAUDE.md rule 7: Never mention Claude in commits."
+            echo ""
+            echo "Run your commit again WITHOUT the Co-Authored-By line."
+            echo "═══════════════════════════════════════════════════════════════"
+            echo ""
+            exit 1
+        fi
+    fi
+fi
+
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
     # Silently exit if not in loom context
