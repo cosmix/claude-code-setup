@@ -26,8 +26,8 @@ Loom solves these problems with three integrated components:
 | Component    | Purpose                                          |
 | ------------ | ------------------------------------------------ |
 | **loom CLI** | Manages persistent work state across sessions    |
-| **Agents**   | 19 specialized AI agents organized by domain     |
-| **Skills**   | 56 reusable knowledge modules loaded dynamically |
+| **Agents**   | 4 specialized AI agents (2 Opus, 2 Sonnet)       |
+| **Skills**   | 57 reusable knowledge modules loaded dynamically |
 
 Together, they implement the **Signal Principle**: _"If you have a signal,
 answer it."_ Agents check for pending signals on startup and resume work
@@ -220,12 +220,11 @@ in one context, eventually hitting limits.
 
 With orchestration rules, Claude will:
 
-1. Use tech-lead to analyze the refactoring scope
-2. Spawn senior-software-engineer to design the approach
-3. Spawn multiple software-engineer agents IN PARALLEL to refactor different
+1. Spawn senior-software-engineer to analyze scope and design the approach
+2. Spawn multiple software-engineer agents IN PARALLEL to refactor different
    files
-4. Each agent loads relevant skills (python, refactoring, testing)
-5. Results merge back without exhausting main context
+3. Each agent loads relevant skills (python, refactoring, testing)
+4. Results merge back without exhausting main context
 
 ## Installation
 
@@ -271,8 +270,8 @@ The installation places these components:
 
 | Location              | Contents                              |
 | --------------------- | ------------------------------------- |
-| `~/.claude/agents/`   | 19 specialized AI agents              |
-| `~/.claude/skills/`   | 56 reusable knowledge modules         |
+| `~/.claude/agents/`   | 4 specialized AI agents               |
+| `~/.claude/skills/`   | 57 reusable knowledge modules         |
 | `~/.claude/CLAUDE.md` | Orchestration rules and configuration |
 | `~/.local/bin/loom`   | loom CLI binary                       |
 
@@ -641,41 +640,46 @@ loom stage release stage-3
 
 ## Agent Hierarchy
 
-Agents are organized by domain with two tiers:
+Loom uses a streamlined 4-agent architecture with clear separation between strategic thinking (Opus) and implementation (Sonnet):
 
-| Domain               | Senior (opus)              | Standard (sonnet)   |
-| -------------------- | -------------------------- | ------------------- |
-| Software Engineering | `senior-software-engineer` | `software-engineer` |
-| Machine Learning     | `senior-ml-engineer`       | `ml-engineer`       |
-| Infrastructure       | `senior-infra-engineer`    | `infra-engineer`    |
-| Product Design       | `senior-product-designer`  | `product-designer`  |
-| Analytics            | `senior-data-analyst`      | `data-analyst`      |
-| Quality Assurance    | `senior-qa-engineer`       | `qa-engineer`       |
-| Data Engineering     | `senior-data-engineer`     | `data-engineer`     |
-| Technical Writing    | `senior-technical-writer`  | `technical-writer`  |
+| Agent                         | Model  | Purpose                                                     |
+| ----------------------------- | ------ | ----------------------------------------------------------- |
+| `senior-software-engineer`    | opus   | Architecture, design patterns, complex debugging, strategy  |
+| `software-engineer`           | sonnet | All routine implementation across domains                   |
+| `security-engineer`           | opus   | Security review, threat modeling, vulnerability analysis    |
+| `senior-infrastructure-engineer` | opus | Cloud architecture, IaC, Kubernetes, CI/CD, monitoring   |
 
-Special agents:
+### When to Use Each Agent
 
-| Agent               | Model | Purpose                           |
-| ------------------- | ----- | --------------------------------- |
-| `tech-lead`         | opus  | Cross-team coordination, planning |
-| `security-engineer` | opus  | Security review, threat modeling  |
+**`senior-software-engineer`** (opus) - The "brain" agent for:
 
-### When to Use Each Tier
-
-**Senior agents (opus)** for higher-level work:
-
-- System design and architecture
+- System design and architecture decisions
 - Complex debugging and root cause analysis
-- Design pattern selection
-- Code review and strategic decisions
+- Design pattern selection and code review
+- Data modeling, ML system design, test strategy
+- UX strategy, documentation architecture
 
-**Standard agents (sonnet)** for implementation:
+**`software-engineer`** (sonnet) - The "workhorse" agent for:
 
-- Well-specified feature implementation
-- Following established patterns
-- Routine configurations and data processing
-- Documentation for implemented features
+- Feature implementation with clear requirements
+- Bug fixes and routine maintenance
+- Writing tests, ETL pipelines, SQL queries
+- ML model training, infrastructure code
+- UI components, documentation, reports
+
+**`security-engineer`** (opus) - Dedicated security specialist for:
+
+- Threat modeling and security architecture
+- Vulnerability analysis and penetration testing
+- Security-focused code review
+- Compliance assessments (SOC2, PCI-DSS, HIPAA)
+
+**`senior-infrastructure-engineer`** (opus) - Infrastructure expert for:
+
+- Cloud architecture design and implementation
+- Terraform, Kubernetes, Helm, Docker
+- CI/CD pipelines and monitoring setup
+- Complex distributed systems debugging
 
 ## Skills Library
 
