@@ -7,6 +7,24 @@ use super::indicators::status_indicator;
 use super::levels::compute_stage_levels;
 use super::tree::build_tree_display;
 
+/// Strip ANSI escape codes from a string for reliable test assertions
+fn strip_ansi(s: &str) -> String {
+    let mut result = String::new();
+    let mut in_escape = false;
+    for c in s.chars() {
+        if in_escape {
+            if c == 'm' {
+                in_escape = false;
+            }
+        } else if c == '\x1b' {
+            in_escape = true;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 fn create_test_stage(id: &str, name: &str, status: StageStatus, deps: Vec<&str>) -> Stage {
     let mut stage = Stage::new(name.to_string(), Some(format!("Test stage: {name}")));
     stage.id = id.to_string();
@@ -347,7 +365,7 @@ fn test_tree_display_linear_chain() {
         create_test_stage("c", "Stage C", StageStatus::Queued, vec!["b"]),
     ];
 
-    let output = build_tree_display(&stages);
+    let output = strip_ansi(&build_tree_display(&stages));
 
     // Should contain stage IDs (not names)
     assert!(output.contains("✓ a"), "Should contain stage a");
@@ -372,7 +390,7 @@ fn test_tree_display_diamond_pattern() {
         create_test_stage("d", "Merge", StageStatus::Queued, vec!["b", "c"]),
     ];
 
-    let output = build_tree_display(&stages);
+    let output = strip_ansi(&build_tree_display(&stages));
 
     // Should contain stage IDs
     assert!(output.contains("a"), "Should contain stage a");
