@@ -215,6 +215,108 @@ pub fn stage_id_from_branch(branch_name: &str) -> Option<String> {
     branch_name.strip_prefix("loom/").map(String::from)
 }
 
+/// Check if the repository has uncommitted changes (staged or unstaged)
+///
+/// Uses `git status --porcelain` to detect:
+/// - Staged but uncommitted changes (index)
+/// - Unstaged modifications in working tree
+/// - Untracked files are NOT considered (they don't affect worktree creation)
+///
+/// # Arguments
+/// * `repo_root` - Path to the git repository root
+///
+/// # Returns
+/// * `Ok(true)` if there are uncommitted changes
+/// * `Ok(false)` if the working tree is clean (no staged/unstaged changes)
+/// * `Err` if git command fails
+pub fn has_uncommitted_changes(repo_root: &Path) -> Result<bool> {
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(repo_root)
+        .output()
+        .with_context(|| "Failed to check git status")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git status failed: {stderr}");
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Check for staged or modified files (exclude untracked with ??)
+    let has_changes = stdout.lines().any(|line| {
+        // Porcelain format: XY filename
+        // X = index status, Y = worktree status
+        // ?? = untracked (ignore these)
+        !line.starts_with("??") && !line.is_empty()
+    });
+
+    Ok(has_changes)
+}
+
+/// Get a summary of uncommitted changes for display
+///
+/// Returns a human-readable summary of staged and unstaged changes.
+///
+/// # Arguments
+/// * `repo_root` - Path to the git repository root
+///
+/// # Returns
+/// * `Ok(summary)` - A string describing the changes, empty if clean
+/// * `Err` if git command fails
+pub fn get_uncommitted_changes_summary(repo_root: &Path) -> Result<String> {
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(repo_root)
+        .output()
+        .with_context(|| "Failed to check git status")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git status failed: {stderr}");
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let mut staged = Vec::new();
+    let mut modified = Vec::new();
+
+    for line in stdout.lines() {
+        if line.is_empty() || line.starts_with("??") {
+            continue;
+        }
+
+        // Porcelain format: XY filename
+        let chars: Vec<char> = line.chars().collect();
+        if chars.len() < 3 {
+            continue;
+        }
+
+        let index_status = chars[0];
+        let worktree_status = chars[1];
+        let filename = line[3..].to_string();
+
+        // X != ' ' means staged
+        if index_status != ' ' && index_status != '?' {
+            staged.push(filename.clone());
+        }
+        // Y != ' ' means modified in worktree
+        if worktree_status != ' ' && worktree_status != '?' {
+            modified.push(filename);
+        }
+    }
+
+    let mut summary = String::new();
+    if !staged.is_empty() {
+        summary.push_str(&format!("Staged: {}\n", staged.join(", ")));
+    }
+    if !modified.is_empty() {
+        summary.push_str(&format!("Modified: {}\n", modified.join(", ")));
+    }
+
+    Ok(summary)
+}
+
 /// Check if a commit is an ancestor of a branch.
 ///
 /// Uses `git merge-base --is-ancestor` to check if the given commit
@@ -500,5 +602,441 @@ mod tests {
         // Test get_branch_head fails for non-existent branch
         let result = get_branch_head("nonexistent-branch", repo_path);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_has_uncommitted_changes_clean_repo() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Test: clean repo should have no uncommitted changes
+        assert!(!has_uncommitted_changes(repo_path).unwrap());
+    }
+
+    #[test]
+    fn test_has_uncommitted_changes_staged_file() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create a new file and stage it
+        std::fs::write(repo_path.join("file2.txt"), "content2").unwrap();
+        Command::new("git")
+            .args(["add", "file2.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Test: staged file should be detected as uncommitted change
+        assert!(has_uncommitted_changes(repo_path).unwrap());
+    }
+
+    #[test]
+    fn test_has_uncommitted_changes_modified_file() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Modify the file (but don't stage)
+        std::fs::write(repo_path.join("file1.txt"), "modified content").unwrap();
+
+        // Test: unstaged modification should be detected
+        assert!(has_uncommitted_changes(repo_path).unwrap());
+    }
+
+    #[test]
+    fn test_has_uncommitted_changes_untracked_only() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create an untracked file (don't stage it)
+        std::fs::write(repo_path.join("untracked.txt"), "untracked content").unwrap();
+
+        // Test: untracked files should NOT be considered uncommitted changes
+        assert!(!has_uncommitted_changes(repo_path).unwrap());
+    }
+
+    #[test]
+    fn test_get_uncommitted_changes_summary_clean_repo() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Test: clean repo should return empty summary
+        let summary = get_uncommitted_changes_summary(repo_path).unwrap();
+        assert!(summary.is_empty());
+    }
+
+    #[test]
+    fn test_get_uncommitted_changes_summary_staged_file() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create a new file and stage it
+        std::fs::write(repo_path.join("file2.txt"), "content2").unwrap();
+        Command::new("git")
+            .args(["add", "file2.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Test: staged file should appear in summary
+        let summary = get_uncommitted_changes_summary(repo_path).unwrap();
+        assert!(summary.contains("Staged:"));
+        assert!(summary.contains("file2.txt"));
+    }
+
+    #[test]
+    fn test_get_uncommitted_changes_summary_modified_file() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Modify the file (but don't stage)
+        std::fs::write(repo_path.join("file1.txt"), "modified content").unwrap();
+
+        // Test: modified file should appear in summary
+        let summary = get_uncommitted_changes_summary(repo_path).unwrap();
+        assert!(summary.contains("Modified:"));
+        assert!(summary.contains("file1.txt"));
+    }
+
+    #[test]
+    fn test_get_uncommitted_changes_summary_both_staged_and_modified() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create and stage a new file
+        std::fs::write(repo_path.join("file2.txt"), "content2").unwrap();
+        Command::new("git")
+            .args(["add", "file2.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Modify existing file (but don't stage)
+        std::fs::write(repo_path.join("file1.txt"), "modified content").unwrap();
+
+        // Test: summary should show both staged and modified files
+        let summary = get_uncommitted_changes_summary(repo_path).unwrap();
+        assert!(summary.contains("Staged:"));
+        assert!(summary.contains("file2.txt"));
+        assert!(summary.contains("Modified:"));
+        assert!(summary.contains("file1.txt"));
+    }
+
+    #[test]
+    fn test_get_uncommitted_changes_summary_untracked_only() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create initial commit
+        std::fs::write(repo_path.join("file1.txt"), "content1").unwrap();
+        Command::new("git")
+            .args(["add", "file1.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create an untracked file (don't stage it)
+        std::fs::write(repo_path.join("untracked.txt"), "untracked content").unwrap();
+
+        // Test: untracked files should not appear in summary
+        let summary = get_uncommitted_changes_summary(repo_path).unwrap();
+        assert!(summary.is_empty());
     }
 }

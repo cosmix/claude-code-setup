@@ -11,11 +11,12 @@ mod plan_lifecycle;
 #[cfg(test)]
 mod tests;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use colored::Colorize;
 
 use crate::daemon::{DaemonConfig, DaemonServer};
 use crate::fs::work_dir::WorkDir;
+use crate::git::{get_uncommitted_changes_summary, has_uncommitted_changes};
 
 // Re-export the main entry point for foreground mode
 pub use foreground::execute;
@@ -29,6 +30,10 @@ pub fn execute_background(
     _watch: bool, // Daemon always runs in watch mode; CLI flag is accepted but ignored
     auto_merge: bool,
 ) -> Result<()> {
+    // Check for uncommitted changes before starting
+    let repo_root = std::env::current_dir()?;
+    check_for_uncommitted_changes(&repo_root)?;
+
     let work_dir = WorkDir::new(".")?;
     work_dir.load()?;
 
@@ -66,5 +71,31 @@ pub fn execute_background(
     println!("  {}  Monitor progress", "loom status".cyan());
     println!("  {}  Stop daemon", "loom stop".cyan());
 
+    Ok(())
+}
+
+/// Check for uncommitted changes and bail if found
+fn check_for_uncommitted_changes(repo_root: &std::path::Path) -> Result<()> {
+    if has_uncommitted_changes(repo_root)? {
+        let summary = get_uncommitted_changes_summary(repo_root)?;
+        eprintln!(
+            "{} Cannot start loom run with uncommitted changes",
+            "✗".red().bold()
+        );
+        eprintln!();
+        if !summary.is_empty() {
+            for line in summary.lines() {
+                eprintln!("  {}", line.dimmed());
+            }
+            eprintln!();
+        }
+        eprintln!("  {} Commit or stash your changes first:", "→".dimmed());
+        eprintln!(
+            "    {}  Commit changes",
+            "git commit -am \"message\"".cyan()
+        );
+        eprintln!("    {}  Or stash them", "git stash".cyan());
+        bail!("Uncommitted changes in repository - commit or stash before running loom");
+    }
     Ok(())
 }
