@@ -75,7 +75,7 @@ Install everything with one command:
 
 ```bash
 curl -fsSL \
-  https://raw.githubusercontent.com/cosmix/claude-loom/main/install.sh | bash
+  https://raw.githubusercontent.com/cosmix/loom/main/install.sh | bash
 ```
 
 Initialize loom with a plan and execute:
@@ -158,19 +158,19 @@ loom uses a **daemon architecture** for reliability:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                        loom run                              │
+│                        loom run                             │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Daemon Process (background)                     │
+│              Daemon Process (background)                    │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  Unix Socket (.work/orchestrator.sock)              │    │
 │  │  - Accepts CLI connections (status, logs, stop)     │    │
 │  │  - Streams live updates to `loom status` clients    │    │
 │  │  - Handles shutdown commands                        │    │
 │  └─────────────────────────────────────────────────────┘    │
-│                           │                                  │
+│                           │                                 │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  Orchestrator Loop (every 5s)                       │    │
 │  │  - Poll stage/session files for changes             │    │
@@ -240,7 +240,7 @@ curl -fsSL \
 
 ```bash
 git clone https://github.com/cosmix/loom.git
-cd claude-loom
+cd loom
 bash install.sh
 ```
 
