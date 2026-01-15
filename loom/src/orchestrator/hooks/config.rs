@@ -142,21 +142,18 @@ impl HooksConfig {
         script.display().to_string()
     }
 
-    /// Generate the hooks record for Claude Code settings.json (new format)
+    /// Generate session-specific hooks for Claude Code settings.json (new format)
     ///
-    /// This creates the hooks configuration in the format expected by Claude Code:
-    /// ```json
-    /// {
-    ///   "hooks": {
-    ///     "PreToolUse": [
-    ///       {"matcher": "Bash", "hooks": [{"type": "command", "command": "..."}]}
-    ///     ],
-    ///     "PostToolUse": [
-    ///       {"matcher": "*", "hooks": [{"type": "command", "command": "..."}]}
-    ///     ]
-    ///   }
-    /// }
-    /// ```
+    /// This creates ONLY session-specific hooks that should be added to worktree settings.
+    /// Global hooks (ask-user-pre, ask-user-post, prefer-modern-tools, commit-guard, skill-trigger)
+    /// are already in the main settings.json and should NOT be duplicated here.
+    ///
+    /// Session hooks generated:
+    /// - SessionStart (PreToolUse with Bash matcher)
+    /// - PostToolUse (heartbeat update)
+    /// - PreCompact (handoff trigger)
+    /// - Stop (learning-validator)
+    /// - SubagentStop (learning extraction)
     ///
     /// Returns a map of event type to hook rules.
     pub fn to_settings_hooks(&self) -> std::collections::HashMap<String, Vec<HookRule>> {
@@ -172,18 +169,6 @@ impl HooksConfig {
                 hooks: vec![HookCommand {
                     hook_type: "command".to_string(),
                     command: self.build_command(HookEvent::SessionStart),
-                }],
-            });
-
-        // PreferModernTools hook - suggests fd/rg instead of find/grep
-        hooks_map
-            .entry("PreToolUse".to_string())
-            .or_default()
-            .push(HookRule {
-                matcher: "Bash".to_string(),
-                hooks: vec![HookCommand {
-                    hook_type: "command".to_string(),
-                    command: self.build_command(HookEvent::PreferModernTools),
                 }],
             });
 
@@ -212,7 +197,8 @@ impl HooksConfig {
                 }],
             });
 
-        // Stop hook - runs when session is stopping
+        // Stop hook - runs when session is stopping (learning-validator.sh)
+        // Note: commit-guard.sh is a global hook and should already be in settings.json
         hooks_map
             .entry("Stop".to_string())
             .or_default()

@@ -324,4 +324,89 @@ mod generator_tests {
         assert!(found.is_some());
         assert_eq!(found.unwrap(), hooks_dir);
     }
+
+    #[test]
+    fn test_generate_hooks_merges_with_global_hooks() {
+        let config = HooksConfig::new(
+            PathBuf::from("/hooks"),
+            "stage".to_string(),
+            "session".to_string(),
+            PathBuf::from("/work"),
+        );
+
+        // Existing settings with global hooks
+        let existing = json!({
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "AskUserQuestion",
+                        "hooks": [{"type": "command", "command": "/global/ask-user-pre.sh"}]
+                    }
+                ],
+                "PostToolUse": [
+                    {
+                        "matcher": "AskUserQuestion",
+                        "hooks": [{"type": "command", "command": "/global/ask-user-post.sh"}]
+                    }
+                ],
+                "Stop": [
+                    {
+                        "matcher": "*",
+                        "hooks": [{"type": "command", "command": "/global/commit-guard.sh"}]
+                    }
+                ]
+            }
+        });
+
+        let settings = generate_hooks_settings(&config, Some(&existing)).unwrap();
+
+        // Check that global hooks are preserved
+        let pre_tool_hooks = settings["hooks"]["PreToolUse"].as_array().unwrap();
+        assert!(pre_tool_hooks.iter().any(|h| {
+            h["matcher"] == "AskUserQuestion"
+                && h["hooks"][0]["command"] == "/global/ask-user-pre.sh"
+        }));
+
+        // Check that session hooks are added
+        assert!(pre_tool_hooks.iter().any(|h| {
+            h["matcher"] == "Bash" && h["hooks"][0]["command"].as_str().unwrap().contains("session-start.sh")
+        }));
+
+        // Check Stop event has both global and session hooks
+        let stop_hooks = settings["hooks"]["Stop"].as_array().unwrap();
+        assert!(stop_hooks.iter().any(|h| {
+            h["hooks"][0]["command"] == "/global/commit-guard.sh"
+        }), "Global commit-guard hook should be preserved");
+        assert!(stop_hooks.iter().any(|h| {
+            h["hooks"][0]["command"].as_str().unwrap().contains("learning-validator.sh")
+        }), "Session learning-validator hook should be added");
+
+        // Verify we have both hooks on Stop event
+        assert!(stop_hooks.len() >= 2, "Stop event should have at least 2 hooks (commit-guard + learning-validator)");
+    }
+
+    #[test]
+    fn test_generate_hooks_no_duplication() {
+        let config = HooksConfig::new(
+            PathBuf::from("/hooks"),
+            "stage".to_string(),
+            "session".to_string(),
+            PathBuf::from("/work"),
+        );
+
+        // First generation
+        let settings1 = generate_hooks_settings(&config, None).unwrap();
+
+        // Second generation with first as input (simulating re-run)
+        let settings2 = generate_hooks_settings(&config, Some(&settings1)).unwrap();
+
+        // Hooks should not be duplicated
+        let hooks1 = settings1["hooks"]["PreToolUse"].as_array().unwrap();
+        let hooks2 = settings2["hooks"]["PreToolUse"].as_array().unwrap();
+        assert_eq!(hooks1.len(), hooks2.len(), "Re-running should not duplicate hooks");
+
+        let stop_hooks1 = settings1["hooks"]["Stop"].as_array().unwrap();
+        let stop_hooks2 = settings2["hooks"]["Stop"].as_array().unwrap();
+        assert_eq!(stop_hooks1.len(), stop_hooks2.len(), "Re-running should not duplicate Stop hooks");
+    }
 }
