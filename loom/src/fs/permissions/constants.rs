@@ -31,6 +31,9 @@ pub const HOOK_ASK_USER_PRE: &str = include_str!("../../../../hooks/ask-user-pre
 /// AskUserQuestion post hook - resumes stage after user input
 pub const HOOK_ASK_USER_POST: &str = include_str!("../../../../hooks/ask-user-post.sh");
 
+/// PreferModernTools hook - suggests Grep/Glob tools or fd/rg instead of grep/find
+pub const HOOK_PREFER_MODERN_TOOLS: &str = include_str!("../../../../hooks/prefer-modern-tools.sh");
+
 /// All loom hook scripts with their filenames (installed to ~/.claude/hooks/loom/)
 /// All hooks are installed to the loom/ subdirectory to keep them separate from user hooks.
 pub const LOOM_HOOKS: &[(&str, &str)] = &[
@@ -41,10 +44,11 @@ pub const LOOM_HOOKS: &[(&str, &str)] = &[
     ("session-end.sh", HOOK_SESSION_END),
     ("learning-validator.sh", HOOK_LEARNING_VALIDATOR),
     ("subagent-stop.sh", HOOK_SUBAGENT_STOP),
-    // Global hooks (commit enforcement, user question handling)
+    // Global hooks (commit enforcement, user question handling, tool guidance)
     ("commit-guard.sh", HOOK_COMMIT_GUARD),
     ("ask-user-pre.sh", HOOK_ASK_USER_PRE),
     ("ask-user-post.sh", HOOK_ASK_USER_POST),
+    ("prefer-modern-tools.sh", HOOK_PREFER_MODERN_TOOLS),
 ];
 
 /// Loom permissions for the MAIN REPO context

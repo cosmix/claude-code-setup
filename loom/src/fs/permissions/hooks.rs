@@ -26,6 +26,15 @@ pub fn loom_hooks_config() -> Value {
                         "command": format!("{}/ask-user-pre.sh", hooks_dir)
                     }
                 ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": format!("{}/prefer-modern-tools.sh", hooks_dir)
+                    }
+                ]
             }
         ],
         "PostToolUse": [
