@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use loom::checkpoints::CheckpointStatus;
 use loom::commands::{
-    attach, checkpoint, clean, diagnose, fact, graph, init, knowledge, learn, memory, merge,
+    attach, checkpoint, clean, diagnose, fact, graph, hooks, init, knowledge, learn, memory, merge,
     resume, run, self_update, sessions, stage, status, stop, verify, worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
@@ -126,6 +126,12 @@ enum Commands {
     Graph {
         #[command(subcommand)]
         command: GraphCommands,
+    },
+
+    /// Manage loom hooks (install/configure without a plan)
+    Hooks {
+        #[command(subcommand)]
+        command: HooksCommands,
     },
 
     /// Manage individual stages
@@ -262,6 +268,21 @@ enum GraphCommands {
 
     /// Edit the execution graph
     Edit,
+}
+
+#[derive(Subcommand)]
+enum HooksCommands {
+    /// Install loom hooks to the current project
+    ///
+    /// Installs hook scripts to ~/.claude/hooks/loom/ and configures
+    /// .claude/settings.local.json with permissions and hooks.
+    ///
+    /// This allows using loom hooks (like prefer-modern-tools and commit-guard)
+    /// in any Claude Code session without running `loom init` with a plan.
+    Install,
+
+    /// List available loom hooks and their status
+    List,
 }
 
 #[derive(Subcommand)]
@@ -750,6 +771,10 @@ fn main() -> Result<()> {
         Commands::Graph { command } => match command {
             GraphCommands::Show => graph::show(),
             GraphCommands::Edit => graph::edit(),
+        },
+        Commands::Hooks { command } => match command {
+            HooksCommands::Install => hooks::install(),
+            HooksCommands::List => hooks::list(),
         },
         Commands::Stage { command } => match command {
             StageCommands::Complete {
