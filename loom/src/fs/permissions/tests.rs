@@ -15,7 +15,7 @@ fn test_ensure_loom_permissions_creates_new_file() {
 
     ensure_loom_permissions(repo_root).unwrap();
 
-    let settings_path = repo_root.join(".claude/settings.local.json");
+    let settings_path = repo_root.join(".claude/settings.json");
     assert!(settings_path.exists());
 
     let content = fs::read_to_string(&settings_path).unwrap();
@@ -41,14 +41,14 @@ fn test_ensure_loom_permissions_merges_existing() {
         "other_setting": true
     });
     fs::write(
-        claude_dir.join("settings.local.json"),
+        claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&existing).unwrap(),
     )
     .unwrap();
 
     ensure_loom_permissions(repo_root).unwrap();
 
-    let content = fs::read_to_string(claude_dir.join("settings.local.json")).unwrap();
+    let content = fs::read_to_string(claude_dir.join("settings.json")).unwrap();
     let settings: Value = serde_json::from_str(&content).unwrap();
 
     // Check existing permissions preserved
@@ -80,14 +80,14 @@ fn test_ensure_loom_permissions_no_duplicates() {
         }
     });
     fs::write(
-        claude_dir.join("settings.local.json"),
+        claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&existing).unwrap(),
     )
     .unwrap();
 
     ensure_loom_permissions(repo_root).unwrap();
 
-    let content = fs::read_to_string(claude_dir.join("settings.local.json")).unwrap();
+    let content = fs::read_to_string(claude_dir.join("settings.json")).unwrap();
     let settings: Value = serde_json::from_str(&content).unwrap();
 
     let allow = settings["permissions"]["allow"].as_array().unwrap();
@@ -111,7 +111,7 @@ fn test_loom_permissions_constant() {
 #[test]
 fn test_worktree_permissions_constant() {
     // Worktree permissions should match main repo permissions
-    // (since settings.local.json is now symlinked from main)
+    // (settings.json includes permissions for worktree access patterns)
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.work/**)"));
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Write(.work/**)"));
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(../../.work/**)"));
@@ -142,18 +142,13 @@ fn test_hooks_config_structure() {
         .unwrap()
         .contains("prefer-modern-tools.sh"));
 
-    // Check PostToolUse hooks (Bash for heartbeat/claude-check, AskUserQuestion for resume)
+    // Check PostToolUse hooks (only AskUserQuestion for resume in global config)
+    // Session-specific post-tool-use.sh (Bash) is merged at worktree creation
     let post_tool = hooks_obj.get("PostToolUse").unwrap().as_array().unwrap();
-    assert_eq!(post_tool.len(), 2);
-    // First hook: Bash matcher with post-tool-use.sh (heartbeat + claude attribution check)
-    assert_eq!(post_tool[0]["matcher"], "Bash");
+    assert_eq!(post_tool.len(), 1);
+    // Only hook: AskUserQuestion matcher with ask-user-post.sh (stage resume)
+    assert_eq!(post_tool[0]["matcher"], "AskUserQuestion");
     assert!(post_tool[0]["hooks"][0]["command"]
-        .as_str()
-        .unwrap()
-        .contains("post-tool-use.sh"));
-    // Second hook: AskUserQuestion matcher with ask-user-post.sh (stage resume)
-    assert_eq!(post_tool[1]["matcher"], "AskUserQuestion");
-    assert!(post_tool[1]["hooks"][0]["command"]
         .as_str()
         .unwrap()
         .contains("ask-user-post.sh"));
@@ -187,7 +182,7 @@ fn test_ensure_loom_permissions_adds_hooks() {
 
     ensure_loom_permissions(repo_root).unwrap();
 
-    let settings_path = repo_root.join(".claude/settings.local.json");
+    let settings_path = repo_root.join(".claude/settings.json");
     let content = fs::read_to_string(&settings_path).unwrap();
     let settings: Value = serde_json::from_str(&content).unwrap();
 
@@ -209,7 +204,7 @@ fn test_hooks_not_duplicated_on_rerun() {
     ensure_loom_permissions(repo_root).unwrap();
     ensure_loom_permissions(repo_root).unwrap();
 
-    let settings_path = repo_root.join(".claude/settings.local.json");
+    let settings_path = repo_root.join(".claude/settings.json");
     let content = fs::read_to_string(&settings_path).unwrap();
     let settings: Value = serde_json::from_str(&content).unwrap();
 
@@ -225,7 +220,7 @@ fn test_worktree_settings_includes_hooks() {
 
     create_worktree_settings(worktree_path).unwrap();
 
-    let settings_path = worktree_path.join(".claude/settings.local.json");
+    let settings_path = worktree_path.join(".claude/settings.json");
     let content = fs::read_to_string(&settings_path).unwrap();
     let settings: Value = serde_json::from_str(&content).unwrap();
 
@@ -292,7 +287,7 @@ fn test_sync_basic_permissions() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
@@ -305,7 +300,7 @@ fn test_sync_basic_permissions() {
     assert_eq!(result.deny_added, 1);
 
     // Read main settings and verify content
-    let main_settings_path = main_dir.path().join(".claude/settings.local.json");
+    let main_settings_path = main_dir.path().join(".claude/settings.json");
     let content = fs::read_to_string(&main_settings_path).unwrap();
     let main_settings: Value = serde_json::from_str(&content).unwrap();
 
@@ -337,7 +332,7 @@ fn test_sync_filters_parent_traversal() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
@@ -349,7 +344,7 @@ fn test_sync_filters_parent_traversal() {
     assert_eq!(result.allow_added, 2);
 
     // Verify main settings don't contain worktree-specific paths
-    let main_settings_path = main_dir.path().join(".claude/settings.local.json");
+    let main_settings_path = main_dir.path().join(".claude/settings.json");
     let content = fs::read_to_string(&main_settings_path).unwrap();
     let main_settings: Value = serde_json::from_str(&content).unwrap();
 
@@ -377,7 +372,7 @@ fn test_sync_deduplicates() {
         }
     });
     fs::write(
-        main_claude_dir.join("settings.local.json"),
+        main_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&main_settings).unwrap(),
     )
     .unwrap();
@@ -392,7 +387,7 @@ fn test_sync_deduplicates() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
@@ -404,7 +399,7 @@ fn test_sync_deduplicates() {
     assert_eq!(result.allow_added, 1);
 
     // Verify main settings have both but no duplicates
-    let content = fs::read_to_string(main_claude_dir.join("settings.local.json")).unwrap();
+    let content = fs::read_to_string(main_claude_dir.join("settings.json")).unwrap();
     let main_settings: Value = serde_json::from_str(&content).unwrap();
 
     let allow = main_settings["permissions"]["allow"].as_array().unwrap();
@@ -442,13 +437,13 @@ fn test_sync_creates_main_settings() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
 
     // Verify main settings don't exist yet
-    let main_settings_path = main_dir.path().join(".claude/settings.local.json");
+    let main_settings_path = main_dir.path().join(".claude/settings.json");
     assert!(!main_settings_path.exists());
 
     // Run sync
@@ -487,7 +482,7 @@ fn test_sync_preserves_other_fields() {
         }
     });
     fs::write(
-        main_claude_dir.join("settings.local.json"),
+        main_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&main_settings).unwrap(),
     )
     .unwrap();
@@ -502,7 +497,7 @@ fn test_sync_preserves_other_fields() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
@@ -511,7 +506,7 @@ fn test_sync_preserves_other_fields() {
     sync_worktree_permissions(worktree_dir.path(), main_dir.path()).unwrap();
 
     // Verify other fields are preserved
-    let content = fs::read_to_string(main_claude_dir.join("settings.local.json")).unwrap();
+    let content = fs::read_to_string(main_claude_dir.join("settings.json")).unwrap();
     let main_settings: Value = serde_json::from_str(&content).unwrap();
 
     assert_eq!(main_settings["custom_field"], "preserved");
@@ -540,7 +535,7 @@ fn test_sync_idempotent() {
         }
     });
     fs::write(
-        worktree_claude_dir.join("settings.local.json"),
+        worktree_claude_dir.join("settings.json"),
         serde_json::to_string_pretty(&worktree_settings).unwrap(),
     )
     .unwrap();
@@ -558,7 +553,7 @@ fn test_sync_idempotent() {
     assert_eq!(result2.deny_added, 0);
 
     // Verify final state has no duplicates
-    let main_settings_path = main_dir.path().join(".claude/settings.local.json");
+    let main_settings_path = main_dir.path().join(".claude/settings.json");
     let content = fs::read_to_string(&main_settings_path).unwrap();
     let main_settings: Value = serde_json::from_str(&content).unwrap();
 
