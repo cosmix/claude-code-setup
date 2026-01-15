@@ -153,6 +153,7 @@ install_hooks_remote() {
 		"commit-guard.sh"
 		"ask-user-pre.sh"
 		"ask-user-post.sh"
+		"prefer-modern-tools.sh"
 	)
 	local downloaded=0
 
@@ -286,6 +287,7 @@ install_hooks() {
 		"commit-guard.sh"
 		"ask-user-pre.sh"
 		"ask-user-post.sh"
+		"prefer-modern-tools.sh"
 	)
 
 	local count=0
