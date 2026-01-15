@@ -726,7 +726,7 @@ fn render_unified_table(frame: &mut Frame, area: Rect, stages: &[UnifiedStage]) 
         return;
     }
 
-    let header = Row::new(vec!["", "Lvl", "ID", "Status", "Merged", "Elapsed"])
+    let header = Row::new(vec!["", "Lvl", "ID", "Deps", "Status", "Merged", "Elapsed"])
         .style(Theme::header())
         .bottom_margin(1);
 
@@ -770,10 +770,13 @@ fn render_unified_table(frame: &mut Frame, area: Rect, stages: &[UnifiedStage]) 
                 _ => Theme::dimmed(),
             };
 
+            let deps_str = format_dependencies(&stage.dependencies, 20);
+
             Row::new(vec![
                 icon.content.to_string(),
                 level_str,
                 stage.id.clone(),
+                deps_str,
                 status_str.to_string(),
                 merged_str.to_string(),
                 elapsed_str,
@@ -785,7 +788,8 @@ fn render_unified_table(frame: &mut Frame, area: Rect, stages: &[UnifiedStage]) 
     let widths = [
         Constraint::Length(2),  // Icon
         Constraint::Length(3),  // Level
-        Constraint::Min(20),    // ID
+        Constraint::Min(15),    // ID
+        Constraint::Length(20), // Deps
         Constraint::Length(10), // Status
         Constraint::Length(6),  // Merged
         Constraint::Length(8),  // Elapsed
@@ -828,6 +832,35 @@ fn format_elapsed(seconds: i64) -> String {
     } else {
         format!("{}h{}m", seconds / 3600, (seconds % 3600) / 60)
     }
+}
+
+/// Format dependencies as "(dep1, dep2, ...)" with middle truncation if too long
+fn format_dependencies(deps: &[String], max_width: usize) -> String {
+    if deps.is_empty() {
+        return "-".to_string();
+    }
+
+    let inner = deps.join(", ");
+    let full = format!("({inner})");
+
+    if full.len() <= max_width {
+        return full;
+    }
+
+    // Need to truncate - use middle truncation with "..."
+    // Reserve space for "(" + "..." + ")" = 5 chars
+    if max_width <= 5 {
+        return "...".to_string();
+    }
+
+    let available = max_width - 5; // for "(" + "..." + ")"
+    let left_len = available.div_ceil(2); // slightly favor left side
+    let right_len = available / 2;
+
+    let left: String = inner.chars().take(left_len).collect();
+    let right: String = inner.chars().skip(inner.len().saturating_sub(right_len)).collect();
+
+    format!("({left}...{right})")
 }
 
 /// Entry point for TUI live mode
@@ -1070,5 +1103,35 @@ mod tests {
         assert_eq!(format_elapsed(30), "30s");
         assert_eq!(format_elapsed(90), "1m30s");
         assert_eq!(format_elapsed(3661), "1h1m");
+    }
+
+    #[test]
+    fn test_format_dependencies() {
+        // Empty deps
+        let empty: Vec<String> = vec![];
+        assert_eq!(format_dependencies(&empty, 20), "-");
+
+        // Single dep that fits
+        let single = vec!["stage-a".to_string()];
+        assert_eq!(format_dependencies(&single, 20), "(stage-a)");
+
+        // Multiple deps that fit
+        let multi = vec!["a".to_string(), "b".to_string()];
+        assert_eq!(format_dependencies(&multi, 20), "(a, b)");
+
+        // Deps that need truncation
+        let long = vec![
+            "knowledge-bootstrap".to_string(),
+            "implement-feature".to_string(),
+        ];
+        let result = format_dependencies(&long, 20);
+        assert!(result.starts_with('('));
+        assert!(result.ends_with(')'));
+        assert!(result.contains("..."));
+        assert!(result.len() <= 20);
+
+        // Very small max_width
+        let tiny_result = format_dependencies(&long, 5);
+        assert_eq!(tiny_result, "...");
     }
 }
