@@ -167,6 +167,7 @@ fn test_format_signal_content_with_embedded_context() {
         task_state: None,
         learnings_content: None,
         memory_content: None,
+        skill_recommendations: Vec::new(),
     };
 
     let content = format_signal_content(
@@ -209,6 +210,7 @@ fn test_format_signal_content_with_facts() {
         task_state: None,
         learnings_content: None,
         memory_content: None,
+        skill_recommendations: Vec::new(),
     };
 
     let content = format_signal_content(

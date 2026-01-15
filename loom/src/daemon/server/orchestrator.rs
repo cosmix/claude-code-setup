@@ -96,6 +96,9 @@ fn run_orchestrator(
         backend_type: BackendType::Native,
         auto_merge: daemon_config.auto_merge,
         base_branch,
+        skills_dir: None, // Use default ~/.claude/skills/
+        enable_skill_routing: true,
+        max_skill_recommendations: 5,
     };
 
     // Create and run orchestrator

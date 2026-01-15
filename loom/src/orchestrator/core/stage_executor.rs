@@ -9,7 +9,9 @@ use crate::models::failure::{FailureInfo, FailureType};
 use crate::models::session::Session;
 use crate::models::stage::{Stage, StageStatus, StageType};
 use crate::orchestrator::hooks::{find_hooks_dir, setup_hooks_for_worktree, HooksConfig};
-use crate::orchestrator::signals::{generate_knowledge_signal, generate_signal, DependencyStatus};
+use crate::orchestrator::signals::{
+    generate_knowledge_signal, generate_signal_with_skills, DependencyStatus,
+};
 
 use super::persistence::Persistence;
 use super::Orchestrator;
@@ -151,7 +153,7 @@ impl StageExecutor for Orchestrator {
 
         let deps = get_dependency_status(&stage, &self.graph);
 
-        let signal_path = generate_signal(
+        let signal_path = generate_signal_with_skills(
             &session,
             &stage,
             &worktree,
@@ -159,6 +161,7 @@ impl StageExecutor for Orchestrator {
             None,
             None, // git_history will be extracted from worktree in future enhancement
             &self.config.work_dir,
+            self.skill_index.as_ref(),
         )
         .context("Failed to generate signal file")?;
 

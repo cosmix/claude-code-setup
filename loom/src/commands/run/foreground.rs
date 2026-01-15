@@ -108,6 +108,9 @@ fn execute_foreground(
         backend_type: BackendType::Native,
         auto_merge,
         base_branch,
+        skills_dir: None, // Use default ~/.claude/skills/
+        enable_skill_routing: true,
+        max_skill_recommendations: 5,
     };
 
     let mut orchestrator =

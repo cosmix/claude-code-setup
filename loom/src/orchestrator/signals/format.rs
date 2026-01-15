@@ -3,6 +3,7 @@ use crate::handoff::schema::HandoffV2;
 use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::models::worktree::Worktree;
+use crate::skills::SkillMatch;
 
 use super::cache::{generate_stable_prefix, SignalMetrics};
 use super::types::{DependencyStatus, EmbeddedContext};
@@ -171,6 +172,13 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
         content.push_str("- `loom learn mistake \"description\" [--correction \"fix\"]`\n");
         content.push_str("- `loom learn pattern \"description\"`\n");
         content.push_str("- `loom learn convention \"description\"`\n\n");
+    }
+
+    // Embed skill recommendations (semi-stable - based on stage description)
+    if !embedded_context.skill_recommendations.is_empty() {
+        content.push_str(&format_skill_recommendations(
+            &embedded_context.skill_recommendations,
+        ));
     }
 
     content
@@ -408,6 +416,50 @@ fn format_task_progression(task_state: &crate::checkpoints::TaskState) -> String
     content.push_str("```bash\n");
     content.push_str("loom checkpoint create <task-id> --status completed\n");
     content.push_str("```\n\n");
+
+    content
+}
+
+/// Format skill recommendations as a markdown section
+///
+/// This produces a clear, actionable format for agents:
+/// - Table with skill name, description, and invocation syntax
+/// - Triggers that matched to explain why the skill was recommended
+pub fn format_skill_recommendations(skills: &[SkillMatch]) -> String {
+    let mut content = String::new();
+
+    content.push_str("## Recommended Skills\n\n");
+    content.push_str("Based on your task, these skills may be helpful:\n\n");
+
+    content.push_str("| Skill | Description | Invoke |\n");
+    content.push_str("|-------|-------------|--------|\n");
+
+    for skill in skills {
+        // Truncate description if too long for table
+        let desc = if skill.description.len() > 60 {
+            format!("{}...", &skill.description[..57])
+        } else {
+            skill.description.clone()
+        };
+        // Escape pipe characters in description
+        let desc = desc.replace('|', "\\|");
+
+        content.push_str(&format!(
+            "| {} | {} | `/{}`|\n",
+            skill.name, desc, skill.name
+        ));
+    }
+    content.push('\n');
+
+    // Show which triggers matched for transparency
+    content.push_str("**Matched triggers:**\n");
+    for skill in skills {
+        if !skill.matched_triggers.is_empty() {
+            let triggers = skill.matched_triggers.join(", ");
+            content.push_str(&format!("- `{}`: {}\n", skill.name, triggers));
+        }
+    }
+    content.push('\n');
 
     content
 }

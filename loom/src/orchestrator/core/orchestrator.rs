@@ -10,6 +10,7 @@ use crate::models::stage::StageStatus;
 use crate::models::worktree::Worktree;
 use crate::orchestrator::monitor::{Monitor, MonitorConfig, MonitorEvent};
 use crate::plan::ExecutionGraph;
+use crate::skills::SkillIndex;
 use crate::utils::{cleanup_terminal, install_terminal_panic_hook};
 
 use super::event_handler::EventHandler;
@@ -36,6 +37,12 @@ pub struct OrchestratorConfig {
     pub auto_merge: bool,
     /// Base branch to use for stages with no dependencies (from config.toml)
     pub base_branch: Option<String>,
+    /// Directory containing skill files (default: ~/.claude/skills/)
+    pub skills_dir: Option<PathBuf>,
+    /// Enable skill routing recommendations in signals (default: true)
+    pub enable_skill_routing: bool,
+    /// Maximum number of skill recommendations per signal (default: 5)
+    pub max_skill_recommendations: usize,
 }
 
 impl Default for OrchestratorConfig {
@@ -51,6 +58,9 @@ impl Default for OrchestratorConfig {
             backend_type: BackendType::Native,
             auto_merge: true,
             base_branch: None,
+            skills_dir: None, // Will default to ~/.claude/skills/ when loading
+            enable_skill_routing: true,
+            max_skill_recommendations: 5,
         }
     }
 }
@@ -66,6 +76,8 @@ pub struct Orchestrator {
     pub(super) reported_crashes: HashSet<String>,
     /// Terminal backend for spawning sessions
     pub(super) backend: Box<dyn TerminalBackend>,
+    /// Skill index for generating skill recommendations in signals
+    pub(super) skill_index: Option<SkillIndex>,
 }
 
 impl Orchestrator {
@@ -83,6 +95,13 @@ impl Orchestrator {
         let backend = create_backend(config.backend_type, &config.work_dir)
             .context("Failed to create terminal backend")?;
 
+        // Load skill index if skill routing is enabled
+        let skill_index = if config.enable_skill_routing {
+            Self::load_skill_index(&config)
+        } else {
+            None
+        };
+
         Ok(Self {
             config,
             graph,
@@ -91,7 +110,36 @@ impl Orchestrator {
             monitor,
             reported_crashes: HashSet::new(),
             backend,
+            skill_index,
         })
+    }
+
+    /// Load the skill index from the configured or default directory
+    fn load_skill_index(config: &OrchestratorConfig) -> Option<SkillIndex> {
+        // Determine skills directory: use config or default to ~/.claude/skills/
+        let skills_dir = config.skills_dir.clone().unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| h.join(".claude").join("skills"))
+                .unwrap_or_else(|| PathBuf::from(".claude/skills"))
+        });
+
+        if !skills_dir.exists() {
+            return None;
+        }
+
+        match SkillIndex::load_from_directory(&skills_dir) {
+            Ok(index) => {
+                if index.is_empty() {
+                    None
+                } else {
+                    Some(index)
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load skill index: {e}");
+                None
+            }
+        }
     }
 
     /// Main run loop - executes until all stages complete or error

@@ -46,6 +46,9 @@ mod tests {
             backend_type: crate::orchestrator::terminal::BackendType::Native,
             auto_merge: false,
             base_branch: None,
+            skills_dir: None,
+            enable_skill_routing: false, // Disable for tests
+            max_skill_recommendations: 5,
         }
     }
 

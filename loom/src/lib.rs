@@ -10,6 +10,7 @@ pub mod models;
 pub mod orchestrator;
 pub mod parser;
 pub mod plan;
+pub mod skills;
 pub mod utils;
 pub mod validation;
 pub mod verify;

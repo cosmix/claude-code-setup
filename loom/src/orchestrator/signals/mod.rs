@@ -28,9 +28,13 @@ pub use types::{
 pub use base_conflict::{generate_base_conflict_signal, read_base_conflict_signal};
 pub use cache::compute_hash;
 pub use crud::{list_signals, read_signal, remove_signal, update_signal};
-pub use format::{format_dependency_table, format_signal_with_metrics, FormattedSignal};
+pub use format::{
+    format_dependency_table, format_signal_with_metrics, format_skill_recommendations,
+    FormattedSignal,
+};
 pub use generate::{
     build_embedded_context_with_stage, generate_signal, generate_signal_with_metrics,
+    generate_signal_with_skills, DEFAULT_MAX_SKILL_RECOMMENDATIONS,
 };
 pub use knowledge::generate_knowledge_signal;
 pub use merge::{generate_merge_signal, read_merge_signal};

@@ -12,10 +12,14 @@ use crate::handoff::schema::ParsedHandoff;
 use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::models::worktree::Worktree;
+use crate::skills::SkillIndex;
 
 use super::cache::SignalMetrics;
 use super::format::{format_signal_content, format_signal_with_metrics};
 use super::types::{DependencyStatus, EmbeddedContext};
+
+/// Default maximum number of skill recommendations to include in signals
+pub const DEFAULT_MAX_SKILL_RECOMMENDATIONS: usize = 5;
 
 pub fn generate_signal(
     session: &Session,
@@ -26,6 +30,30 @@ pub fn generate_signal(
     git_history: Option<&GitHistory>,
     work_dir: &Path,
 ) -> Result<PathBuf> {
+    generate_signal_with_skills(
+        session,
+        stage,
+        worktree,
+        dependencies_status,
+        handoff_file,
+        git_history,
+        work_dir,
+        None, // No skill index - backward compatible
+    )
+}
+
+/// Generate a signal file with optional skill recommendations
+#[allow(clippy::too_many_arguments)]
+pub fn generate_signal_with_skills(
+    session: &Session,
+    stage: &Stage,
+    worktree: &Worktree,
+    dependencies_status: &[DependencyStatus],
+    handoff_file: Option<&str>,
+    git_history: Option<&GitHistory>,
+    work_dir: &Path,
+    skill_index: Option<&SkillIndex>,
+) -> Result<PathBuf> {
     let signals_dir = work_dir.join("signals");
 
     if !signals_dir.exists() {
@@ -33,8 +61,15 @@ pub fn generate_signal(
     }
 
     // Build embedded context by reading files, including task state and session memory for recitation
-    let embedded_context =
+    let mut embedded_context =
         build_embedded_context_with_session(work_dir, handoff_file, &stage.id, Some(&session.id));
+
+    // Add skill recommendations if skill index is available
+    if let Some(index) = skill_index {
+        let text_to_match = build_skill_match_text(stage);
+        embedded_context.skill_recommendations =
+            index.match_skills(&text_to_match, DEFAULT_MAX_SKILL_RECOMMENDATIONS);
+    }
 
     let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_signal_content(
@@ -51,6 +86,21 @@ pub fn generate_signal(
         .with_context(|| format!("Failed to write signal file: {}", signal_path.display()))?;
 
     Ok(signal_path)
+}
+
+/// Build text for skill matching from stage metadata
+fn build_skill_match_text(stage: &Stage) -> String {
+    let mut text = stage.name.clone();
+    if let Some(desc) = &stage.description {
+        text.push(' ');
+        text.push_str(desc);
+    }
+    // Include acceptance criteria for better matching
+    for criterion in &stage.acceptance {
+        text.push(' ');
+        text.push_str(criterion);
+    }
+    text
 }
 
 /// Build embedded context with optional session ID for memory recitation

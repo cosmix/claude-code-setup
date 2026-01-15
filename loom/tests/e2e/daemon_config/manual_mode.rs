@@ -59,6 +59,9 @@ fn test_orchestrator_with_manual_mode() {
         backend_type: BackendType::Native,
         auto_merge: false,
         base_branch: None,
+        skills_dir: None,
+        enable_skill_routing: false,
+        max_skill_recommendations: 5,
     };
 
     let mut orchestrator =

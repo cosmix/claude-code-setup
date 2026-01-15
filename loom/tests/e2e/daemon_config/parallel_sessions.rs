@@ -131,6 +131,9 @@ fn test_orchestrator_respects_max_parallel_sessions() {
         backend_type: BackendType::Native,
         auto_merge: false,
         base_branch: None,
+        skills_dir: None,
+        enable_skill_routing: false,
+        max_skill_recommendations: 5,
     };
 
     let mut orchestrator = Orchestrator::new(config, graph).expect("Should create orchestrator");

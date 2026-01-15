@@ -35,6 +35,9 @@ fn test_orchestrator_config_custom_values() {
         backend_type: BackendType::Native,
         auto_merge: true,
         base_branch: None,
+        skills_dir: None,
+        enable_skill_routing: false,
+        max_skill_recommendations: 5,
     };
 
     assert_eq!(config.max_parallel_sessions, 8);

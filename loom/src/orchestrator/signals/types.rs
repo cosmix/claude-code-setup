@@ -2,6 +2,7 @@ use crate::checkpoints::{TaskDefinition, TaskState};
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::HandoffV2;
 use crate::models::stage::StageOutput;
+use crate::skills::SkillMatch;
 
 /// Embedded context to include directly in signals so agents don't need to read from main repo
 #[derive(Debug, Clone, Default)]
@@ -26,6 +27,8 @@ pub struct EmbeddedContext {
     pub learnings_content: Option<String>,
     /// Recent memory entries for recitation (Manus pattern - keeps context in attention)
     pub memory_content: Option<String>,
+    /// Skill recommendations based on stage description matching
+    pub skill_recommendations: Vec<SkillMatch>,
 }
 
 /// Information about a task's lock status
