@@ -62,7 +62,7 @@ pub(crate) fn remove_worktree_symlinks(worktree_path: &Path) -> Result<()> {
         if claude_md.is_symlink() {
             std::fs::remove_file(&claude_md).ok();
         }
-        let settings = claude_dir.join("settings.local.json");
+        let settings = claude_dir.join("settings.json");
         if settings.is_symlink() {
             std::fs::remove_file(&settings).ok();
         }

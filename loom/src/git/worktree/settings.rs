@@ -32,10 +32,11 @@ pub fn ensure_work_symlink(worktree_path: &Path, repo_root: &Path) -> Result<()>
 
 /// Set up .claude/ directory for worktree
 ///
-/// We create a real directory and symlink both CLAUDE.md and settings.local.json
-/// from main repo. This ensures:
+/// We create a real directory and symlink CLAUDE.md from main repo.
+/// settings.json is created separately by the hooks system with merged global + session hooks.
+/// This ensures:
 /// 1. Instructions (CLAUDE.md) are shared
-/// 2. Permissions (settings.local.json) are shared - approvals propagate across sessions
+/// 2. Permissions (settings.json) include both global hooks and session-specific hooks
 pub fn setup_claude_directory(worktree_path: &Path, repo_root: &Path) -> Result<()> {
     let main_claude_dir = repo_root.join(".claude");
     let worktree_claude_dir = worktree_path.join(".claude");
@@ -60,9 +61,9 @@ pub fn setup_claude_directory(worktree_path: &Path, repo_root: &Path) -> Result<
                 .with_context(|| "Failed to create CLAUDE.md symlink in worktree")?;
         }
 
-        // Create settings.local.json with trust and auto-accept settings merged with main repo settings
-        let main_settings = main_claude_dir.join("settings.local.json");
-        let worktree_settings = worktree_claude_dir.join("settings.local.json");
+        // Create settings.json with trust and auto-accept settings merged with main repo settings
+        let main_settings = main_claude_dir.join("settings.json");
+        let worktree_settings = worktree_claude_dir.join("settings.json");
         create_worktree_settings(&main_settings, &worktree_settings)?;
     }
 
@@ -93,13 +94,16 @@ pub fn setup_root_claude_md(worktree_path: &Path, repo_root: &Path) -> Result<()
     Ok(())
 }
 
-/// Create settings.local.json for a worktree with trust and auto-accept settings.
+/// Create settings.json for a worktree with trust and auto-accept settings.
 ///
 /// This function:
-/// 1. Reads the main repo's settings.local.json (if it exists)
+/// 1. Reads the main repo's settings.json (if it exists)
 /// 2. Sets `hasTrustDialogAccepted: true` to skip the trust prompt
 /// 3. Sets `permissions.defaultMode: "acceptEdits"` to auto-accept file edits
 /// 4. Writes the merged result to the worktree
+///
+/// Note: This creates the base settings.json. The hooks system will later merge in
+/// session-specific hooks via setup_worktree_hooks().
 ///
 /// This solves two issues:
 /// - Issue 9: Eliminates the "Yes, proceed / No, exit" prompt on session start
@@ -108,7 +112,7 @@ fn create_worktree_settings(main_settings: &Path, worktree_settings: &Path) -> R
     // Start with main repo settings or empty object
     let mut settings: Value = if main_settings.exists() {
         let content = std::fs::read_to_string(main_settings)
-            .with_context(|| "Failed to read main repo settings.local.json")?;
+            .with_context(|| "Failed to read main repo settings.json")?;
         serde_json::from_str(&content).unwrap_or_else(|_| json!({}))
     } else {
         json!({})
@@ -117,7 +121,7 @@ fn create_worktree_settings(main_settings: &Path, worktree_settings: &Path) -> R
     // Ensure settings is an object
     let obj = settings
         .as_object_mut()
-        .ok_or_else(|| anyhow::anyhow!("settings.local.json must be a JSON object"))?;
+        .ok_or_else(|| anyhow::anyhow!("settings.json must be a JSON object"))?;
 
     // Set hasTrustDialogAccepted to skip the trust prompt
     obj.insert("hasTrustDialogAccepted".to_string(), json!(true));
@@ -135,7 +139,7 @@ fn create_worktree_settings(main_settings: &Path, worktree_settings: &Path) -> R
     let content =
         serde_json::to_string_pretty(&settings).with_context(|| "Failed to serialize settings")?;
     std::fs::write(worktree_settings, content)
-        .with_context(|| "Failed to write worktree settings.local.json")?;
+        .with_context(|| "Failed to write worktree settings.json")?;
 
     Ok(())
 }

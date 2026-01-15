@@ -12,7 +12,7 @@ use crate::fs::permissions::{ensure_loom_permissions, install_loom_hooks};
 ///
 /// This command:
 /// 1. Installs hook scripts to ~/.claude/hooks/loom/
-/// 2. Configures .claude/settings.local.json with hooks and permissions
+/// 2. Configures .claude/settings.json with hooks and permissions
 ///
 /// After running this command, hooks will be active for all Claude Code
 /// sessions in this project without needing to run `loom init` with a plan.
@@ -30,7 +30,7 @@ pub fn install() -> Result<()> {
         println!("  Hook scripts already up to date in ~/.claude/hooks/loom/");
     }
 
-    // Configure .claude/settings.local.json with hooks and permissions
+    // Configure .claude/settings.json with hooks and permissions
     ensure_loom_permissions(&repo_root)?;
 
     println!("\nHooks installed successfully!");
@@ -49,7 +49,7 @@ pub fn install() -> Result<()> {
 pub fn list() -> Result<()> {
     // Find repository root
     let repo_root = find_repo_root().context("Not in a git repository")?;
-    let settings_path = repo_root.join(".claude/settings.local.json");
+    let settings_path = repo_root.join(".claude/settings.json");
 
     // Check if hooks are configured in this project
     let project_hooks = if settings_path.exists() {
@@ -110,7 +110,7 @@ pub fn list() -> Result<()> {
         if settings_path.exists() {
             println!("  Settings file exists but has no hooks section");
         } else {
-            println!("  No .claude/settings.local.json found");
+            println!("  No .claude/settings.json found");
         }
         println!();
         println!("Run 'loom hooks install' to configure hooks for this project.");

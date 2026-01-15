@@ -11,8 +11,10 @@ use super::config::HooksConfig;
 
 /// Generate settings.json content with hooks configuration
 ///
-/// This creates or updates the settings.json with hook definitions
-/// while preserving existing settings from the main repo.
+/// This merges session-specific hooks into existing settings.json while
+/// preserving global hooks from the main repo. Session hooks are appended
+/// to each event type's hook array, with duplicate detection to prevent
+/// hook duplication.
 pub fn generate_hooks_settings(
     config: &HooksConfig,
     existing_settings: Option<&Value>,
@@ -36,12 +38,37 @@ pub fn generate_hooks_settings(
 
     permissions.insert("defaultMode".to_string(), json!("acceptEdits"));
 
-    // Generate hooks configuration (new record format)
-    let hooks_map = config.to_settings_hooks();
-    let hooks_json = serde_json::to_value(&hooks_map)
-        .with_context(|| "Failed to serialize hooks configuration")?;
+    // Generate session-specific hooks
+    let session_hooks = config.to_settings_hooks();
 
-    obj.insert("hooks".to_string(), hooks_json);
+    // Merge with existing hooks instead of replacing
+    let hooks = obj
+        .entry("hooks")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("hooks must be a JSON object"))?;
+
+    // Merge each event type's hooks
+    for (event_type, session_rules) in session_hooks {
+        let event_hooks = hooks
+            .entry(&event_type)
+            .or_insert_with(|| json!([]))
+            .as_array_mut()
+            .ok_or_else(|| {
+                anyhow::anyhow!("hooks.{event_type} must be an array")
+            })?;
+
+        // Convert session rules to JSON and append to existing hooks
+        for rule in session_rules {
+            let rule_json = serde_json::to_value(&rule)
+                .with_context(|| format!("Failed to serialize hook rule for {event_type}"))?;
+
+            // Check for duplicates before adding
+            if !event_hooks.iter().any(|existing| existing == &rule_json) {
+                event_hooks.push(rule_json);
+            }
+        }
+    }
 
     // Add environment variables for hooks to access
     let env = obj
@@ -63,9 +90,10 @@ pub fn generate_hooks_settings(
 /// Set up hooks for a worktree by creating/updating settings.json
 ///
 /// This function:
-/// 1. Reads existing settings.json if present
-/// 2. Generates hooks configuration
-/// 3. Writes the merged settings to the worktree's .claude/settings.json
+/// 1. Reads existing settings.json if present (containing global hooks)
+/// 2. Generates session-specific hooks configuration
+/// 3. Merges session hooks with global hooks
+/// 4. Writes the merged settings to the worktree's .claude/settings.json
 pub fn setup_hooks_for_worktree(worktree_path: &Path, config: &HooksConfig) -> Result<()> {
     let claude_dir = worktree_path.join(".claude");
     let settings_path = claude_dir.join("settings.json");
