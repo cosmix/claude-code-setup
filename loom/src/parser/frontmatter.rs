@@ -28,11 +28,21 @@ pub fn extract_yaml_frontmatter(content: &str) -> Result<serde_yaml::Value> {
         anyhow::bail!("No frontmatter delimiter found at start of content");
     }
 
+    // Track indentation of opening delimiter to match closing delimiter at same level.
+    // This prevents embedded `---` in YAML block scalars (which are indented) from
+    // being mistakenly treated as the closing delimiter.
+    let opening_indent = lines[0].len() - lines[0].trim_start().len();
+
     let mut end_idx = None;
     for (idx, line) in lines.iter().enumerate().skip(1) {
-        if line.trim().starts_with("---") {
-            end_idx = Some(idx);
-            break;
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("---") {
+            // Only match delimiter at the same indentation level as opening
+            let line_indent = line.len() - trimmed.len();
+            if line_indent == opening_indent {
+                end_idx = Some(idx);
+                break;
+            }
         }
     }
 
@@ -106,6 +116,34 @@ invalid: yaml: syntax: error
             .unwrap_err()
             .to_string()
             .contains("Failed to parse YAML"));
+    }
+
+    #[test]
+    fn test_extract_with_embedded_delimiter_in_block_scalar() {
+        // Test that `---` inside a YAML block scalar (indented) is not treated as closing delimiter
+        let content = r#"---
+id: test-stage
+description: |
+  Some description with example:
+
+  ---
+  name: example
+  ---
+
+  More text here.
+status: completed
+---
+# Markdown content"#;
+
+        let result = extract_yaml_frontmatter(content);
+        assert!(result.is_ok(), "Failed to parse: {:?}", result.err());
+
+        let yaml = result.unwrap();
+        assert_eq!(yaml["id"].as_str(), Some("test-stage"));
+        assert_eq!(yaml["status"].as_str(), Some("completed"));
+        // Verify description contains the embedded ---
+        let desc = yaml["description"].as_str().unwrap();
+        assert!(desc.contains("---"), "Description should contain embedded ---");
     }
 
     #[test]

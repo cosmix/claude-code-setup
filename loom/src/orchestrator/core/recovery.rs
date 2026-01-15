@@ -106,14 +106,17 @@ impl Recovery for Orchestrator {
 
                 match stage.status {
                     StageStatus::Completed => {
-                        // Mark as completed in graph (ignore errors for stages not in graph)
-                        let _ = self.graph.mark_completed(&stage.id);
-                        // Sync merged status from file to graph so dependent stages can be scheduled
+                        // IMPORTANT: Set merged status FIRST, before mark_completed().
+                        // mark_completed() triggers update_ready_status() which needs the
+                        // correct merged value to determine if dependent stages are ready.
                         eprintln!(
                             "[sync_graph_with_stage_files] Completed stage '{}': merged={}",
                             stage.id, stage.merged
                         );
                         self.graph.set_node_merged(&stage.id, stage.merged);
+                        // Now mark as completed - this triggers update_ready_status() which
+                        // will see the correct merged value set above
+                        let _ = self.graph.mark_completed(&stage.id);
                     }
                     StageStatus::Queued => {
                         // Sync Ready status from stage files to graph
