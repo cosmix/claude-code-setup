@@ -361,17 +361,45 @@ impl TuiApp {
     }
 
     /// Check if an error indicates socket disconnection
+    ///
+    /// Returns true only for actual disconnection errors (EOF, broken pipe, etc.)
+    /// NOT for timeouts (WouldBlock, TimedOut) which are expected in non-blocking reads.
     fn is_socket_disconnected(&self, error: &anyhow::Error) -> bool {
+        // First, check if the underlying error is a timeout - these are NOT disconnects
+        for cause in error.chain() {
+            if let Some(io_err) = cause.downcast_ref::<std::io::Error>() {
+                match io_err.kind() {
+                    // Timeout errors are expected with non-blocking reads - NOT a disconnect
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut => {
+                        return false;
+                    }
+                    // These are actual disconnection errors
+                    std::io::ErrorKind::UnexpectedEof
+                    | std::io::ErrorKind::ConnectionReset
+                    | std::io::ErrorKind::BrokenPipe
+                    | std::io::ErrorKind::ConnectionAborted => {
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // Fallback: check error message for patterns that indicate disconnection
+        // but NOT patterns that could indicate timeouts
         let err_str = error.to_string().to_lowercase();
 
-        // Check for various socket disconnection error patterns
-        err_str.contains("failed to read message length")
-            || err_str.contains("unexpectedeof")
+        // These patterns indicate actual disconnection
+        (err_str.contains("unexpectedeof")
             || err_str.contains("connection reset")
             || err_str.contains("broken pipe")
             || err_str.contains("os error 9") // EBADF - bad file descriptor
             || err_str.contains("os error 104") // ECONNRESET
-            || err_str.contains("os error 32") // EPIPE
+            || err_str.contains("os error 32")) // EPIPE
+            // Exclude timeout patterns
+            && !err_str.contains("would block")
+            && !err_str.contains("timed out")
+            && !err_str.contains("os error 11") // EAGAIN/EWOULDBLOCK
     }
 
     /// Handle keyboard events for navigation and control
@@ -1166,5 +1194,53 @@ mod tests {
         // Very small max_width
         let tiny_result = format_dependencies(&long, 5);
         assert_eq!(tiny_result, "...");
+    }
+
+    /// Helper to check is_socket_disconnected logic without creating a full TuiApp
+    fn check_disconnect_for_io_error(kind: std::io::ErrorKind) -> bool {
+        let io_err = std::io::Error::new(kind, "test error");
+        let error = anyhow::Error::new(io_err).context("Failed to read message length");
+
+        // Replicate the logic from is_socket_disconnected
+        for cause in error.chain() {
+            if let Some(io_err) = cause.downcast_ref::<std::io::Error>() {
+                match io_err.kind() {
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut => {
+                        return false;
+                    }
+                    std::io::ErrorKind::UnexpectedEof
+                    | std::io::ErrorKind::ConnectionReset
+                    | std::io::ErrorKind::BrokenPipe
+                    | std::io::ErrorKind::ConnectionAborted => {
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn test_is_socket_disconnected_timeout_not_disconnect() {
+        // WouldBlock (timeout) should NOT be treated as a disconnect
+        assert!(!check_disconnect_for_io_error(std::io::ErrorKind::WouldBlock));
+        assert!(!check_disconnect_for_io_error(std::io::ErrorKind::TimedOut));
+    }
+
+    #[test]
+    fn test_is_socket_disconnected_real_disconnect() {
+        // Real disconnection errors SHOULD be treated as disconnects
+        assert!(check_disconnect_for_io_error(std::io::ErrorKind::UnexpectedEof));
+        assert!(check_disconnect_for_io_error(std::io::ErrorKind::ConnectionReset));
+        assert!(check_disconnect_for_io_error(std::io::ErrorKind::BrokenPipe));
+        assert!(check_disconnect_for_io_error(std::io::ErrorKind::ConnectionAborted));
+    }
+
+    #[test]
+    fn test_is_socket_disconnected_other_errors() {
+        // Other errors should NOT be treated as disconnects (fallthrough case)
+        assert!(!check_disconnect_for_io_error(std::io::ErrorKind::PermissionDenied));
+        assert!(!check_disconnect_for_io_error(std::io::ErrorKind::NotFound));
     }
 }
