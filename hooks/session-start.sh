@@ -2,7 +2,10 @@
 # session-start.sh - Claude Code SessionStart hook for loom
 #
 # Called when a Claude Code session starts.
-# Environment variables:
+#
+# Input: JSON from stdin (if any - hook doesn't need it)
+#
+# Environment variables (set by loom worktree settings):
 #   LOOM_STAGE_ID    - The stage being executed
 #   LOOM_SESSION_ID  - The session ID
 #   LOOM_WORK_DIR    - Path to the .work directory
@@ -12,6 +15,9 @@
 #   2. Logs session start event
 
 set -euo pipefail
+
+# Drain stdin to prevent blocking
+timeout 1 cat >/dev/null 2>&1 || true
 
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
