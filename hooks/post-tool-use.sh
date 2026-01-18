@@ -4,36 +4,26 @@
 # Called after each tool use to update the heartbeat.
 # This provides activity-based health monitoring.
 #
-# Environment variables:
+# Input: JSON from stdin (Claude Code passes tool info via stdin)
+#   {"tool_name": "Bash", "tool_input": {...}, "tool_result": {...}, ...}
+#
+# Environment variables (set by loom worktree settings):
 #   LOOM_STAGE_ID    - The stage being executed
 #   LOOM_SESSION_ID  - The session ID
 #   LOOM_WORK_DIR    - Path to the .work directory
-#   TOOL_NAME        - Name of the tool that was used (from Claude Code)
 #
 # Actions:
 #   1. Updates heartbeat in .work/heartbeat/<stage-id>.json
 
 set -euo pipefail
 
-# === NO CLAUDE ATTRIBUTION CHECK ===
-# Block git commits that contain Claude attribution (forbidden per CLAUDE.md rule 7)
-if [[ "${TOOL_NAME:-}" == "Bash" ]]; then
-    if echo "${TOOL_INPUT:-}" | grep -qi 'git commit'; then
-        if echo "${TOOL_INPUT:-}" | grep -Ei -q 'co-authored-by.*claude|claude.*(noreply|anthropic)'; then
-            echo ""
-            echo "═══════════════════════════════════════════════════════════════"
-            echo "BLOCKED: Claude attribution detected in commit message."
-            echo ""
-            echo "Remove the Co-Authored-By line. AI attribution is FORBIDDEN"
-            echo "per CLAUDE.md rule 7: Never mention Claude in commits."
-            echo ""
-            echo "Run your commit again WITHOUT the Co-Authored-By line."
-            echo "═══════════════════════════════════════════════════════════════"
-            echo ""
-            exit 1
-        fi
-    fi
-fi
+# Read JSON input from stdin (Claude Code passes tool info via stdin)
+# Use timeout to avoid blocking if stdin is empty or kept open
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || true)
+
+# Parse tool_name from JSON using jq
+TOOL_NAME=$(echo "$INPUT_JSON" | jq -r '.tool_name // empty' 2>/dev/null || true)
+TOOL_NAME="${TOOL_NAME:-unknown}"
 
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
@@ -53,9 +43,6 @@ mkdir -p "$HEARTBEAT_DIR" 2>/dev/null || exit 0
 
 # Get timestamp
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
-
-# Get the tool name from environment (Claude Code provides this)
-TOOL_NAME="${TOOL_NAME:-unknown}"
 
 # Update heartbeat file in JSON format
 HEARTBEAT_FILE="${HEARTBEAT_DIR}/${LOOM_STAGE_ID}.json"
