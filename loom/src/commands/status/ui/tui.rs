@@ -270,6 +270,8 @@ pub struct TuiApp {
     graph_state: GraphState,
     /// Mouse support enabled
     mouse_enabled: bool,
+    /// Exiting flag - set when user requests exit to show immediate feedback
+    exiting: bool,
 }
 
 impl TuiApp {
@@ -294,6 +296,7 @@ impl TuiApp {
             last_error: None,
             graph_state: GraphState::default(),
             mouse_enabled,
+            exiting: false,
         })
     }
 
@@ -319,6 +322,13 @@ impl TuiApp {
     /// Main event loop - returns on quit or daemon disconnect
     fn run_event_loop(&mut self, stream: &mut UnixStream) -> Result<()> {
         while self.running.load(Ordering::SeqCst) {
+            // Check if user requested exit - show feedback and break immediately
+            if self.exiting {
+                self.last_error = Some("Exiting...".to_string());
+                self.render()?; // Show exit message immediately
+                break;
+            }
+
             // Handle daemon messages (non-blocking)
             match read_message::<Response, _>(stream) {
                 Ok(response) => {
@@ -330,7 +340,7 @@ impl TuiApp {
                         // Daemon disconnected - exit gracefully
                         self.last_error = Some("Daemon exited".to_string());
                         self.render()?; // Show final error state
-                        std::thread::sleep(Duration::from_secs(2)); // Let user see the message
+                        std::thread::sleep(Duration::from_millis(500)); // Brief pause for user to see message
                         break;
                     }
                     // For other errors (timeout is expected with non-blocking reads), continue
@@ -412,12 +422,12 @@ impl TuiApp {
             .unwrap_or((80, 20));
 
         match code {
-            // Quit
+            // Quit - set exiting flag for immediate feedback
             KeyCode::Char('q') | KeyCode::Esc => {
-                self.running.store(false, Ordering::SeqCst);
+                self.exiting = true;
             }
             KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
-                self.running.store(false, Ordering::SeqCst);
+                self.exiting = true;
             }
 
             // Arrow key navigation
