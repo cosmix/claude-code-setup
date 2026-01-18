@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# Drain stdin to prevent blocking (SubagentStop hooks receive JSON from Claude Code)
+timeout 1 cat >/dev/null 2>&1 || true
+
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
     echo "Error: Missing required environment variables" >&2

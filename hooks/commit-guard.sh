@@ -14,6 +14,9 @@
 
 set -euo pipefail
 
+# Drain stdin to prevent blocking (Stop hooks receive JSON from Claude Code)
+timeout 1 cat >/dev/null 2>&1 || true
+
 # Configuration
 readonly WORKTREE_MARKER=".worktrees/"
 readonly LOOM_BRANCH_PREFIX="loom/"
