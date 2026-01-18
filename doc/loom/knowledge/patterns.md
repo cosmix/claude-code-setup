@@ -597,26 +597,28 @@ COMMAND=$(echo "$INPUT_JSON" | jq -r '.tool_input.command // empty')
 
 ## Hook Update Status (2026-01-18)
 
-**FIXED - Read stdin JSON correctly:**
+**FIXED - Read stdin JSON or drain stdin correctly:**
 
-| Hook | Behavior | Notes |
-|------|----------|-------|
-| commit-filter.sh | Auto-corrects Co-Authored-By out of git commits | Uses updatedInput JSON |
-| prefer-modern-tools.sh | Blocks grep/find with guidance to use rg/fd | Exit 2 + stderr guidance |
-| post-tool-use.sh | Reads tool_name from stdin for heartbeat | Silent operation |
-| ask-user-pre.sh | Drains stdin, uses LOOM_* env vars | Marks stage WaitingForInput |
-| ask-user-post.sh | Drains stdin, uses LOOM_* env vars | Resumes stage |
-| session-start.sh | Drains stdin, uses LOOM_* env vars | Initial heartbeat |
-| skill-trigger.sh | Already read stdin correctly | UserPromptSubmit hook |
+| Hook | Event | Behavior | Notes |
+|------|-------|----------|-------|
+| commit-filter.sh | PreToolUse:Bash | Auto-corrects Co-Authored-By out of commits | Uses updatedInput JSON |
+| prefer-modern-tools.sh | PreToolUse:Bash | Blocks grep/find with guidance to use rg/fd | Exit 2 + stderr guidance |
+| post-tool-use.sh | PostToolUse:* | Reads tool_name from stdin for heartbeat | Silent operation |
+| ask-user-pre.sh | PreToolUse:AskUserQuestion | Drains stdin, marks stage WaitingForInput | Uses LOOM_* env vars |
+| ask-user-post.sh | PostToolUse:AskUserQuestion | Drains stdin, resumes stage | Uses LOOM_* env vars |
+| session-start.sh | SessionStart:* | Drains stdin, initial heartbeat | Uses LOOM_* env vars |
+| session-end.sh | SessionEnd:* | Drains stdin, cleanup/handoff | Uses LOOM_* env vars |
+| pre-compact.sh | PreCompact:* | Drains stdin, triggers handoff | Uses LOOM_* env vars |
+| skill-trigger.sh | UserPromptSubmit:* | Reads stdin for prompt matching | Suggests skills |
 
 **NOT YET UPDATED - May still use env vars:**
 
 | Hook | Event Type | Notes |
 |------|------------|-------|
-| pre-compact.sh | PreCompact | Triggers handoff |
-| session-end.sh | SessionEnd | Cleanup |
-| learning-validator.sh | Stop | Validates learnings |
-| commit-guard.sh | Stop | Blocks exit without commit |
-| subagent-stop.sh | SubagentStop | Extracts learnings |
+| learning-validator.sh | Stop:* | Validates learnings |
+| commit-guard.sh | Stop:* | Blocks exit without commit |
+| subagent-stop.sh | SubagentStop:* | Extracts learnings |
 
-**Note:** Stop/SessionEnd/SubagentStop hooks may have different input formats than PreToolUse/PostToolUse. Need to verify before updating.
+**Note:** Stop/SubagentStop hooks may have different input formats. Need to verify before updating.
+
+**Configuration fix (2026-01-18):** Fixed SessionStart to use proper `SessionStart:*` event instead of `PreToolUse:Bash` (was incorrectly running before every Bash command). Added missing `SessionEnd:*` hook configuration.
