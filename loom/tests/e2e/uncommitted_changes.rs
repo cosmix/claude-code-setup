@@ -153,7 +153,6 @@ fn test_loom_run_fails_with_staged_changes() {
 
     // Try to run loom - should fail due to staged changes
     let result = run::execute(
-        None,  // stage_id
         false, // manual
         None,  // max_parallel
         false, // watch
@@ -202,7 +201,6 @@ fn test_loom_run_fails_with_mixed_changes() {
 
     // Try to run loom - should fail due to mixed changes
     let result = run::execute(
-        None,  // stage_id
         false, // manual
         None,  // max_parallel
         false, // watch
@@ -277,7 +275,6 @@ fn test_loom_run_fails_with_modified_tracked_files() {
 
     // Try to run loom - should fail due to modified file
     let result = run::execute(
-        None,  // stage_id
         false, // manual
         None,  // max_parallel
         false, // watch

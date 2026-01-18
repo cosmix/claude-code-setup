@@ -44,9 +44,6 @@ fn test_handoff_generation() {
         .with_next_steps(vec![
             "Complete error handling tests in tests/test_feature_tests.rs:45+".to_string(),
             "Add documentation to src/test_feature.rs:1-10".to_string(),
-        ])
-        .with_learnings(vec![
-            "Module uses async/await pattern throughout".to_string()
         ]);
 
     // Generate handoff
@@ -152,7 +149,6 @@ fn test_handoff_includes_required_fields() {
     assert!(handoff_content.contains("## Key Decisions Made"));
     assert!(handoff_content.contains("## Current State"));
     assert!(handoff_content.contains("## Next Steps (Prioritized)"));
-    assert!(handoff_content.contains("## Learnings / Patterns Identified"));
 
     // Verify content
     assert!(handoff_content.contains("Test all required fields"));
@@ -179,7 +175,6 @@ fn test_handoff_content_builder_chain() {
             "Step 2".to_string(),
             "Step 3".to_string(),
         ])
-        .with_learnings(vec!["Learning 1".to_string()])
         .with_plan_id(Some("plan-xyz".to_string()));
 
     assert_eq!(content.session_id, session_id);
@@ -192,7 +187,6 @@ fn test_handoff_content_builder_chain() {
     assert_eq!(content.test_status, Some("all passing".to_string()));
     assert_eq!(content.files_modified.len(), 2);
     assert_eq!(content.next_steps.len(), 3);
-    assert_eq!(content.learnings.len(), 1);
     assert_eq!(content.plan_id, Some("plan-xyz".to_string()));
 }
 
@@ -251,5 +245,4 @@ fn test_handoff_empty_fields() {
     assert!(handoff_content.contains("No work completed yet"));
     assert!(handoff_content.contains("No decisions documented"));
     assert!(handoff_content.contains("Review current state and determine next actions"));
-    assert!(handoff_content.contains("No learnings documented yet"));
 }
