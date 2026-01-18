@@ -14,9 +14,8 @@
 # Per CLAUDE.md rule 6:
 #   "If you must use CLI search, use `rg` or `fd` — never `grep` or `find`."
 #
-# Environment variables:
-#   TOOL_NAME  - Name of the tool being invoked (from Claude Code)
-#   TOOL_INPUT - The tool's input (command string for Bash)
+# Input: JSON from stdin (Claude Code passes tool info via stdin)
+#   {"tool_name": "Bash", "tool_input": {"command": "..."}, ...}
 #
 # Exit codes:
 #   0 - Allow the command to proceed
@@ -27,88 +26,100 @@
 
 set -euo pipefail
 
-# Only check Bash tool uses
-if [[ "${TOOL_NAME:-}" != "Bash" ]]; then
-    exit 0
+# Read JSON input from stdin (Claude Code passes tool info via stdin)
+# Use timeout to avoid blocking if stdin is empty or kept open
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || true)
+
+# Debug logging
+DEBUG_LOG="/tmp/prefer-modern-debug.log"
+{
+  echo "=== $(date) prefer-modern-tools ==="
+  echo "INPUT_JSON: $INPUT_JSON"
+} >> "$DEBUG_LOG" 2>&1
+
+# Parse tool_name and tool_input from JSON using jq
+TOOL_NAME=$(echo "$INPUT_JSON" | jq -r '.tool_name // empty' 2>/dev/null || true)
+TOOL_INPUT=$(echo "$INPUT_JSON" | jq -r '.tool_input // empty' 2>/dev/null || true)
+
+# For Bash tool, tool_input is an object with "command" field
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+    COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
+else
+    COMMAND=""
 fi
 
-# Get the command being executed
-COMMAND="${TOOL_INPUT:-}"
+# Debug parsed values
+{
+  echo "TOOL_NAME: $TOOL_NAME"
+  echo "COMMAND: $COMMAND"
+  echo "---"
+} >> "$DEBUG_LOG" 2>&1
+
+# Only check Bash tool uses
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+    exit 0
+fi
 
 if [[ -z "$COMMAND" ]]; then
     exit 0
 fi
 
-# Helper to output blocking JSON and exit
-block_with_reason() {
-    local reason="$1"
-    # Escape special characters for JSON
-    reason="${reason//\\/\\\\}"  # Escape backslashes
-    reason="${reason//\"/\\\"}"  # Escape quotes
-    reason="${reason//$'\n'/\\n}"  # Escape newlines
-    reason="${reason//$'\r'/}"  # Remove carriage returns
-
-    printf '{"continue": false, "reason": "%s"}\n' "$reason"
-    exit 2
-}
-
-# Check if command uses grep
+# Check if command uses grep (but not rg)
 uses_grep() {
     local cmd="$1"
-    echo "$cmd" | grep -qE '(^|[[:space:]])(\/usr\/bin\/|\/bin\/)?grep[[:space:]]'
+    # Match grep but not rg (ripgrep)
+    echo "$cmd" | grep -qE '(^|[|;&[:space:]])(\/usr\/bin\/|\/bin\/)?grep[[:space:]]'
 }
 
-# Check if command uses find
+# Check if command uses find (but not fd)
 uses_find() {
     local cmd="$1"
-    echo "$cmd" | grep -qE '(^|[[:space:]])(\/usr\/bin\/|\/bin\/)?find[[:space:]]'
+    # Match find but not fd
+    echo "$cmd" | grep -qE '(^|[|;&[:space:]])(\/usr\/bin\/|\/bin\/)?find[[:space:]]'
 }
 
-# Check for grep usage
+# Check for grep usage - block and guide to use rg
 if uses_grep "$COMMAND"; then
-    block_with_reason "DO NOT USE 'grep' - choose the right tool for your needs:
+    echo "BLOCKED: grep detected" >> "$DEBUG_LOG" 2>&1
+    # Output to stderr (shown to Claude) and exit 2 to block
+    cat >&2 <<'EOF'
+BLOCKED: Use 'rg' (ripgrep) instead of 'grep'.
 
-STANDARD (simple pattern searches):
-  Use Claude Code's native Grep tool instead of bash grep.
+rg is faster, respects .gitignore, and has better defaults.
+The syntax is similar: rg [OPTIONS] PATTERN [PATH...]
 
-  Example: Grep(pattern='pattern', path='.', output_mode='content')
+Examples:
+  grep -r "pattern" .     →  rg "pattern" .
+  grep -i "pattern" file  →  rg -i "pattern" file
+  grep -v "exclude" file  →  rg -v "exclude" file
+  grep -l "pattern" .     →  rg -l "pattern" .
 
-  The Grep tool supports: -A/-B/-C (context), -i (case insensitive),
-  -n (line numbers), glob filtering, and various output modes.
-
-ADVANCED (piped commands, special flags like -v, -o, -w):
-  Use 'rg' (ripgrep) instead of 'grep'.
-
-  Instead of:  grep -v pattern file | grep other
-  Use:         rg -v pattern file | rg other
-
-  'rg' is faster, respects .gitignore, and has better defaults.
-
-Choose the appropriate tool and retry."
+Rewrite your command using rg and try again.
+EOF
+    exit 2
 fi
 
-# Check for find usage
+# Check for find usage - block and guide to use fd
 if uses_find "$COMMAND"; then
-    block_with_reason "DO NOT USE 'find' - choose the right tool for your needs:
+    echo "BLOCKED: find detected" >> "$DEBUG_LOG" 2>&1
+    # Output to stderr (shown to Claude) and exit 2 to block
+    cat >&2 <<'EOF'
+BLOCKED: Use 'fd' instead of 'find'.
 
-STANDARD (simple file pattern matching):
-  Use Claude Code's native Glob tool instead of bash find.
+fd is faster, has simpler syntax, and respects .gitignore.
+NOTE: fd has DIFFERENT syntax than find!
 
-  Example: Glob(pattern='**/*.rs')
+Examples:
+  find . -name "*.txt"           →  fd -e txt
+  find . -name "*.rs" -type f    →  fd -e rs -t f
+  find src -name "test*"         →  fd "test" src
+  find . -mtime -7               →  fd --changed-within 7d
 
-  The Glob tool is fast, returns files sorted by modification time,
-  and integrates with Claude Code's context.
-
-ADVANCED (piped commands, -exec, -mtime, -size, -perm, etc.):
-  Use 'fd' instead of 'find'.
-
-  Instead of:  find . -name '*.rs' -mtime -7 | xargs wc -l
-  Use:         fd -e rs --changed-within 1w | xargs wc -l
-
-  'fd' is faster, has simpler syntax, and respects .gitignore.
-
-Choose the appropriate tool and retry."
+Rewrite your command using fd syntax and try again.
+EOF
+    exit 2
 fi
 
-# Command is allowed
+# Command is allowed as-is
+echo "Allowing command as-is" >> "$DEBUG_LOG" 2>&1
 exit 0
