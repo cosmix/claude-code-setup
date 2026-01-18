@@ -14,6 +14,17 @@ use super::pid_tracking;
 const CLAUDE_STARTUP_DELAY_MS: u64 = 500;
 const PID_DISCOVERY_TIMEOUT_SECS: u64 = 3;
 
+/// Spawn a background thread to reap a child process when it exits.
+///
+/// This prevents zombie processes by ensuring `wait()` is called on the child.
+/// The thread runs until the child exits, then terminates.
+fn spawn_reaper_thread(mut child: std::process::Child) {
+    thread::spawn(move || {
+        // Wait for the child process to exit - this reaps the zombie
+        let _ = child.wait();
+    });
+}
+
 /// Spawn a command in a terminal window
 ///
 /// # Arguments
@@ -45,6 +56,10 @@ pub fn spawn_in_terminal(
     })?;
 
     let terminal_pid = child.id();
+
+    // Spawn a reaper thread to prevent zombie processes.
+    // When the terminal process exits, the thread will call wait() to reap it.
+    spawn_reaper_thread(child);
 
     // If PID tracking is enabled, try to resolve the actual Claude PID
     if let (Some(work_dir), Some(stage_id)) = (work_dir, stage_id) {
