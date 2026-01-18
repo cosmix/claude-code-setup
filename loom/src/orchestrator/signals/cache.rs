@@ -156,6 +156,21 @@ pub fn generate_knowledge_stable_prefix() -> String {
     );
     content.push_str("3. **Verify** acceptance criteria before completing\n\n");
 
+    // Add prominent knowledge update reminder box for knowledge stages
+    content.push_str("```text\n");
+    content.push_str("┌────────────────────────────────────────────────────────────────────┐\n");
+    content.push_str("│  📝 RECORD YOUR DISCOVERIES                                        │\n");
+    content.push_str("│                                                                    │\n");
+    content.push_str("│  As you explore, UPDATE doc/loom/knowledge/:                       │\n");
+    content.push_str("│  - Entry points: Key files and their purposes                      │\n");
+    content.push_str("│  - Patterns: Architectural patterns and best practices             │\n");
+    content.push_str("│  - Conventions: Coding standards and naming schemes                │\n");
+    content.push_str("│  - Mistakes: Document ANY errors you encounter                     │\n");
+    content.push_str("│                                                                    │\n");
+    content.push_str("│  Use: loom knowledge update <file> \"content\"                       │\n");
+    content.push_str("└────────────────────────────────────────────────────────────────────┘\n");
+    content.push_str("```\n\n");
+
     // Add reminder to follow CLAUDE.md rules
     content.push_str("## Execution Rules\n\n");
     content.push_str(
@@ -186,6 +201,7 @@ pub fn generate_knowledge_stable_prefix() -> String {
     );
     content.push_str("loom knowledge update patterns \"## Pattern Name\\n\\n- How it works\"\n");
     content.push_str("loom knowledge update conventions \"## Convention\\n\\n- Details\"\n");
+    content.push_str("loom knowledge update mistakes \"## What happened\\n\\n- Details\"\n");
     content.push_str("\n# Show current knowledge\n");
     content.push_str("loom knowledge show\n");
     content.push_str("loom knowledge show entry-points\n");

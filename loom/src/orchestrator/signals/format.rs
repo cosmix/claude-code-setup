@@ -92,6 +92,21 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
         content.push_str("\n</knowledge>\n\n");
     }
 
+    // Add prominent knowledge update reminder box
+    content.push_str("```text\n");
+    content.push_str("┌────────────────────────────────────────────────────────────────────┐\n");
+    content.push_str("│  📝 KNOWLEDGE UPDATES REQUIRED                                     │\n");
+    content.push_str("│                                                                    │\n");
+    content.push_str("│  As you work, UPDATE doc/loom/knowledge/:                          │\n");
+    content.push_str("│  - Entry points: Key files you discover                            │\n");
+    content.push_str("│  - Patterns: Architectural patterns you find                       │\n");
+    content.push_str("│  - Conventions: Coding conventions you learn                       │\n");
+    content.push_str("│  - Mistakes: Errors you make and how to avoid them                 │\n");
+    content.push_str("│                                                                    │\n");
+    content.push_str("│  Command: loom knowledge update <file> \"content\"                   │\n");
+    content.push_str("└────────────────────────────────────────────────────────────────────┘\n");
+    content.push_str("```\n\n");
+
     // Knowledge Management section with conditional urgency
     content.push_str("## Knowledge Management\n\n");
 
@@ -126,6 +141,12 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
         content
             .push_str("│                                                                    │\n");
         content
+            .push_str("│  4. Mistakes and Lessons Learned                                   │\n");
+        content
+            .push_str("│     - Document errors and how to avoid them                        │\n");
+        content
+            .push_str("│                                                                    │\n");
+        content
             .push_str("│  This prevents wasted context on repeated exploration.             │\n");
         content
             .push_str("└────────────────────────────────────────────────────────────────────┘\n");
@@ -150,7 +171,8 @@ fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
     content.push_str("|----------------|--------|\n");
     content.push_str("| Key entry point | `loom knowledge update entry-points \"## Section\\n\\n- path/file.rs - description\"` |\n");
     content.push_str("| Architectural pattern | `loom knowledge update patterns \"## Pattern Name\\n\\n- How it works\"` |\n");
-    content.push_str("| Coding convention | `loom knowledge update conventions \"## Convention\\n\\n- Details\"` |\n\n");
+    content.push_str("| Coding convention | `loom knowledge update conventions \"## Convention\\n\\n- Details\"` |\n");
+    content.push_str("| Mistake/lesson | `loom knowledge update mistakes \"## What happened\\n\\n- Details\"` |\n\n");
 
     // Embed facts for this stage (semi-stable - facts accumulate but rarely change)
     if let Some(facts_content) = &embedded_context.facts_content {
