@@ -149,9 +149,10 @@ impl HooksConfig {
     /// are already in the main settings.json and should NOT be duplicated here.
     ///
     /// Session hooks generated:
-    /// - SessionStart (PreToolUse with Bash matcher)
+    /// - SessionStart (initial heartbeat)
     /// - PostToolUse (heartbeat update)
     /// - PreCompact (handoff trigger)
+    /// - SessionEnd (cleanup)
     /// - Stop (learning-validator)
     /// - SubagentStop (learning extraction)
     ///
@@ -160,12 +161,12 @@ impl HooksConfig {
         use std::collections::HashMap;
         let mut hooks_map: HashMap<String, Vec<HookRule>> = HashMap::new();
 
-        // SessionStart hook - runs on first Bash tool use (PreToolUse event)
+        // SessionStart hook - runs once when Claude Code session starts
         hooks_map
-            .entry("PreToolUse".to_string())
+            .entry("SessionStart".to_string())
             .or_default()
             .push(HookRule {
-                matcher: "Bash".to_string(),
+                matcher: "*".to_string(),
                 hooks: vec![HookCommand {
                     hook_type: "command".to_string(),
                     command: self.build_command(HookEvent::SessionStart),
@@ -194,6 +195,18 @@ impl HooksConfig {
                 hooks: vec![HookCommand {
                     hook_type: "command".to_string(),
                     command: self.build_command(HookEvent::PreCompact),
+                }],
+            });
+
+        // SessionEnd hook - runs when Claude Code session ends normally
+        hooks_map
+            .entry("SessionEnd".to_string())
+            .or_default()
+            .push(HookRule {
+                matcher: "*".to_string(),
+                hooks: vec![HookCommand {
+                    hook_type: "command".to_string(),
+                    command: self.build_command(HookEvent::SessionEnd),
                 }],
             });
 
