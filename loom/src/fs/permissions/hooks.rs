@@ -37,6 +37,15 @@ pub fn loom_hooks_config() -> Value {
                         "command": format!("{}/prefer-modern-tools.sh", hooks_dir)
                     }
                 ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": format!("{}/commit-filter.sh", hooks_dir)
+                    }
+                ]
             }
         ],
         "PostToolUse": [

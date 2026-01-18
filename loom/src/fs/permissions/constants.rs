@@ -34,6 +34,9 @@ pub const HOOK_ASK_USER_POST: &str = include_str!("../../../../hooks/ask-user-po
 /// PreferModernTools hook - suggests Grep/Glob tools or fd/rg instead of grep/find
 pub const HOOK_PREFER_MODERN_TOOLS: &str = include_str!("../../../../hooks/prefer-modern-tools.sh");
 
+/// CommitFilter hook - blocks forbidden patterns in git commits (e.g., Claude attribution)
+pub const HOOK_COMMIT_FILTER: &str = include_str!("../../../../hooks/commit-filter.sh");
+
 /// SkillIndexBuilder hook - builds keyword index from SKILL.md files
 pub const HOOK_SKILL_INDEX_BUILDER: &str = include_str!("../../../../hooks/skill-index-builder.sh");
 
@@ -55,6 +58,7 @@ pub const LOOM_HOOKS: &[(&str, &str)] = &[
     ("ask-user-pre.sh", HOOK_ASK_USER_PRE),
     ("ask-user-post.sh", HOOK_ASK_USER_POST),
     ("prefer-modern-tools.sh", HOOK_PREFER_MODERN_TOOLS),
+    ("commit-filter.sh", HOOK_COMMIT_FILTER),
     // Skill suggestion hooks
     ("skill-index-builder.sh", HOOK_SKILL_INDEX_BUILDER),
     ("skill-trigger.sh", HOOK_SKILL_TRIGGER),
