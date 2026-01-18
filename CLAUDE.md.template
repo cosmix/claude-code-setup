@@ -204,7 +204,7 @@ Maximize parallel execution at TWO levels:
 - Loom orchestrates merging branches after completion
 - This turns file conflicts into manageable merge operations
 
-```
+```text
 
 ┌─────────────────────────────────────────────────────────────┐
 │ SAME FILES?                                                 │
@@ -261,9 +261,9 @@ First line of EVERY subagent prompt: `** READ CLAUDE.md IMMEDIATELY AND FOLLOW A
 
 ### 6. SKILLS & AGENT DELEGATION
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
-│  ⚠️ BEFORE IMPLEMENTING: CHECK SKILLS & AGENTS FIRST                │
+│  ⚠️ BEFORE IMPLEMENTING: CHECK SKILLS & AGENTS FIRST               │
 │                                                                    │
 │  Many tasks have PURPOSE-BUILT skills or specialized agents.       │
 │  ALWAYS check if one exists before writing code yourself.          │
@@ -286,7 +286,7 @@ Use the Task tool to spawn specialized agents for complex work:
 
 **Agent Selection Decision Tree:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  WHAT KIND OF TASK?                                                 │
 │                                                                     │
@@ -380,7 +380,7 @@ Never mention Claude, Claude Code, or any AI system in code, commits, docs, or c
 
 When executing in a loom worktree, you MUST stay within your worktree boundaries. Worktree isolation prevents merge conflicts and ensures clean parallel execution.
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
 │  ⚠️ WORKTREE ISOLATION - ENFORCED                                  │
 │                                                                    │
@@ -415,7 +415,7 @@ When executing in a loom worktree, you MUST stay within your worktree boundaries
 
 Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every session.
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
 │  KNOWLEDGE CHECK - FIRST ACTION OF EVERY SESSION                   │
 │                                                                    │
@@ -456,20 +456,22 @@ Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every sessio
 
 **Every plan MUST end with an `integration-verify` stage.**
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
-│  PLAN STRUCTURE CHECK                                               │
+│  PLAN STRUCTURE CHECK                                              │
 │                                                                    │
 │  FIRST STAGE: knowledge-bootstrap (unless knowledge exists)        │
 │  LAST STAGE:  integration-verify (ALWAYS - no exceptions)          │
 │                                                                    │
 │  integration-verify MUST depend on ALL feature stages.             │
+│                                                                    │
+│  PARALLEL SUBAGENTS FIRST, STAGES SECOND.                          │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
-│  ⚠️ CRITICAL: TESTS PASSING ≠ FEATURE WORKING                       │
+│  ⚠️ CRITICAL: TESTS PASSING ≠ FEATURE WORKING                      │
 │                                                                    │
 │  We have had MANY instances where:                                 │
 │  - All tests pass                                                  │
@@ -651,7 +653,7 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 
 ## 🚨 CRITICAL REMINDERS
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
 │  BEFORE EVERY ACTION, REMEMBER:                                    │
 │                                                                    │
@@ -669,10 +671,12 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 │  5. KNOWLEDGE: Bootstrap if empty. Update discoveries. ALWAYS.     │
 │     READ IT FIRST!                                                 │
 │                                                                    │
-│  6. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
+│  6. USE PARALLEL SUBAGENTS. ALWAYS WHENEVER POSSIBLE.              │
+│                                                                    │
+│  7. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
 │     → Use specialized agents for security, infra, architecture     │
 │                                                                    │
-│  7. PLANS: integration-verify LAST. No exceptions.                 │
+│  8. PLANS: integration-verify LAST. No exceptions.                 │
 │     → TESTS PASSING ≠ FEATURE WORKING                              │
 │     → MUST include FUNCTIONAL verification (smoke test, wiring)    │
 │     → Code that compiles but is never wired up is USELESS          │
