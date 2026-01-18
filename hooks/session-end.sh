@@ -3,7 +3,9 @@
 #
 # Called when a Claude Code session ends normally.
 #
-# Environment variables:
+# Input: JSON from stdin (if any - hook doesn't need it)
+#
+# Environment variables (set by loom worktree settings):
 #   LOOM_STAGE_ID    - The stage being executed
 #   LOOM_SESSION_ID  - The session ID
 #   LOOM_WORK_DIR    - Path to the .work directory
@@ -14,6 +16,9 @@
 #   3. Logs SessionEnd event
 
 set -euo pipefail
+
+# Drain stdin to prevent blocking
+timeout 1 cat >/dev/null 2>&1 || true
 
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
