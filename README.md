@@ -1,6 +1,6 @@
 # Loom
 
-Loom is a self-propelling agent orchestration system for Claude Code.
+Loom is an agent orchestration system for Claude Code.
 It combines a state management CLI, specialized AI agents, and reusable skills
 to create workflows that survive context exhaustion, session crashes, and
 manual handoffs. When context runs low, agents externalize their state and

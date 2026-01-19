@@ -2,7 +2,7 @@
 name = "loom"
 version = "0.1.0"
 edition = "2021"
-description = "Self-propelling agent orchestration CLI"
+description = "Agent orchestration CLI"
 license = "MIT"
 
 [dependencies]
