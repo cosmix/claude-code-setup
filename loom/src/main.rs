@@ -404,6 +404,21 @@ enum StageCommands {
         stage_id: String,
     },
 
+    /// Re-run acceptance criteria and complete a stage that previously failed
+    ///
+    /// Use this to re-verify a stage in CompletedWithFailures or Executing state.
+    /// Reloads acceptance criteria from the plan file (unless --no-reload),
+    /// runs them, and if they pass, completes the stage with merge.
+    Verify {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+
+        /// Skip reloading acceptance criteria from plan file
+        #[arg(long)]
+        no_reload: bool,
+    },
+
     /// Manage stage outputs (structured values passed to dependent stages)
     Output {
         #[command(subcommand)]
@@ -712,6 +727,7 @@ fn main() -> Result<()> {
             StageCommands::Retry { stage_id, force } => stage::retry(stage_id, force),
             StageCommands::Recover { stage_id, force } => stage::recover(stage_id, force),
             StageCommands::MergeComplete { stage_id } => stage::merge_complete(stage_id),
+            StageCommands::Verify { stage_id, no_reload } => stage::verify(stage_id, no_reload),
             StageCommands::Output { command } => match command {
                 OutputCommands::Set {
                     stage_id,

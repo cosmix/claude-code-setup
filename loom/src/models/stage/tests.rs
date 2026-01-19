@@ -680,10 +680,11 @@ fn test_completed_with_failures_can_transition_to_queued() {
 }
 
 #[test]
-fn test_completed_with_failures_cannot_transition_to_other_states() {
+fn test_completed_with_failures_cannot_transition_to_invalid_states() {
     let status = StageStatus::CompletedWithFailures;
     assert!(!status.can_transition_to(&StageStatus::WaitingForDeps));
-    assert!(!status.can_transition_to(&StageStatus::Completed));
+    // Note: Completed IS valid now (for re-verify)
+    assert!(status.can_transition_to(&StageStatus::Completed));
     assert!(!status.can_transition_to(&StageStatus::Blocked));
     assert!(!status.can_transition_to(&StageStatus::NeedsHandoff));
     assert!(!status.can_transition_to(&StageStatus::WaitingForInput));
@@ -703,7 +704,8 @@ fn test_valid_transitions_completed_with_failures() {
     let transitions = StageStatus::CompletedWithFailures.valid_transitions();
     assert!(transitions.contains(&StageStatus::Queued));
     assert!(transitions.contains(&StageStatus::Executing));
-    assert_eq!(transitions.len(), 2);
+    assert!(transitions.contains(&StageStatus::Completed)); // For re-verify
+    assert_eq!(transitions.len(), 3);
 }
 
 #[test]
