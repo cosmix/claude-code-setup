@@ -189,6 +189,10 @@ loom:
            - Are callbacks/hooks connected?
            - Are events being published/subscribed?
            - Are dependencies injected correctly?
+        8. Review session memory and promote valuable insights to knowledge:
+           - loom memory list
+           - loom memory promote all mistakes (lessons learned)
+           - loom memory promote decision patterns (architectural decisions)
       dependencies: ["implement-feature"] # List ALL feature stages here
       acceptance:
         - "cargo test"
@@ -542,6 +546,24 @@ loom knowledge update mistakes "## [Short description]
 **What happened:** [Describe]
 **Why:** [Root cause]
 **How to avoid:** [Prevention]"
+```
+
+#### Using Session Memory
+
+During work, actively record insights:
+
+| Type     | When              | Command                                        |
+| -------- | ----------------- | ---------------------------------------------- |
+| Note     | Observations      | `loom memory note "text"`                      |
+| Decision | Choices made      | `loom memory decision "text" --context "why"`  |
+| Question | Open questions    | `loom memory question "text"`                  |
+
+Before completing any stage, review and promote valuable insights:
+
+```bash
+loom memory list                        # Review session entries
+loom memory promote all mistakes        # Promote all entries to mistakes
+loom memory promote decision patterns   # Promote decisions to patterns
 ```
 
 ### 11. INTEGRATION VERIFICATION (MANDATORY)
