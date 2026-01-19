@@ -659,3 +659,33 @@ Approach: Remove facts, add memory promote
 - loom memory promote <type> <target>
 - Promotes session memory to knowledge files
 - Decisions -> patterns, Notes -> entry-points
+
+## Stage Completion Flow
+1. Load stage from .work/stages/
+2. Route knowledge stages to no-merge path
+3. Run acceptance criteria (unless --no-verify)
+4. Sync worktree permissions to main
+5. Cleanup terminal/session resources
+6. Run task verifications if task_state exists
+7. Progressive merge into merge point
+8. Mark Completed, trigger dependents
+
+## Knowledge Stage Completion
+- No worktree (main repo context)
+- Auto-sets merged=true (no git merge)
+- Uses stage.working_dir for acceptance
+- Skips merge attempt entirely
+
+## Acceptance Criteria Execution
+1. Build CriteriaContext for variable expansion
+2. Expand setup commands, prefix to each criterion
+3. Execute each command sequentially with timeout
+4. sh -c (Unix) / cmd /C (Windows) execution
+5. Return AcceptanceResult (AllPassed/Failed)
+
+## State Transitions (models/stage/transitions.rs)
+Terminal: Completed, Skipped (no outgoing transitions)
+WaitingForDeps -> Queued | Skipped
+Queued -> Executing | Skipped | Blocked
+Executing -> Completed | Blocked | NeedsHandoff | WaitingForInput | MergeConflict | CompletedWithFailures | MergeBlocked
+CompletedWithFailures -> Queued | Executing (retry)
