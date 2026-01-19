@@ -1,11 +1,11 @@
 //! Integration tests for hook commit message filtering
 //!
-//! Tests verify that the post-tool-use hook correctly blocks commits
-//! containing Claude co-authorship attribution per CLAUDE.md rule 7.
+//! Tests verify that the commit-filter hook correctly blocks commits
+//! containing Claude co-authorship attribution per CLAUDE.md rule 8.
 //!
 //! These tests run the hook script directly with bash - no loom invocation.
 
-use loom::fs::permissions::constants::HOOK_POST_TOOL_USE;
+use loom::fs::permissions::constants::HOOK_COMMIT_FILTER;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
@@ -14,8 +14,8 @@ use tempfile::TempDir;
 /// Install hook script to temp directory and return path
 fn setup_hook() -> (TempDir, std::path::PathBuf) {
     let temp = TempDir::new().expect("create temp dir");
-    let hook_path = temp.path().join("post-tool-use.sh");
-    fs::write(&hook_path, HOOK_POST_TOOL_USE).expect("write hook");
+    let hook_path = temp.path().join("commit-filter.sh");
+    fs::write(&hook_path, HOOK_COMMIT_FILTER).expect("write hook");
 
     let mut perms = fs::metadata(&hook_path).unwrap().permissions();
     perms.set_mode(0o755);
@@ -24,21 +24,36 @@ fn setup_hook() -> (TempDir, std::path::PathBuf) {
     (temp, hook_path)
 }
 
-/// Run hook with TOOL_NAME and TOOL_INPUT, return exit code
-fn run_hook(hook_path: &std::path::Path, tool_name: &str, tool_input: &str) -> i32 {
-    Command::new("bash")
+/// Run hook with tool_name and command, return exit code
+/// The hook reads JSON from stdin: {"tool_name": "...", "tool_input": {"command": "..."}}
+fn run_hook(hook_path: &std::path::Path, tool_name: &str, command: &str) -> i32 {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    // Build JSON input matching what Claude Code sends
+    let json_input = format!(
+        r#"{{"tool_name": "{}", "tool_input": {{"command": {}}}}}"#,
+        tool_name,
+        serde_json::to_string(command).unwrap_or_else(|_| format!("\"{}\"", command))
+    );
+
+    let mut child = Command::new("bash")
         .arg(hook_path)
-        .env("TOOL_NAME", tool_name)
-        .env("TOOL_INPUT", tool_input)
-        .output()
-        .expect("run hook")
-        .status
-        .code()
-        .unwrap_or(-1)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn hook");
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(json_input.as_bytes()).ok();
+    }
+
+    child.wait().expect("wait hook").code().unwrap_or(-1)
 }
 
 // =============================================================================
-// Tests: Hook BLOCKS commits with Claude attribution
+// Tests: Hook BLOCKS commits with Claude attribution (exit code 2)
 // =============================================================================
 
 #[test]
@@ -48,7 +63,7 @@ fn blocks_coauthored_by_claude_simple() {
 
 Co-Authored-By: Claude <noreply@anthropic.com>""#;
 
-    assert_eq!(run_hook(&hook, "Bash", input), 1);
+    assert_eq!(run_hook(&hook, "Bash", input), 2);
 }
 
 #[test]
@@ -58,15 +73,15 @@ fn blocks_coauthored_by_claude_opus() {
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>""#;
 
-    assert_eq!(run_hook(&hook, "Bash", input), 1);
+    assert_eq!(run_hook(&hook, "Bash", input), 2);
 }
 
 #[test]
 fn blocks_claude_with_anthropic_email() {
     let (_temp, hook) = setup_hook();
-    let input = r#"git commit -m "Feature by claude noreply@anthropic.com""#;
+    let input = r#"git commit -m "Feature co-authored-by claude noreply@anthropic.com""#;
 
-    assert_eq!(run_hook(&hook, "Bash", input), 1);
+    assert_eq!(run_hook(&hook, "Bash", input), 2);
 }
 
 #[test]
@@ -76,7 +91,7 @@ fn blocks_case_insensitive() {
 
 CO-AUTHORED-BY: CLAUDE <NOREPLY@ANTHROPIC.COM>""#;
 
-    assert_eq!(run_hook(&hook, "Bash", input), 1);
+    assert_eq!(run_hook(&hook, "Bash", input), 2);
 }
 
 #[test]
@@ -89,7 +104,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )""#;
 
-    assert_eq!(run_hook(&hook, "Bash", input), 1);
+    assert_eq!(run_hook(&hook, "Bash", input), 2);
 }
 
 // =============================================================================
@@ -154,13 +169,13 @@ fn allows_empty_input() {
 
 #[test]
 fn hook_contains_blocking_logic() {
-    assert!(HOOK_POST_TOOL_USE.contains("co-authored-by.*claude"));
-    assert!(HOOK_POST_TOOL_USE.contains("claude.*(noreply|anthropic)"));
-    assert!(HOOK_POST_TOOL_USE.contains("exit 1"));
+    // Check for the regex patterns used in the hook
+    assert!(HOOK_COMMIT_FILTER.contains("co-authored-by.*(claude|anthropic|noreply@anthropic)"));
+    assert!(HOOK_COMMIT_FILTER.contains("exit 2"));
 }
 
 #[test]
 fn hook_has_user_friendly_message() {
-    assert!(HOOK_POST_TOOL_USE.contains("BLOCKED"));
-    assert!(HOOK_POST_TOOL_USE.contains("CLAUDE.md rule 7"));
+    assert!(HOOK_COMMIT_FILTER.contains("BLOCKED"));
+    assert!(HOOK_COMMIT_FILTER.contains("CLAUDE.md rule 8"));
 }
