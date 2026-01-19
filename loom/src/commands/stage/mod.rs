@@ -1,5 +1,5 @@
 //! Stage state manipulation
-//! Usage: loom stage <id> [complete|block|reset|ready|merge-complete|recover]
+//! Usage: loom stage <id> [complete|block|reset|ready|merge-complete|recover|verify]
 
 mod complete;
 mod merge_complete;
@@ -8,6 +8,7 @@ mod recover;
 mod session;
 mod skip_retry;
 mod state;
+mod verify;
 
 #[cfg(test)]
 mod tests;
@@ -21,3 +22,4 @@ pub use output::{
 pub use recover::recover;
 pub use skip_retry::{retry, skip};
 pub use state::{block, hold, ready, release, reset, resume_from_waiting, waiting};
+pub use verify::verify;
