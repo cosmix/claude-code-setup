@@ -661,6 +661,7 @@ Approach: Remove facts, add memory promote
 - Decisions -> patterns, Notes -> entry-points
 
 ## Stage Completion Flow
+
 1. Load stage from .work/stages/
 2. Route knowledge stages to no-merge path
 3. Run acceptance criteria (unless --no-verify)
@@ -671,12 +672,14 @@ Approach: Remove facts, add memory promote
 8. Mark Completed, trigger dependents
 
 ## Knowledge Stage Completion
+
 - No worktree (main repo context)
 - Auto-sets merged=true (no git merge)
 - Uses stage.working_dir for acceptance
 - Skips merge attempt entirely
 
 ## Acceptance Criteria Execution
+
 1. Build CriteriaContext for variable expansion
 2. Expand setup commands, prefix to each criterion
 3. Execute each command sequentially with timeout
@@ -684,6 +687,7 @@ Approach: Remove facts, add memory promote
 5. Return AcceptanceResult (AllPassed/Failed)
 
 ## State Transitions (models/stage/transitions.rs)
+
 Terminal: Completed, Skipped (no outgoing transitions)
 WaitingForDeps -> Queued | Skipped
 Queued -> Executing | Skipped | Blocked
