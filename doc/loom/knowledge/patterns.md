@@ -599,26 +599,63 @@ COMMAND=$(echo "$INPUT_JSON" | jq -r '.tool_input.command // empty')
 
 **FIXED - Read stdin JSON or drain stdin correctly:**
 
-| Hook | Event | Behavior | Notes |
-|------|-------|----------|-------|
-| commit-filter.sh | PreToolUse:Bash | Auto-corrects Co-Authored-By out of commits | Uses updatedInput JSON |
-| prefer-modern-tools.sh | PreToolUse:Bash | Blocks grep/find with guidance to use rg/fd | Exit 2 + stderr guidance |
-| post-tool-use.sh | PostToolUse:* | Reads tool_name from stdin for heartbeat | Silent operation |
-| ask-user-pre.sh | PreToolUse:AskUserQuestion | Drains stdin, marks stage WaitingForInput | Uses LOOM_* env vars |
-| ask-user-post.sh | PostToolUse:AskUserQuestion | Drains stdin, resumes stage | Uses LOOM_* env vars |
-| session-start.sh | SessionStart:* | Drains stdin, initial heartbeat | Uses LOOM_* env vars |
-| session-end.sh | SessionEnd:* | Drains stdin, cleanup/handoff | Uses LOOM_* env vars |
-| pre-compact.sh | PreCompact:* | Drains stdin, triggers handoff | Uses LOOM_* env vars |
-| skill-trigger.sh | UserPromptSubmit:* | Reads stdin for prompt matching | Suggests skills |
+| Hook                   | Event                       | Behavior                                    | Notes                    |
+| ---------------------- | --------------------------- | ------------------------------------------- | ------------------------ |
+| commit-filter.sh       | PreToolUse:Bash             | Auto-corrects Co-Authored-By out of commits | Uses updatedInput JSON   |
+| prefer-modern-tools.sh | PreToolUse:Bash             | Blocks grep/find with guidance to use rg/fd | Exit 2 + stderr guidance |
+| post-tool-use.sh       | PostToolUse:\*              | Reads tool_name from stdin for heartbeat    | Silent operation         |
+| ask-user-pre.sh        | PreToolUse:AskUserQuestion  | Drains stdin, marks stage WaitingForInput   | Uses LOOM\_\* env vars   |
+| ask-user-post.sh       | PostToolUse:AskUserQuestion | Drains stdin, resumes stage                 | Uses LOOM\_\* env vars   |
+| session-start.sh       | SessionStart:\*             | Drains stdin, initial heartbeat             | Uses LOOM\_\* env vars   |
+| session-end.sh         | SessionEnd:\*               | Drains stdin, cleanup/handoff               | Uses LOOM\_\* env vars   |
+| pre-compact.sh         | PreCompact:\*               | Drains stdin, triggers handoff              | Uses LOOM\_\* env vars   |
+| skill-trigger.sh       | UserPromptSubmit:\*         | Reads stdin for prompt matching             | Suggests skills          |
 
 **NOT YET UPDATED - May still use env vars:**
 
-| Hook | Event Type | Notes |
-|------|------------|-------|
-| learning-validator.sh | Stop:* | Validates learnings |
-| commit-guard.sh | Stop:* | Blocks exit without commit |
-| subagent-stop.sh | SubagentStop:* | Extracts learnings |
+| Hook                  | Event Type      | Notes                      |
+| --------------------- | --------------- | -------------------------- |
+| learning-validator.sh | Stop:\*         | Validates learnings        |
+| commit-guard.sh       | Stop:\*         | Blocks exit without commit |
+| subagent-stop.sh      | SubagentStop:\* | Extracts learnings         |
 
 **Note:** Stop/SubagentStop hooks may have different input formats. Need to verify before updating.
 
 **Configuration fix (2026-01-18):** Fixed SessionStart to use proper `SessionStart:*` event instead of `PreToolUse:Bash` (was incorrectly running before every Bash command). Added missing `SessionEnd:*` hook configuration.
+
+## Memory/Knowledge Consolidation (2026-01-19)
+
+Three agent knowledge systems in loom:
+
+| System    | Location                  | Scope                |
+| --------- | ------------------------- | -------------------- |
+| Facts     | .work/facts.toml          | Cross-stage KV pairs |
+| Memory    | .work/memory/{session}.md | Session journal      |
+| Knowledge | doc/loom/knowledge/       | Permanent curation   |
+
+### Signal Integration Points
+
+EmbeddedContext (types.rs:9-30) holds embedded content:
+
+- facts_content: Table formatted for stage
+- memory_content: Last 10 entries
+- knowledge_summary: Compact from doc/loom/knowledge/
+
+format.rs section placement:
+
+- Semi-stable (88-186): knowledge, facts, skills
+- Recitation (345-355): memory at end for attention
+
+### Consolidation Rationale
+
+Facts system redundant with knowledge:
+
+- Both store key-value information
+- Knowledge is persistent project-level
+- Facts add complexity without unique value
+
+Approach: Remove facts, add memory promote
+
+- loom memory promote <type> <target>
+- Promotes session memory to knowledge files
+- Decisions -> patterns, Notes -> entry-points
