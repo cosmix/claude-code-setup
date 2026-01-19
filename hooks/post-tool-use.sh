@@ -14,6 +14,7 @@
 #
 # Actions:
 #   1. Updates heartbeat in .work/heartbeat/<stage-id>.json
+#   2. After git commits in loom stages, reminds Claude to update knowledge/memory
 
 set -euo pipefail
 
@@ -21,9 +22,16 @@ set -euo pipefail
 # Use timeout to avoid blocking if stdin is empty or kept open
 INPUT_JSON=$(timeout 1 cat 2>/dev/null || true)
 
-# Parse tool_name from JSON using jq
+# Parse tool_name and tool_input from JSON using jq
 TOOL_NAME=$(echo "$INPUT_JSON" | jq -r '.tool_name // empty' 2>/dev/null || true)
 TOOL_NAME="${TOOL_NAME:-unknown}"
+TOOL_INPUT=$(echo "$INPUT_JSON" | jq -r '.tool_input // empty' 2>/dev/null || true)
+
+# For Bash tool, extract the command
+COMMAND=""
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+    COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
+fi
 
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
@@ -56,5 +64,48 @@ cat > "$HEARTBEAT_FILE" << EOF
   "activity": "Tool executed: ${TOOL_NAME}"
 }
 EOF
+
+# === POST-COMMIT KNOWLEDGE/MEMORY REMINDER ===
+# After a git commit in a loom stage, remind Claude to update knowledge/memory
+# This is non-blocking - just a prompt to help capture lessons learned
+
+remind_knowledge_update() {
+    cat >&2 <<'REMINDER'
+
+┌────────────────────────────────────────────────────────────────────┐
+│  📝 POST-COMMIT REMINDER: Update Knowledge & Memory                │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  You just committed changes. Before completing this stage:         │
+│                                                                    │
+│  1. RECORD any mistakes made (MANDATORY if errors occurred):       │
+│     loom knowledge update mistakes "## [description]               │
+│                                                                    │
+│     **What happened:** [describe the mistake]                      │
+│     **Why:** [root cause]                                          │
+│     **How to avoid:** [prevention strategy]"                       │
+│                                                                    │
+│  2. CAPTURE session insights:                                      │
+│     loom memory note "discovered X about Y"                        │
+│     loom memory decision "chose X because Y" --context "details"   │
+│                                                                    │
+│  3. Before stage complete, PROMOTE valuable insights:              │
+│     loom memory list                    # Review entries           │
+│     loom memory promote all mistakes    # Promote to knowledge     │
+│     loom memory promote decision patterns                          │
+│                                                                    │
+│  Knowledge persists across sessions - future agents will thank you!│
+└────────────────────────────────────────────────────────────────────┘
+
+REMINDER
+}
+
+# Check if this was a git commit command
+if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$COMMAND" ]]; then
+    # Detect git commit (matches: git commit, git -C path commit, etc.)
+    if echo "$COMMAND" | grep -qiE 'git\s+(-C\s+\S+\s+)?commit'; then
+        remind_knowledge_update
+    fi
+fi
 
 exit 0

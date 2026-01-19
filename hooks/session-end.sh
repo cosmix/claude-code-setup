@@ -21,9 +21,9 @@ set -euo pipefail
 timeout 1 cat >/dev/null 2>&1 || true
 
 # Validate required environment variables
+# Silently exit if not in loom context (hook runs on ALL sessions)
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
-    echo "Error: Missing required environment variables" >&2
-    exit 1
+    exit 0
 fi
 
 # Validate work directory exists and is accessible
