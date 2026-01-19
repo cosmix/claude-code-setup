@@ -30,19 +30,19 @@ TOOL_INPUT=$(echo "$INPUT_JSON" | jq -r '.tool_input // empty' 2>/dev/null || tr
 # For Bash tool, extract the command
 COMMAND=""
 if [[ "$TOOL_NAME" == "Bash" ]]; then
-    COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
+	COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
 fi
 
 # Validate required environment variables
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
-    # Silently exit if not in loom context
-    exit 0
+	# Silently exit if not in loom context
+	exit 0
 fi
 
 # Validate work directory exists and is accessible
 if [[ ! -d "${LOOM_WORK_DIR}" ]]; then
-    # Silently exit - work dir may have been cleaned up
-    exit 0
+	# Silently exit - work dir may have been cleaned up
+	exit 0
 fi
 
 # Ensure heartbeat directory exists
@@ -54,7 +54,7 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 
 # Update heartbeat file in JSON format
 HEARTBEAT_FILE="${HEARTBEAT_DIR}/${LOOM_STAGE_ID}.json"
-cat > "$HEARTBEAT_FILE" << EOF
+cat >"$HEARTBEAT_FILE" <<EOF
 {
   "stage_id": "${LOOM_STAGE_ID}",
   "session_id": "${LOOM_SESSION_ID}",
@@ -70,7 +70,7 @@ EOF
 # This is non-blocking - just a prompt to help capture lessons learned
 
 remind_knowledge_update() {
-    cat >&2 <<'REMINDER'
+	cat >&2 <<'REMINDER'
 
 ┌────────────────────────────────────────────────────────────────────┐
 │  📝 POST-COMMIT REMINDER: Update Knowledge & Memory                │
@@ -102,10 +102,10 @@ REMINDER
 
 # Check if this was a git commit command
 if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$COMMAND" ]]; then
-    # Detect git commit (matches: git commit, git -C path commit, etc.)
-    if echo "$COMMAND" | grep -qiE 'git\s+(-C\s+\S+\s+)?commit'; then
-        remind_knowledge_update
-    fi
+	# Detect git commit (matches: git commit, git -C path commit, etc.)
+	if echo "$COMMAND" | grep -qiE 'git\s+(-C\s+\S+\s+)?commit'; then
+		remind_knowledge_update
+	fi
 fi
 
 exit 0

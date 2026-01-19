@@ -28,9 +28,9 @@ INPUT_JSON=$(timeout 1 cat 2>/dev/null || true)
 # Debug logging
 DEBUG_LOG="/tmp/commit-filter-debug.log"
 {
-  echo "=== $(date) ==="
-  echo "INPUT_JSON: $INPUT_JSON"
-} >> "$DEBUG_LOG" 2>&1
+	echo "=== $(date) ==="
+	echo "INPUT_JSON: $INPUT_JSON"
+} >>"$DEBUG_LOG" 2>&1
 
 # Parse tool_name and tool_input from JSON using jq
 TOOL_NAME=$(echo "$INPUT_JSON" | jq -r '.tool_name // empty' 2>/dev/null || true)
@@ -38,25 +38,25 @@ TOOL_INPUT=$(echo "$INPUT_JSON" | jq -r '.tool_input // empty' 2>/dev/null || tr
 
 # For Bash tool, tool_input is an object with "command" field
 if [[ "$TOOL_NAME" == "Bash" ]]; then
-    COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
+	COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty' 2>/dev/null || echo "$TOOL_INPUT")
 else
-    COMMAND=""
+	COMMAND=""
 fi
 
 # Debug parsed values
 {
-  echo "TOOL_NAME: $TOOL_NAME"
-  echo "COMMAND: $COMMAND"
-  echo "---"
-} >> "$DEBUG_LOG" 2>&1
+	echo "TOOL_NAME: $TOOL_NAME"
+	echo "COMMAND: $COMMAND"
+	echo "---"
+} >>"$DEBUG_LOG" 2>&1
 
 # Only check Bash tool uses
 if [[ "$TOOL_NAME" != "Bash" ]]; then
-    exit 0
+	exit 0
 fi
 
 if [[ -z "$COMMAND" ]]; then
-    exit 0
+	exit 0
 fi
 
 # === CLAUDE ATTRIBUTION CHECK ===
@@ -64,18 +64,18 @@ fi
 
 # Check if this is a git commit command
 if echo "$COMMAND" | rg -qi 'git\s+(-C\s+\S+\s+)?commit'; then
-    {
-        echo "DEBUG: Detected git commit command"
-    } >> "$DEBUG_LOG" 2>&1
+	{
+		echo "DEBUG: Detected git commit command"
+	} >>"$DEBUG_LOG" 2>&1
 
-    # Check for forbidden Co-Authored-By patterns
-    if echo "$COMMAND" | rg -qi 'co-authored-by.*(claude|anthropic|noreply@anthropic)'; then
-        {
-            echo "DEBUG: BLOCKED - Detected forbidden Co-Authored-By pattern"
-        } >> "$DEBUG_LOG" 2>&1
+	# Check for forbidden Co-Authored-By patterns
+	if echo "$COMMAND" | rg -qi 'co-authored-by.*(claude|anthropic|noreply@anthropic)'; then
+		{
+			echo "DEBUG: BLOCKED - Detected forbidden Co-Authored-By pattern"
+		} >>"$DEBUG_LOG" 2>&1
 
-        # Output guidance to stderr and block
-        cat >&2 <<'EOF'
+		# Output guidance to stderr and block
+		cat >&2 <<'EOF'
 BLOCKED: Commit contains forbidden attribution (CLAUDE.md rule 8).
 
 Your commit message includes a Co-Authored-By line mentioning Claude/Anthropic.
@@ -90,10 +90,10 @@ Example - remove lines like:
 
 Rewrite and try again.
 EOF
-        exit 2
-    fi
+		exit 2
+	fi
 fi
 
 # Command is allowed
-echo "Allowing command" >> "$DEBUG_LOG" 2>&1
+echo "Allowing command" >>"$DEBUG_LOG" 2>&1
 exit 0

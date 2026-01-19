@@ -15,17 +15,17 @@ timeout 1 cat >/dev/null 2>&1 || true
 
 # Only run if this is a loom-managed session
 if [ -z "$LOOM_STAGE_ID" ] || [ -z "$LOOM_SESSION_ID" ]; then
-    exit 0
+	exit 0
 fi
 
 # Change to the project directory (parent of .work/)
 if [ -n "$LOOM_WORK_DIR" ]; then
-    cd "$(dirname "$LOOM_WORK_DIR")" 2>/dev/null || exit 0
+	cd "$(dirname "$LOOM_WORK_DIR")" 2>/dev/null || exit 0
 fi
 
 # Mark stage as waiting for user input
 loom stage waiting "$LOOM_STAGE_ID" 2>&1 || {
-    echo "Note: Could not mark stage as waiting (loom not available)"
+	echo "Note: Could not mark stage as waiting (loom not available)"
 }
 
 # Prepare notification message
@@ -33,11 +33,11 @@ MESSAGE="loom stage $LOOM_STAGE_ID needs your input"
 
 # Send desktop notification based on platform
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS notification
-    osascript -e "display notification \"$MESSAGE\" with title \"loom\"" 2>/dev/null
+	# macOS notification
+	osascript -e "display notification \"$MESSAGE\" with title \"loom\"" 2>/dev/null
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux notification
-    notify-send -u critical "loom" "$MESSAGE" 2>/dev/null
+	# Linux notification
+	notify-send -u critical "loom" "$MESSAGE" 2>/dev/null
 fi
 
 # Ring terminal bell

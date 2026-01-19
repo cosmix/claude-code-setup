@@ -22,21 +22,21 @@ timeout 1 cat >/dev/null 2>&1 || true
 # Validate required environment variables
 # Silently exit if not in loom context (hook runs on ALL sessions)
 if [[ -z "${LOOM_STAGE_ID:-}" ]] || [[ -z "${LOOM_SESSION_ID:-}" ]] || [[ -z "${LOOM_WORK_DIR:-}" ]]; then
-    exit 0
+	exit 0
 fi
 
 # Validate work directory exists and is accessible
 if [[ ! -d "${LOOM_WORK_DIR}" ]]; then
-    echo "Warning: Work directory does not exist: ${LOOM_WORK_DIR}" >&2
-    exit 0  # Exit gracefully
+	echo "Warning: Work directory does not exist: ${LOOM_WORK_DIR}" >&2
+	exit 0 # Exit gracefully
 fi
 
 # Ensure directories exist
 HOOKS_DIR="${LOOM_WORK_DIR}/hooks"
 HEARTBEAT_DIR="${LOOM_WORK_DIR}/heartbeat"
 mkdir -p "$HOOKS_DIR" "$HEARTBEAT_DIR" 2>/dev/null || {
-    echo "Warning: Cannot create required directories" >&2
-    exit 0
+	echo "Warning: Cannot create required directories" >&2
+	exit 0
 }
 
 # Get timestamp
@@ -45,14 +45,14 @@ PID=$$
 
 # Log event to events.jsonl
 EVENTS_FILE="${HOOKS_DIR}/events.jsonl"
-cat >> "$EVENTS_FILE" << EOF
+cat >>"$EVENTS_FILE" <<EOF
 {"timestamp":"${TIMESTAMP}","stage_id":"${LOOM_STAGE_ID}","session_id":"${LOOM_SESSION_ID}","event":"SessionStart","payload":{"type":"SessionStart","pid":${PID}}}
 EOF
 
 # Write heartbeat file in JSON format
 # Format: {stage_id, session_id, timestamp, context_pct, last_tool, activity}
 HEARTBEAT_FILE="${HEARTBEAT_DIR}/${LOOM_STAGE_ID}.json"
-cat > "$HEARTBEAT_FILE" << EOF
+cat >"$HEARTBEAT_FILE" <<EOF
 {
   "stage_id": "${LOOM_STAGE_ID}",
   "session_id": "${LOOM_SESSION_ID}",

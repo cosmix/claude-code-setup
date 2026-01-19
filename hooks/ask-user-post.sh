@@ -15,17 +15,17 @@ timeout 1 cat >/dev/null 2>&1 || true
 
 # Only run if this is a loom-managed session
 if [ -z "$LOOM_STAGE_ID" ] || [ -z "$LOOM_SESSION_ID" ]; then
-    exit 0
+	exit 0
 fi
 
 # Change to the project directory (parent of .work/)
 if [ -n "$LOOM_WORK_DIR" ]; then
-    cd "$(dirname "$LOOM_WORK_DIR")" 2>/dev/null || exit 0
+	cd "$(dirname "$LOOM_WORK_DIR")" 2>/dev/null || exit 0
 fi
 
 # Resume stage execution after user input
 loom stage resume "$LOOM_STAGE_ID" 2>&1 || {
-    echo "Note: Could not resume stage (loom not available)"
+	echo "Note: Could not resume stage (loom not available)"
 }
 
 exit 0
