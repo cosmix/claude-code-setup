@@ -36,10 +36,23 @@ Claude Code's plan mode instructs you to write to `~/.claude/plans/`, **IGNORE T
 
 This skill provides:
 
-- Parallelization strategy (parallel subagents first, stages second)
+- **Parallelization strategy: subagents FIRST, stages SECOND** (see Parallelization Strategy section)
+- **Stage description templates with EXPLICIT execution plans** (required for every stage)
 - Mandatory bookend stages (knowledge-bootstrap, integration-verify)
 - Correct YAML metadata format
-- Stage description templates with parallel subagent instructions
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  PLAN CREATION CHECKLIST                                           │
+│                                                                    │
+│  □ First: Identify all tasks needed                                │
+│  □ Group tasks by FILE OVERLAP (not by logical category)           │
+│  □ Tasks with NO file overlap → ONE stage, parallel subagents      │
+│  □ Tasks with file overlap → SEPARATE stages (DAG)                 │
+│  □ Each stage description includes EXPLICIT execution plan         │
+│  □ Execution plan specifies: subagents, file ownership, criteria   │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 #### Plan Format
 
@@ -54,20 +67,33 @@ Plans MUST wrap YAML in HTML comment markers. **knowledge-bootstrap MUST be the 
 loom:
   version: 1
   stages:
-    # REQUIRED FIRST STAGE (unless doc/loom/knowledge/ already populated)
+    # REQUIRED FIRST STAGE - NEVER SKIP THIS
     - id: knowledge-bootstrap
       name: "Bootstrap Knowledge Base"
       description: |
-        Explore codebase hierarchically and populate doc/loom/knowledge/:
+        MANDATORY first stage. Explore codebase and populate doc/loom/knowledge/.
+
+        EXECUTION PLAN: Sequential exploration, then parallel knowledge updates.
+
+        Exploration order:
         1. Top-level: entry points, main modules, directory layout
         2. Module boundaries: public interfaces, internal vs external
         3. Patterns: error handling, state management, data flow
         4. Conventions: naming, file structure, testing patterns
         5. Review existing mistakes.md - learn from past errors
 
-        Use loom knowledge update commands to capture findings.
+        CRITICAL: You MUST use the official `loom knowledge` CLI commands.
+        DO NOT use Write/Edit tools on knowledge files.
 
-        REMINDER: Tell dependent stages to update knowledge with any mistakes they make.
+        Commands to use:
+          loom knowledge init              # If not initialized
+          loom knowledge update entry-points "## Section\n\nContent..."
+          loom knowledge update patterns "## Pattern\n\nContent..."
+          loom knowledge update conventions "## Convention\n\nContent..."
+
+        If content is long, break into multiple CLI invocations (~20-30 lines each).
+
+        REMINDER: Tell dependent stages to update knowledge with any mistakes.
       dependencies: []
       acceptance:
         - "grep -q '## ' doc/loom/knowledge/entry-points.md"
@@ -82,7 +108,28 @@ loom:
       name: "Implement Feature"
       description: |
         What this stage must accomplish.
-        - Subtask with requirements
+
+        EXECUTION PLAN - Parallel subagents (or explain why sequential):
+
+        If parallelizable (tasks touch DIFFERENT files):
+          Subagent 1 - [Component A]:
+            Assignment: [specific task]
+            Files owned: [paths this subagent exclusively modifies]
+            Acceptance: [local criteria]
+
+          Subagent 2 - [Component B]:
+            Assignment: [specific task]
+            Files owned: [paths this subagent exclusively modifies]
+            Acceptance: [local criteria]
+
+          IMPORTANT: Spawn these as parallel Task tool calls.
+
+        If NOT parallelizable (all tasks touch SAME files):
+          EXECUTION PLAN: Sequential implementation.
+          Reason: [explain file overlap]
+          Tasks in order:
+          1. [First task]
+          2. [Second task]
       dependencies: ["knowledge-bootstrap"]
       acceptance:
         - "cargo test"
@@ -197,32 +244,161 @@ working_dir: "loom"   # Run from loom/ subdirectory
 
 #### Parallelization Strategy
 
-Maximize parallel execution at TWO levels:
-
-**Within one session (subagents):** Use parallel subagents for tasks with NO file overlap.
-
-**Across sessions (loom stages):** When tasks WILL touch the same files, create SEPARATE STAGES:
-
-- Each stage runs in its own worktree (independent Claude Code instance)
-- Loom orchestrates merging branches after completion
-- This turns file conflicts into manageable merge operations
-
 ```text
-
-┌─────────────────────────────────────────────────────────────┐
-│ SAME FILES?                                                 │
-│ NO → Same stage, parallel subagents (or single stage)       │
-│ YES → Separate stages, loom merges later                    │
-└─────────────────────────────────────────────────────────────┘
-
+┌────────────────────────────────────────────────────────────────────┐
+│  ⚠️ PARALLELIZATION PRIORITY ORDER (FOLLOW EXACTLY)                │
+│                                                                    │
+│  1. FIRST: Maximize parallel SUBAGENTS within ONE stage            │
+│  2. SECOND: Only create multiple stages when files MUST conflict   │
+│                                                                    │
+│  DO NOT create multiple stages just because you have multiple      │
+│  tasks. Multiple tasks with NO file overlap = ONE stage with       │
+│  parallel subagents.                                               │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-CRITICAL: Make sure to explicitly ask claude instances to use parallel subagents in signal files whenever possible!
+**The Two Levels of Parallelization:**
 
-**Example:** Adding auth + adding logging both touch `src/api/handler.ts`:
+| Level | Mechanism | When to Use | Overhead |
+|-------|-----------|-------------|----------|
+| **LEVEL 1 (PREFERRED)** | Parallel subagents in ONE stage | Tasks touch DIFFERENT files | LOW - same worktree, instant |
+| **LEVEL 2 (FALLBACK)** | Multiple stages in DAG | Tasks touch SAME files | HIGH - worktrees, branches, merges |
 
-- BAD: One stage with both tasks → subagents conflict
-- GOOD: Two stages (`add-auth`, `add-logging`) → loom merges branches
+**ALWAYS START WITH LEVEL 1.** Only escalate to Level 2 when file conflicts are unavoidable.
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  DECISION TREE FOR PARALLELIZATION                                  │
+│                                                                     │
+│  Q: Do tasks touch the SAME files?                                  │
+│                                                                     │
+│  NO  → ONE stage, PARALLEL SUBAGENTS                                │
+│        (spawn multiple Task tools in single message)                │
+│                                                                     │
+│  YES → SEPARATE STAGES in DAG                                       │
+│        (loom creates worktrees, merges branches)                    │
+│                                                                     │
+│  COMMON MISTAKE: Creating 5 stages for 5 tasks that touch           │
+│  different files. This wastes time on branch management.            │
+│  CORRECT: One stage with 5 parallel subagents.                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Example — Correct vs Incorrect Planning:**
+
+Scenario: Implement user auth (touches `auth/`), add logging (touches `logging/`), add metrics (touches `metrics/`)
+
+```text
+❌ WRONG - 3 separate stages:
+   [auth-stage] --> [logging-stage] --> [metrics-stage]
+
+   Why wrong: Files don't overlap! This creates unnecessary
+   worktrees, branches, and merge operations.
+
+✅ CORRECT - 1 stage with 3 parallel subagents:
+   [implement-all-features]
+   └── Spawns 3 parallel subagents:
+       ├── Subagent 1: auth (owns auth/**)
+       ├── Subagent 2: logging (owns logging/**)
+       └── Subagent 3: metrics (owns metrics/**)
+
+   Why correct: Parallel execution, no merge overhead,
+   faster completion.
+```
+
+**When you MUST use multiple stages:**
+
+- Tasks modify the SAME file (e.g., both add routes to `router.ts`)
+- Tasks have true sequential dependencies (B needs A's output)
+- Stages can run in parallel in the DAG when they don't depend on each other
+
+**Example of valid multi-stage DAG:**
+
+```text
+[knowledge-bootstrap]
+        │
+        ▼
+[api-changes]──────┬──────[cli-changes]    ← These run IN PARALLEL
+        │          │           │              (both touch router.ts differently)
+        ▼          ▼           ▼
+    [integration-verify]
+```
+
+#### Stage Descriptions MUST Include Execution Plans
+
+**MANDATORY: Every stage description MUST explicitly specify HOW the work will be parallelized within that stage.**
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  STAGE DESCRIPTION REQUIREMENTS                                    │
+│                                                                    │
+│  Every stage description MUST include:                             │
+│  1. WHAT tasks need to be done                                     │
+│  2. HOW they will be parallelized (which subagents, what files)    │
+│  3. File ownership for each parallel unit                          │
+│                                                                    │
+│  If a stage has multiple tasks that can be parallelized:           │
+│  → EXPLICITLY list the parallel subagents in the description       │
+│  → Specify which files each subagent owns                          │
+│  → This becomes the execution contract for the agent               │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Example stage description WITH explicit execution plan:**
+
+```yaml
+- id: implement-features
+  name: "Implement Core Features"
+  description: |
+    Implement three independent features using PARALLEL SUBAGENTS.
+
+    EXECUTION PLAN - Spawn 3 parallel subagents:
+
+    Subagent 1 - Auth Module:
+      Assignment: Implement JWT authentication
+      Files owned: src/auth/**, tests/auth/**
+      Acceptance: All auth tests pass
+
+    Subagent 2 - Logging Module:
+      Assignment: Add structured logging
+      Files owned: src/logging/**, tests/logging/**
+      Acceptance: Logging tests pass
+
+    Subagent 3 - Metrics Module:
+      Assignment: Implement Prometheus metrics
+      Files owned: src/metrics/**, tests/metrics/**
+      Acceptance: Metrics endpoint responds
+
+    IMPORTANT: These subagents MUST run in parallel (single message
+    with multiple Task tool calls). They do NOT share files.
+  files:
+    - "src/auth/**"
+    - "src/logging/**"
+    - "src/metrics/**"
+    - "tests/**"
+```
+
+**Example stage description for SEQUENTIAL work (no parallelization):**
+
+```yaml
+- id: refactor-router
+  name: "Refactor Router"
+  description: |
+    Refactor the main router to support new middleware.
+
+    EXECUTION PLAN: Single sequential implementation (no parallelization).
+    All changes touch the same files so subagents cannot be used.
+
+    Tasks:
+    1. Extract middleware chain to separate module
+    2. Add hook points for plugins
+    3. Update all route handlers to use new pattern
+
+    Files: src/router.ts, src/middleware.ts (tightly coupled changes)
+  files:
+    - "src/router.ts"
+    - "src/middleware.ts"
+```
 
 ### 2. NO PLACEHOLDERS
 
@@ -420,6 +596,24 @@ Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every sessio
 
 ```text
 ┌────────────────────────────────────────────────────────────────────┐
+│  ⚠️ KNOWLEDGE-BOOTSTRAP IS THE MANDATORY FIRST STAGE               │
+│                                                                    │
+│  EVERY PLAN MUST START WITH knowledge-bootstrap (or knowledge      │
+│  update if knowledge already exists). NO EXCEPTIONS.               │
+│                                                                    │
+│  Why? Without knowledge:                                           │
+│  - Agents make wrong assumptions about the codebase                │
+│  - Agents repeat mistakes that were already learned                │
+│  - Agents use wrong patterns for this specific codebase            │
+│  - Time is wasted re-discovering what's already known              │
+│                                                                    │
+│  The ONLY exception: doc/loom/knowledge/ is already fully          │
+│  populated AND up-to-date for the current task.                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
 │  KNOWLEDGE CHECK - FIRST ACTION OF EVERY SESSION                   │
 │                                                                    │
 │  doc/loom/knowledge/ EMPTY?                                        │
@@ -441,6 +635,26 @@ Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every sessio
 3. **Patterns** — Error handling, state management, data flow conventions
 4. **Conventions** — Naming, file structure, testing patterns
 
+#### YOU MUST USE THE OFFICIAL `loom knowledge` CLI COMMANDS
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  ⚠️ MANDATORY: USE `loom knowledge` CLI COMMANDS                   │
+│                                                                    │
+│  DO NOT manually edit doc/loom/knowledge/*.md files.               │
+│  DO NOT use Write/Edit tools on knowledge files.                   │
+│  DO NOT use echo/cat/heredoc to write to knowledge files.          │
+│                                                                    │
+│  ALWAYS use: loom knowledge update <file> "<content>"              │
+│                                                                    │
+│  Why? The CLI:                                                     │
+│  - Ensures consistent formatting                                   │
+│  - Handles file creation if needed                                 │
+│  - Appends properly without overwriting                            │
+│  - Works correctly in worktree context                             │
+└────────────────────────────────────────────────────────────────────┘
+```
+
 **Commands:**
 
 | Command                                  | Description                                                        |
@@ -450,7 +664,41 @@ Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every sessio
 | `loom knowledge show`                    | Show summary of all knowledge                                      |
 | `loom knowledge show <file>`             | Show specific file (entry-points, patterns, conventions, mistakes) |
 | `loom knowledge update <file> <content>` | Append content to a knowledge file                                 |
-| `loom knowledge update mistakes`         | Record mistakes and lessons learned                                |
+
+#### Breaking Up Long Content
+
+**If your content is too long for a single command, break it into multiple invocations:**
+
+```bash
+# WRONG - content too long, may fail or truncate
+loom knowledge update patterns "## Authentication\n\n[500 lines of content...]"
+
+# CORRECT - break into logical chunks
+loom knowledge update patterns "## Authentication
+
+### Overview
+Authentication uses JWT tokens with refresh token rotation."
+
+loom knowledge update patterns "### Token Flow
+1. User submits credentials
+2. Server validates and issues access + refresh tokens
+3. Access token expires in 15 minutes
+4. Refresh token used to get new access token"
+
+loom knowledge update patterns "### Key Files
+- src/auth/jwt.ts:15-80 - Token generation
+- src/auth/middleware.ts:20-45 - Auth middleware
+- src/auth/refresh.ts:10-60 - Refresh logic"
+```
+
+**Guidelines for breaking up content:**
+
+| Guideline | Details |
+|-----------|---------|
+| One section per invocation | Each `## Heading` should be its own command |
+| ~20-30 lines max per call | Keeps commands manageable and readable |
+| Logical groupings | Break at natural boundaries (overview, details, files) |
+| Multiple small > one large | Easier to debug, less likely to fail |
 
 **Update Examples:**
 
@@ -460,8 +708,6 @@ Build and maintain the `doc/loom/knowledge/` base BEFORE and DURING every sessio
 | Architectural pattern | `loom knowledge update patterns "## Pattern\n\n- How it works"`                          |
 | Coding convention     | `loom knowledge update conventions "## Convention\n\n- Details"`                         |
 | Mistake/lesson        | `loom knowledge update mistakes "## Mistake\n\n- What happened, why, how to avoid"`      |
-
-**EVERY PLAN MUST include `knowledge-bootstrap` as the first stage** (unless knowledge already exists and is complete). See Plan Format section for the required stage definition.
 
 ### Recording Mistakes (MANDATORY)
 
@@ -494,12 +740,29 @@ Examples of mistakes to record:
 ┌────────────────────────────────────────────────────────────────────┐
 │  PLAN STRUCTURE CHECK                                              │
 │                                                                    │
-│  FIRST STAGE: knowledge-bootstrap (unless knowledge exists)        │
-│  LAST STAGE:  integration-verify (ALWAYS - no exceptions)          │
+│  MANDATORY BOOKENDS (NO EXCEPTIONS):                               │
+│    FIRST STAGE: knowledge-bootstrap                                │
+│      → Explores codebase, populates doc/loom/knowledge/            │
+│      → Uses ONLY `loom knowledge` CLI commands                     │
+│      → If knowledge exists: update it, don't skip the stage        │
+│    LAST STAGE:  integration-verify                                 │
+│      → Depends on ALL feature stages                               │
+│      → Includes FUNCTIONAL verification, not just tests            │
 │                                                                    │
-│  integration-verify MUST depend on ALL feature stages.             │
+│  PARALLELIZATION (IN THIS ORDER):                                  │
+│    1. FIRST maximize parallel SUBAGENTS within each stage          │
+│    2. ONLY THEN consider multiple stages for file conflicts        │
 │                                                                    │
-│  PARALLEL SUBAGENTS FIRST, STAGES SECOND.                          │
+│  STAGE DESCRIPTIONS:                                               │
+│    Every stage description MUST include an EXECUTION PLAN:         │
+│    - Which subagents will run in parallel?                         │
+│    - What files does each subagent own?                            │
+│    - Or: why is this stage sequential (file overlap)?              │
+│                                                                    │
+│  COMMON MISTAKES TO AVOID:                                         │
+│    ✗ Skipping knowledge-bootstrap "to save time"                   │
+│    ✗ Creating separate stages for non-overlapping files            │
+│    ✗ Using Write/Edit on knowledge files instead of CLI            │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -698,15 +961,27 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 │  4. IN WORKTREE: Commit + complete stage or hook BLOCKS exit.      │
 │     → cd to WORKTREE ROOT before running loom stage complete       │
 │                                                                    │
-│  5. KNOWLEDGE: Read first. Update continuously. RECORD MISTAKES.   │
-│     → Every mistake is a lesson. Document it or repeat it.         │
+│  5. KNOWLEDGE-BOOTSTRAP IS MANDATORY FIRST STAGE:                  │
+│     → EVERY plan starts with knowledge-bootstrap. NO EXCEPTIONS.   │
+│     → Read existing knowledge. Update with discoveries.            │
+│     → RECORD MISTAKES or you will repeat them.                     │
+│     → USE ONLY `loom knowledge` CLI commands (not Write/Edit)      │
+│     → Long content? Break into multiple CLI invocations.           │
 │                                                                    │
-│  6. USE PARALLEL SUBAGENTS. ALWAYS WHENEVER POSSIBLE.              │
+│  6. PARALLELIZATION ORDER (THIS IS CRITICAL):                      │
+│     → FIRST: Parallel SUBAGENTS within ONE stage                   │
+│     → SECOND: Multiple stages ONLY when files conflict             │
+│     → DO NOT create separate stages for non-overlapping tasks!     │
 │                                                                    │
-│  7. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
+│  7. STAGE DESCRIPTIONS MUST INCLUDE EXECUTION PLANS:               │
+│     → Which subagents run in parallel?                             │
+│     → What files does each subagent own?                           │
+│     → Why sequential if not parallelizable?                        │
+│                                                                    │
+│  8. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
 │     → Use specialized agents for security, infra, architecture     │
 │                                                                    │
-│  8. PLANS: integration-verify LAST. No exceptions.                 │
+│  9. PLANS: integration-verify LAST. No exceptions.                 │
 │     → TESTS PASSING ≠ FEATURE WORKING                              │
 │     → MUST include FUNCTIONAL verification (smoke test, wiring)    │
 │     → Code that compiles but is never wired up is USELESS          │
