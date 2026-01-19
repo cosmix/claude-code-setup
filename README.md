@@ -506,14 +506,6 @@ loom stage output get <stage-id> <key>
 loom stage output list <stage-id>
 loom stage output remove <stage-id> <key>
 
-# Shared facts across stages
-loom fact set <key> <value> [--stage <id>] [--confidence <level>]
-loom fact get <key>
-loom fact list [--stage <id>]
-# - set: store a key-value fact (confidence: low, medium, high)
-# - get: retrieve a fact by key
-# - list: list all facts (optionally filtered by stage)
-
 # Checkpoints for task completion signaling
 loom checkpoint create <task-id> [--status <status>] [--force] [--output KEY=VALUE]... [--notes <text>]
 loom checkpoint list [--session <id>]
@@ -569,6 +561,10 @@ loom memory sessions
 # - list: list entries (filter by: note, decision, question)
 # - show: show full memory journal
 # - sessions: list all memory journals
+loom memory promote <type> <target> [--session <id>]
+# - type: note, decision, question, or 'all'
+# - target: entry-points, patterns, conventions, mistakes
+# - promotes session memory entries to permanent knowledge
 ```
 
 ### Utility Commands
