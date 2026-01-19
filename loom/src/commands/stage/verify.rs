@@ -292,6 +292,7 @@ mod tests {
     use super::*;
     use crate::models::stage::Stage;
     use chrono::Utc;
+    use serial_test::serial;
     use tempfile::TempDir;
 
     fn create_test_stage(id: &str, status: StageStatus) -> Stage {
@@ -333,6 +334,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_verify_rejects_invalid_status() {
         // Test that verify rejects stages not in CompletedWithFailures or Executing
         let temp_dir = TempDir::new().unwrap();
@@ -343,10 +345,14 @@ mod tests {
         let stage = create_test_stage("test-stage", StageStatus::Completed);
         save_stage(&stage, &work_dir).unwrap();
 
-        // Set current dir context
+        // Save and restore current directory
+        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
 
         let result = verify("test-stage".to_string(), true);
+
+        std::env::set_current_dir(original_dir).unwrap();
+
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Completed"));
@@ -354,6 +360,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_verify_accepts_completed_with_failures() {
         // This test verifies the status check passes for CompletedWithFailures
         // Full integration testing requires worktree setup
@@ -364,16 +371,22 @@ mod tests {
         let stage = create_test_stage("test-stage", StageStatus::CompletedWithFailures);
         save_stage(&stage, &work_dir).unwrap();
 
+        // Save and restore current directory
+        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
 
         // This will fail because worktree doesn't exist, but the status check passes
         let result = verify("test-stage".to_string(), true);
+
+        std::env::set_current_dir(original_dir).unwrap();
+
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Worktree not found"));
     }
 
     #[test]
+    #[serial]
     fn test_verify_accepts_executing() {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path().join(".work");
@@ -382,9 +395,14 @@ mod tests {
         let stage = create_test_stage("test-stage", StageStatus::Executing);
         save_stage(&stage, &work_dir).unwrap();
 
+        // Save and restore current directory
+        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
 
         let result = verify("test-stage".to_string(), true);
+
+        std::env::set_current_dir(original_dir).unwrap();
+
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Worktree not found"));
