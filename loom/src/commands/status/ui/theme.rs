@@ -1,5 +1,7 @@
 use ratatui::style::{Color, Modifier, Style};
 
+use crate::models::constants::display::{CONTEXT_HEALTHY_PCT, CONTEXT_WARNING_PCT};
+
 /// Color scheme for status indicators
 pub struct StatusColors;
 
@@ -15,10 +17,10 @@ impl StatusColors {
     pub const CONFLICT: Color = Color::Red;
     pub const MERGED: Color = Color::Rgb(100, 180, 100); // Lighter green for merged
 
-    // Context bar colors
-    pub const CONTEXT_LOW: Color = Color::Green; // 0-60%
-    pub const CONTEXT_MED: Color = Color::Yellow; // 60-75%
-    pub const CONTEXT_HIGH: Color = Color::Red; // 75-100%
+    // Context bar colors (thresholds in models::constants::display)
+    pub const CONTEXT_LOW: Color = Color::Green; // Below CONTEXT_HEALTHY_PCT
+    pub const CONTEXT_MED: Color = Color::Yellow; // CONTEXT_HEALTHY_PCT to CONTEXT_WARNING_PCT
+    pub const CONTEXT_HIGH: Color = Color::Red; // Above CONTEXT_WARNING_PCT
 
     // UI chrome
     pub const HEADER: Color = Color::White;
@@ -75,9 +77,10 @@ impl Theme {
     }
 
     pub fn context_style(pct: f32) -> Style {
-        let color = if pct < 0.6 {
+        // pct is 0.0-1.0, constants are percentages (0-100)
+        let color = if pct * 100.0 < CONTEXT_HEALTHY_PCT {
             StatusColors::CONTEXT_LOW
-        } else if pct < 0.75 {
+        } else if pct * 100.0 < CONTEXT_WARNING_PCT {
             StatusColors::CONTEXT_MED
         } else {
             StatusColors::CONTEXT_HIGH

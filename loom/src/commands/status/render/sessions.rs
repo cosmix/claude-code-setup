@@ -4,6 +4,7 @@ use colored::Colorize;
 use std::io::Write;
 
 use crate::commands::status::data::SessionSummary;
+use crate::models::constants::display::{CONTEXT_HEALTHY_PCT, CONTEXT_WARNING_PCT};
 
 /// Render sessions table with context bars
 pub fn render_sessions<W: Write>(w: &mut W, sessions: &[SessionSummary]) -> std::io::Result<()> {
@@ -49,9 +50,9 @@ fn render_session_row<W: Write>(w: &mut W, session: &SessionSummary) -> std::io:
     let ctx_pct = session.context_tokens as f32 / session.context_limit.max(1) as f32;
     let ctx_bar = render_mini_bar(ctx_pct, 8);
     let ctx_str = format!("{} {:>3.0}%", ctx_bar, ctx_pct * 100.0);
-    let colored_ctx = if ctx_pct > 0.75 {
+    let colored_ctx = if ctx_pct * 100.0 >= CONTEXT_WARNING_PCT {
         ctx_str.red()
-    } else if ctx_pct > 0.6 {
+    } else if ctx_pct * 100.0 >= CONTEXT_HEALTHY_PCT {
         ctx_str.yellow()
     } else {
         ctx_str.normal()

@@ -4,6 +4,7 @@ use colored::Colorize;
 use std::io::Write;
 
 use crate::commands::status::data::{StageSummary, StatusData};
+use crate::models::constants::display::{CONTEXT_HEALTHY_PCT, CONTEXT_WARNING_PCT};
 use crate::models::stage::StageStatus;
 
 /// Render execution graph with status indicators
@@ -61,9 +62,9 @@ fn render_stage_line<W: Write>(w: &mut W, stage: &StageSummary) -> std::io::Resu
     // Context percentage if executing
     if let Some(ctx_pct) = stage.context_pct {
         let ctx_str = format!(" [{:.0}%]", ctx_pct * 100.0);
-        let colored_ctx = if ctx_pct > 0.75 {
+        let colored_ctx = if ctx_pct * 100.0 >= CONTEXT_WARNING_PCT {
             ctx_str.red()
-        } else if ctx_pct > 0.6 {
+        } else if ctx_pct * 100.0 >= CONTEXT_HEALTHY_PCT {
             ctx_str.yellow()
         } else {
             ctx_str.dimmed()
