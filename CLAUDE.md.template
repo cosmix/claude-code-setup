@@ -552,11 +552,11 @@ loom knowledge update mistakes "## [Short description]
 
 During work, actively record insights:
 
-| Type     | When              | Command                                        |
-| -------- | ----------------- | ---------------------------------------------- |
-| Note     | Observations      | `loom memory note "text"`                      |
-| Decision | Choices made      | `loom memory decision "text" --context "why"`  |
-| Question | Open questions    | `loom memory question "text"`                  |
+| Type     | When           | Command                                       |
+| -------- | -------------- | --------------------------------------------- |
+| Note     | Observations   | `loom memory note "text"`                     |
+| Decision | Choices made   | `loom memory decision "text" --context "why"` |
+| Question | Open questions | `loom memory question "text"`                 |
 
 Before completing any stage, review and promote valuable insights:
 
