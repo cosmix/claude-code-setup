@@ -31,9 +31,8 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use super::graph_widget::{GraphWidget, GraphWidgetConfig, Viewport};
-use super::sugiyama::{self, LayoutResult};
 use super::theme::{StatusColors, Theme};
+use super::tree_widget::TreeWidget;
 use super::widgets::{status_indicator, status_text};
 use crate::daemon::{read_message, write_message, Request, Response, StageInfo};
 use crate::models::stage::{Stage, StageStatus};
@@ -53,58 +52,36 @@ const PAGE_SCROLL_FACTOR: f64 = 0.8;
 /// Fixed height for the graph area (prevents jerking from dynamic resizing)
 const GRAPH_AREA_HEIGHT: u16 = 12;
 
-/// Graph state tracking for cached layout and scroll position
+/// Graph state tracking for scroll position
 #[derive(Default)]
 struct GraphState {
-    /// Horizontal scroll offset
-    scroll_x: i32,
-    /// Vertical scroll offset
-    scroll_y: i32,
-    /// Total graph width in characters
-    graph_width: u16,
-    /// Total graph height in characters
-    graph_height: u16,
-    /// Cached layout result (recomputed on stage changes)
-    cached_layout: Option<LayoutResult>,
-    /// Hash of stage IDs for cache invalidation
-    stage_hash: u64,
-    /// Last graph area (for scroll bounds)
-    graph_area: Option<Rect>,
+    /// Vertical scroll offset for the tree
+    scroll_y: u16,
+    /// Total number of lines in the tree
+    total_lines: u16,
+    /// Viewport height for scrolling bounds
+    viewport_height: u16,
 }
 
 impl GraphState {
-    /// Clamp scroll position to valid bounds
-    fn clamp_scroll(&mut self, viewport_width: u16, viewport_height: u16) {
-        let max_scroll_x = self.graph_width.saturating_sub(viewport_width) as i32;
-        let max_scroll_y = self.graph_height.saturating_sub(viewport_height) as i32;
-        self.scroll_x = self.scroll_x.clamp(0, max_scroll_x.max(0));
-        self.scroll_y = self.scroll_y.clamp(0, max_scroll_y.max(0));
-    }
-
     /// Scroll by a delta, clamping to bounds
-    fn scroll_by(&mut self, dx: i32, dy: i32, viewport_width: u16, viewport_height: u16) {
-        self.scroll_x += dx;
-        self.scroll_y += dy;
-        self.clamp_scroll(viewport_width, viewport_height);
-    }
-
-    /// Jump to a specific position (e.g., from minimap click)
-    fn scroll_to(&mut self, x: i32, y: i32, viewport_width: u16, viewport_height: u16) {
-        self.scroll_x = x;
-        self.scroll_y = y;
-        self.clamp_scroll(viewport_width, viewport_height);
-    }
-
-    /// Compute a hash of stage IDs for cache invalidation
-    fn compute_stage_hash(stages: &[UnifiedStage]) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        for stage in stages {
-            stage.id.hash(&mut hasher);
-            std::mem::discriminant(&stage.status).hash(&mut hasher);
+    fn scroll_by(&mut self, delta: i16) {
+        if delta < 0 {
+            self.scroll_y = self.scroll_y.saturating_sub((-delta) as u16);
+        } else {
+            let max_scroll = self.total_lines.saturating_sub(self.viewport_height);
+            self.scroll_y = (self.scroll_y + delta as u16).min(max_scroll);
         }
-        hasher.finish()
+    }
+
+    /// Jump to start
+    fn scroll_to_start(&mut self) {
+        self.scroll_y = 0;
+    }
+
+    /// Jump to end
+    fn scroll_to_end(&mut self) {
+        self.scroll_y = self.total_lines.saturating_sub(self.viewport_height);
     }
 }
 
@@ -414,13 +391,6 @@ impl TuiApp {
 
     /// Handle keyboard events for navigation and control
     fn handle_key_event(&mut self, code: KeyCode, modifiers: KeyModifiers) {
-        // Get viewport dimensions for scroll bounds
-        let (viewport_w, viewport_h) = self
-            .graph_state
-            .graph_area
-            .map(|r| (r.width, r.height))
-            .unwrap_or((80, 20));
-
         match code {
             // Quit - set exiting flag for immediate feedback
             KeyCode::Char('q') | KeyCode::Esc => {
@@ -430,39 +400,34 @@ impl TuiApp {
                 self.exiting = true;
             }
 
-            // Arrow key navigation
+            // Arrow key navigation (vertical only for tree)
             KeyCode::Up => {
-                self.graph_state.scroll_by(0, -SCROLL_STEP, viewport_w, viewport_h);
+                self.graph_state.scroll_by(-SCROLL_STEP as i16);
             }
             KeyCode::Down => {
-                self.graph_state.scroll_by(0, SCROLL_STEP, viewport_w, viewport_h);
-            }
-            KeyCode::Left => {
-                self.graph_state.scroll_by(-SCROLL_STEP, 0, viewport_w, viewport_h);
-            }
-            KeyCode::Right => {
-                self.graph_state.scroll_by(SCROLL_STEP, 0, viewport_w, viewport_h);
+                self.graph_state.scroll_by(SCROLL_STEP as i16);
             }
 
             // Home/End: jump to start/end
             KeyCode::Home => {
-                self.graph_state.scroll_to(0, 0, viewport_w, viewport_h);
+                self.graph_state.scroll_to_start();
             }
             KeyCode::End => {
-                let max_x = self.graph_state.graph_width.saturating_sub(viewport_w) as i32;
-                let max_y = self.graph_state.graph_height.saturating_sub(viewport_h) as i32;
-                self.graph_state.scroll_to(max_x, max_y, viewport_w, viewport_h);
+                self.graph_state.scroll_to_end();
             }
 
             // Page Up/Down: scroll by page
             KeyCode::PageUp => {
-                let page_step = (viewport_h as f64 * PAGE_SCROLL_FACTOR) as i32;
-                self.graph_state.scroll_by(0, -page_step, viewport_w, viewport_h);
+                let page_step = (self.graph_state.viewport_height as f64 * PAGE_SCROLL_FACTOR) as i16;
+                self.graph_state.scroll_by(-page_step);
             }
             KeyCode::PageDown => {
-                let page_step = (viewport_h as f64 * PAGE_SCROLL_FACTOR) as i32;
-                self.graph_state.scroll_by(0, page_step, viewport_w, viewport_h);
+                let page_step = (self.graph_state.viewport_height as f64 * PAGE_SCROLL_FACTOR) as i16;
+                self.graph_state.scroll_by(page_step);
             }
+
+            // Ignore horizontal keys for tree view
+            KeyCode::Left | KeyCode::Right => {}
 
             _ => {}
         }
@@ -470,19 +435,13 @@ impl TuiApp {
 
     /// Handle mouse events for scrolling
     fn handle_mouse_event(&mut self, mouse: crossterm::event::MouseEvent) {
-        let (viewport_w, viewport_h) = self
-            .graph_state
-            .graph_area
-            .map(|r| (r.width, r.height))
-            .unwrap_or((80, 20));
-
         match mouse.kind {
-            // Scroll wheel to pan graph
+            // Scroll wheel to scroll tree
             MouseEventKind::ScrollUp => {
-                self.graph_state.scroll_by(0, -SCROLL_STEP * 2, viewport_w, viewport_h);
+                self.graph_state.scroll_by(-(SCROLL_STEP as i16) * 2);
             }
             MouseEventKind::ScrollDown => {
-                self.graph_state.scroll_by(0, SCROLL_STEP * 2, viewport_w, viewport_h);
+                self.graph_state.scroll_by((SCROLL_STEP as i16) * 2);
             }
             _ => {}
         }
@@ -577,31 +536,38 @@ impl TuiApp {
         // Clone the data we need for rendering
         let unified_stages = status.unified_stages();
 
-        // Convert UnifiedStages to Stages for the graph widget
+        // Convert UnifiedStages to Stages for the tree widget
         let stages_for_graph: Vec<Stage> = unified_stages
             .iter()
             .map(unified_stage_to_stage)
             .collect();
 
-        // Check if layout needs recomputation (stage hash changed)
-        let new_hash = GraphState::compute_stage_hash(&unified_stages);
-        if self.graph_state.stage_hash != new_hash || self.graph_state.cached_layout.is_none() {
-            // Recompute layout
-            let layout = sugiyama::layout(&stages_for_graph);
-            let bounds = layout.bounds();
-            // Add minimum padding to prevent 0-size bounds
-            self.graph_state.graph_width = (bounds.width() as u16).max(40) + 20;
-            self.graph_state.graph_height = (bounds.height() as u16).max(10) + 4;
-            self.graph_state.cached_layout = Some(layout);
-            self.graph_state.stage_hash = new_hash;
-        }
+        // Estimate total lines (stages + base branch lines for executing/queued)
+        let total_lines = unified_stages.iter().fold(0_u16, |acc, s| {
+            let base = 1;
+            let extra = if matches!(s.status, StageStatus::Executing | StageStatus::Queued) {
+                1
+            } else {
+                0
+            };
+            acc + base + extra
+        });
+        self.graph_state.total_lines = total_lines;
 
-        // Extract state for the closure
-        let scroll_x = self.graph_state.scroll_x;
+        // Extract scroll position for the closure
         let scroll_y = self.graph_state.scroll_y;
 
-        // Track areas for event handling
-        let mut graph_area_out = None;
+        // Build context and elapsed time maps
+        let context_pcts = std::collections::HashMap::new();
+        let mut elapsed_times = std::collections::HashMap::new();
+        for stage in &unified_stages {
+            if let (Some(start), StageStatus::Executing) = (stage.started_at, &stage.status) {
+                let elapsed = chrono::Utc::now()
+                    .signed_duration_since(start)
+                    .num_seconds();
+                elapsed_times.insert(stage.id.clone(), elapsed);
+            }
+        }
 
         self.terminal.draw(|frame| {
             let area = frame.area();
@@ -628,23 +594,23 @@ impl TuiApp {
             render_compact_header(frame, chunks[0], spinner, pct, completed_count, total);
             // chunks[1] is spacer - left empty
 
-            // Render graph area
-            let graph_rect = render_graph(
+            // Render tree-based graph area
+            render_tree_graph(
                 frame,
                 chunks[2],
                 &stages_for_graph,
-                scroll_x,
                 scroll_y,
+                &context_pcts,
+                &elapsed_times,
             );
-            graph_area_out = Some(graph_rect);
 
             // chunks[3] is spacer - left empty
             render_unified_table(frame, chunks[4], &unified_stages);
             render_compact_footer(frame, chunks[5], &last_error);
         })?;
 
-        // Update stored area for event handling
-        self.graph_state.graph_area = graph_area_out;
+        // Update viewport height for scroll bounds
+        self.graph_state.viewport_height = GRAPH_AREA_HEIGHT.saturating_sub(2); // Account for borders
 
         Ok(())
     }
@@ -749,41 +715,39 @@ fn unified_stage_to_stage(us: &UnifiedStage) -> Stage {
     }
 }
 
-/// Render the execution graph
-///
-/// Returns the inner graph area for event handling
-fn render_graph(
+/// Render the tree-based execution graph
+fn render_tree_graph(
     frame: &mut Frame,
     area: Rect,
     stages: &[Stage],
-    scroll_x: i32,
-    scroll_y: i32,
-) -> Rect {
+    scroll_y: u16,
+    context_pcts: &std::collections::HashMap<String, f32>,
+    elapsed_times: &std::collections::HashMap<String, i64>,
+) {
     let graph_block = Block::default()
         .title(" Execution Graph ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(StatusColors::BORDER));
 
-    let inner_graph_area = graph_block.inner(area);
+    let inner_area = graph_block.inner(area);
     frame.render_widget(graph_block, area);
 
     if stages.is_empty() {
         let empty = Paragraph::new(Span::styled("(no stages)", Theme::dimmed()));
-        frame.render_widget(empty, inner_graph_area);
-        return inner_graph_area;
+        frame.render_widget(empty, inner_area);
+        return;
     }
 
-    // Create and render GraphWidget with viewport offset
-    let viewport = Viewport::new(scroll_x, scroll_y);
-    let graph_widget = GraphWidget::new(stages)
-        .viewport(viewport)
-        .config(GraphWidgetConfig::default());
+    // Create tree widget with context and elapsed time data
+    let tree_widget = TreeWidget::new(stages)
+        .context_percentages(context_pcts.clone())
+        .elapsed_times(elapsed_times.clone());
 
-    // Render graph into the inner area
-    let buf = frame.buffer_mut();
-    graph_widget.render_graph(inner_graph_area, buf);
-
-    inner_graph_area
+    // Build lines and apply scroll offset
+    let lines = tree_widget.build_lines();
+    let visible_lines: Vec<_> = lines.into_iter().skip(scroll_y as usize).collect();
+    let paragraph = Paragraph::new(visible_lines);
+    frame.render_widget(paragraph, inner_area);
 }
 
 /// Render unified stage table with all columns
@@ -949,122 +913,52 @@ pub fn run_tui(work_path: &Path) -> Result<()> {
 mod tests {
     use super::*;
 
-    fn make_unified_stage(id: &str, deps: Vec<&str>, status: StageStatus, level: usize) -> UnifiedStage {
-        UnifiedStage {
-            id: id.to_string(),
-            status,
-            merged: false,
-            started_at: None,
-            completed_at: None,
-            level,
-            dependencies: deps.into_iter().map(String::from).collect(),
-        }
-    }
-
     #[test]
     fn test_graph_state_default() {
         let state = GraphState::default();
-        assert_eq!(state.scroll_x, 0);
         assert_eq!(state.scroll_y, 0);
-        assert_eq!(state.graph_width, 0);
-        assert_eq!(state.graph_height, 0);
-        assert!(state.cached_layout.is_none());
-    }
-
-    #[test]
-    fn test_graph_state_scroll_clamp() {
-        let mut state = GraphState {
-            graph_width: 100,
-            graph_height: 50,
-            ..Default::default()
-        };
-
-        // Test clamping to bounds
-        state.scroll_x = -10;
-        state.scroll_y = -10;
-        state.clamp_scroll(50, 25);
-        assert_eq!(state.scroll_x, 0);
-        assert_eq!(state.scroll_y, 0);
-
-        // Test clamping at max
-        state.scroll_x = 100;
-        state.scroll_y = 100;
-        state.clamp_scroll(50, 25);
-        assert_eq!(state.scroll_x, 50); // 100 - 50
-        assert_eq!(state.scroll_y, 25); // 50 - 25
+        assert_eq!(state.total_lines, 0);
+        assert_eq!(state.viewport_height, 0);
     }
 
     #[test]
     fn test_graph_state_scroll_by() {
         let mut state = GraphState {
-            graph_width: 100,
-            graph_height: 50,
-            scroll_x: 10,
-            scroll_y: 10,
-            ..Default::default()
+            scroll_y: 5,
+            total_lines: 20,
+            viewport_height: 10,
         };
 
-        state.scroll_by(5, 3, 50, 25);
-        assert_eq!(state.scroll_x, 15);
-        assert_eq!(state.scroll_y, 13);
+        // Scroll down
+        state.scroll_by(3);
+        assert_eq!(state.scroll_y, 8);
+
+        // Scroll up
+        state.scroll_by(-3);
+        assert_eq!(state.scroll_y, 5);
 
         // Scroll beyond bounds should clamp
-        state.scroll_by(100, 100, 50, 25);
-        assert_eq!(state.scroll_x, 50); // clamped to max
-        assert_eq!(state.scroll_y, 25);
+        state.scroll_by(100);
+        assert_eq!(state.scroll_y, 10); // total_lines - viewport_height = 20 - 10 = 10
 
         // Scroll negative beyond bounds
-        state.scroll_by(-200, -200, 50, 25);
-        assert_eq!(state.scroll_x, 0);
+        state.scroll_by(-100);
         assert_eq!(state.scroll_y, 0);
     }
 
     #[test]
-    fn test_graph_state_scroll_to() {
+    fn test_graph_state_scroll_to_start_end() {
         let mut state = GraphState {
-            graph_width: 100,
-            graph_height: 50,
-            ..Default::default()
+            scroll_y: 5,
+            total_lines: 20,
+            viewport_height: 10,
         };
 
-        state.scroll_to(25, 15, 50, 25);
-        assert_eq!(state.scroll_x, 25);
-        assert_eq!(state.scroll_y, 15);
+        state.scroll_to_end();
+        assert_eq!(state.scroll_y, 10); // 20 - 10 = 10
 
-        // Scroll to negative should clamp to 0
-        state.scroll_to(-10, -10, 50, 25);
-        assert_eq!(state.scroll_x, 0);
+        state.scroll_to_start();
         assert_eq!(state.scroll_y, 0);
-    }
-
-    #[test]
-    fn test_compute_stage_hash_changes() {
-        let stages1 = vec![
-            make_unified_stage("a", vec![], StageStatus::Completed, 0),
-            make_unified_stage("b", vec!["a"], StageStatus::Executing, 1),
-        ];
-        let stages2 = vec![
-            make_unified_stage("a", vec![], StageStatus::Completed, 0),
-            make_unified_stage("b", vec!["a"], StageStatus::Completed, 1), // status changed
-        ];
-        let stages3 = vec![
-            make_unified_stage("a", vec![], StageStatus::Completed, 0),
-            make_unified_stage("c", vec!["a"], StageStatus::Executing, 1), // id changed
-        ];
-
-        let hash1 = GraphState::compute_stage_hash(&stages1);
-        let hash2 = GraphState::compute_stage_hash(&stages2);
-        let hash3 = GraphState::compute_stage_hash(&stages3);
-
-        // Same stages, same hash
-        let hash1_again = GraphState::compute_stage_hash(&stages1);
-        assert_eq!(hash1, hash1_again);
-
-        // Different status should produce different hash
-        assert_ne!(hash1, hash2);
-
-        // Different id should produce different hash
-        assert_ne!(hash1, hash3);
     }
 
     #[test]

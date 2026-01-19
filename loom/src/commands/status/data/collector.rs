@@ -108,9 +108,11 @@ fn build_stage_summary(stage: &Stage, sessions: &[Session]) -> StageSummary {
         id: stage.id.clone(),
         name: stage.name.clone(),
         status: stage.status.clone(),
+        dependencies: stage.dependencies.clone(),
         context_pct,
         elapsed_secs: Some(elapsed_secs),
         base_branch: stage.base_branch.clone(),
+        base_merged_from: stage.base_merged_from.clone(),
         failure_info: stage.failure_info.clone(),
     }
 }
@@ -310,7 +312,8 @@ mod tests {
 
     #[test]
     fn test_build_stage_summary_with_session() {
-        let stage = make_test_stage("test-stage", StageStatus::Executing);
+        let mut stage = make_test_stage("test-stage", StageStatus::Executing);
+        stage.dependencies = vec!["dep-1".to_string()];
         let mut session = Session::new();
         session.assign_to_stage("test-stage".to_string());
         session.context_tokens = 50000;
@@ -320,6 +323,7 @@ mod tests {
 
         assert_eq!(summary.id, "test-stage");
         assert_eq!(summary.status, StageStatus::Executing);
+        assert_eq!(summary.dependencies, vec!["dep-1"]);
         assert!(summary.context_pct.is_some());
         assert_eq!(summary.context_pct.unwrap(), 0.25); // 50000/200000
         assert!(summary.elapsed_secs.is_some());
@@ -333,6 +337,7 @@ mod tests {
 
         assert_eq!(summary.id, "test-stage");
         assert_eq!(summary.status, StageStatus::WaitingForDeps);
+        assert!(summary.dependencies.is_empty());
         assert!(summary.context_pct.is_none());
         assert!(summary.elapsed_secs.is_some());
     }
