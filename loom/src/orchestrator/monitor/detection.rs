@@ -126,6 +126,20 @@ impl Detection {
                             }
                         }
 
+                        // Check if the stage has already been marked as Completed
+                        // This prevents false crash reports when the session exits normally
+                        // after completing its work
+                        if let Some(stage_id) = &session.stage_id {
+                            if let Some(stage) = stages.iter().find(|s| &s.id == stage_id) {
+                                if matches!(stage.status, StageStatus::Completed) {
+                                    // Stage completed successfully, treat as normal completion
+                                    self.last_session_states
+                                        .insert(session.id.clone(), SessionStatus::Completed);
+                                    continue;
+                                }
+                            }
+                        }
+
                         // Regular session crashed - generate crash report
                         let reason = if session.pid.is_some() {
                             "Process no longer running"
