@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+# Colors - minimal palette
+R='\033[0;31m' # errors
+G='\033[0;32m' # success
+Y='\033[0;33m' # warnings
+C='\033[0;36m' # accent
+B='\033[1m'    # bold
+D='\033[2m'    # dim
+N='\033[0m'    # reset
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
@@ -18,25 +17,65 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 GITHUB_REPO="cosmix/loom"
 GITHUB_RELEASES="https://github.com/${GITHUB_REPO}/releases/latest/download"
 
+# Component counts (updated during install)
+COUNT_AGENTS=0
+COUNT_SKILLS=0
+COUNT_HOOKS=0
+
 print_banner() {
-	echo ""
-	echo -e "${BOLD}Claude Code Setup${NC}"
-	echo -e "${DIM}agents + skills + config${NC}"
+	cat <<'EOF'
+
+   ╷
+   │  ┌─┐┌─┐┌┬┐
+   │  │ ││ ││││
+   ┴─┘└─┘└─┘┴ ┴
+
+EOF
+	echo -e "   ${D}Agent orchestration for Claude Code${N}"
 	echo ""
 }
 
-step() { echo -e "${BLUE}::${NC} $1"; }
-ok() { echo -e "   ${GREEN}ok${NC} $1"; }
-warn() { echo -e "   ${YELLOW}--${NC} $1"; }
-info() { echo -e "   ${DIM}$1${NC}"; }
-backup() { echo -e "   ${CYAN}>>${NC} backed up ${DIM}→ $1${NC}"; }
+print_components() {
+	echo -e "   ${D}components${N}"
+	echo -e "   ${C}cli${N}      parallel work orchestrator"
+	echo -e "   ${C}agents${N}   specialized subagents"
+	echo -e "   ${C}skills${N}   domain knowledge modules"
+	echo -e "   ${C}hooks${N}    session lifecycle events"
+	echo -e "   ${C}config${N}   orchestration rules"
+	echo ""
+}
+
+# Progress indicators
+step() {
+	echo -e "   ${C}›${N} $1"
+}
+
+ok() {
+	echo -e "   ${G}✓${N} $1"
+}
+
+warn() {
+	echo -e "   ${Y}!${N} $1"
+}
+
+err() {
+	echo -e "   ${R}✗${N} $1"
+}
+
+info() {
+	echo -e "     ${D}$1${N}"
+}
+
+backup_msg() {
+	echo -e "     ${D}backed up → $1${N}"
+}
 
 backup_if_exists() {
 	local path="$1"
 	if [[ -e "$path" ]]; then
 		local backup_path="${path}.bak.${TIMESTAMP}"
 		mv "$path" "$backup_path"
-		backup "$(basename "$backup_path")"
+		backup_msg "$(basename "$backup_path")"
 		return 0
 	fi
 	return 1
@@ -49,8 +88,8 @@ is_curl_pipe() {
 
 check_dependencies() {
 	if ! command -v unzip &>/dev/null; then
-		echo -e "${RED}!!${NC} unzip is required but not installed"
-		echo -e "   Install it with: apt install unzip / brew install unzip"
+		err "unzip is required but not installed"
+		info "install with: apt install unzip / brew install unzip"
 		exit 1
 	fi
 }
@@ -64,7 +103,7 @@ download_file() {
 	elif command -v wget &>/dev/null; then
 		wget -q "$url" -O "$dest"
 	else
-		echo -e "   ${RED}!!${NC} Neither curl nor wget available"
+		err "neither curl nor wget available"
 		return 1
 	fi
 }
@@ -83,32 +122,24 @@ download_and_extract_zip() {
 
 build_skill_index() {
 	local index_builder="$CLAUDE_DIR/hooks/loom/skill-index-builder.sh"
-	if [[ -x "$index_builder" ]]; then
-		if "$index_builder" >/dev/null 2>&1; then
-			ok "skill keyword index built"
-		else
-			warn "failed to build skill keyword index"
-		fi
-	fi
+	[[ -x "$index_builder" ]] && "$index_builder" >/dev/null 2>&1 || true
 }
 
 install_agents_remote() {
-	step "downloading agents"
+	step "agents"
 
 	backup_if_exists "$CLAUDE_DIR/agents" || true
 	download_and_extract_zip "${GITHUB_RELEASES}/agents.zip" "$CLAUDE_DIR/agents" || {
-		warn "failed to download agents, trying raw files..."
-		# Fallback: clone just agents directory
+		warn "failed to download agents"
 		return 1
 	}
 
-	local count
-	count=$(find "$CLAUDE_DIR/agents" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-	ok "$count agents installed"
+	COUNT_AGENTS=$(find "$CLAUDE_DIR/agents" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+	ok "$COUNT_AGENTS agents"
 }
 
 install_skills_remote() {
-	step "downloading skills"
+	step "skills"
 
 	backup_if_exists "$CLAUDE_DIR/skills" || true
 	download_and_extract_zip "${GITHUB_RELEASES}/skills.zip" "$CLAUDE_DIR/skills" || {
@@ -116,13 +147,12 @@ install_skills_remote() {
 		return 1
 	}
 
-	local count
-	count=$(find "$CLAUDE_DIR/skills" -name "SKILL.md" 2>/dev/null | wc -l | tr -d ' ')
-	ok "$count skills installed"
+	COUNT_SKILLS=$(find "$CLAUDE_DIR/skills" -name "SKILL.md" 2>/dev/null | wc -l | tr -d ' ')
+	ok "$COUNT_SKILLS skills"
 }
 
 install_claude_md_remote() {
-	step "downloading CLAUDE.md"
+	step "config"
 
 	local claude_md="$CLAUDE_DIR/CLAUDE.md"
 	local temp_file="/tmp/CLAUDE.md.template.$$"
@@ -130,7 +160,7 @@ install_claude_md_remote() {
 	backup_if_exists "$claude_md" || true
 
 	download_file "${GITHUB_RELEASES}/CLAUDE.md.template" "$temp_file" || {
-		warn "failed to download CLAUDE.md.template"
+		warn "failed to download config"
 		return 1
 	}
 
@@ -143,11 +173,11 @@ install_claude_md_remote() {
 	} >"$claude_md"
 
 	rm -f "$temp_file"
-	ok "CLAUDE.md installed"
+	ok "CLAUDE.md"
 }
 
 install_hooks_remote() {
-	step "downloading hooks"
+	step "hooks"
 
 	# All hooks go to loom/ subdirectory to keep them separate from user hooks
 	local hooks_dir="$CLAUDE_DIR/hooks/loom"
@@ -168,43 +198,29 @@ install_hooks_remote() {
 		"skill-index-builder.sh"
 		"skill-trigger.sh"
 	)
-	local downloaded=0
 
 	for hook in "${all_hooks[@]}"; do
 		if download_file "${GITHUB_RELEASES}/$hook" "$hooks_dir/$hook" 2>/dev/null; then
 			chmod +x "$hooks_dir/$hook"
-			((++downloaded))
+			((++COUNT_HOOKS))
 		fi
 	done
 
-	if [[ $downloaded -eq 0 ]]; then
+	if [[ $COUNT_HOOKS -eq 0 ]]; then
 		warn "failed to download hooks"
 		return 1
 	fi
 
-	ok "$downloaded hooks installed"
+	ok "$COUNT_HOOKS hooks"
 
 	# Build skill keyword index
 	build_skill_index
 }
 
 check_requirements() {
-	step "checking source files"
-
-	[[ -d "$SCRIPT_DIR/agents" ]] || {
-		echo -e "   ${RED}!!${NC} agents/ not found"
-		exit 1
-	}
-	[[ -d "$SCRIPT_DIR/skills" ]] || {
-		echo -e "   ${RED}!!${NC} skills/ not found"
-		exit 1
-	}
-	[[ -f "$SCRIPT_DIR/CLAUDE.md.template" ]] || {
-		echo -e "   ${RED}!!${NC} CLAUDE.md.template not found"
-		exit 1
-	}
-
-	ok "all files present"
+	[[ -d "$SCRIPT_DIR/agents" ]] || { err "agents/ not found"; exit 1; }
+	[[ -d "$SCRIPT_DIR/skills" ]] || { err "skills/ not found"; exit 1; }
+	[[ -f "$SCRIPT_DIR/CLAUDE.md.template" ]] || { err "CLAUDE.md.template not found"; exit 1; }
 }
 
 confirm_overwrites() {
@@ -219,13 +235,14 @@ confirm_overwrites() {
 	fi
 
 	echo ""
-	warn "the following will be replaced in ~/.claude/:"
+	warn "existing files will be replaced:"
 	for item in "${found[@]}"; do
-		echo -e "      ${DIM}$item${NC}"
+		echo -e "     ${D}~/.claude/$item${N}"
 	done
-	info "backups will be saved as *.bak.$TIMESTAMP"
 	echo ""
-	echo -en "   ${BOLD}proceed? [y/N]${NC} "
+	info "backups saved as *.bak.$TIMESTAMP"
+	echo ""
+	echo -en "   ${B}proceed? [y/N]${N} "
 	read -r response
 	if [[ ! "$response" =~ ^[Yy]$ ]]; then
 		echo ""
@@ -235,40 +252,31 @@ confirm_overwrites() {
 }
 
 ensure_claude_dir() {
-	step "preparing $CLAUDE_DIR"
-
-	if [[ ! -d "$CLAUDE_DIR" ]]; then
-		mkdir -p "$CLAUDE_DIR"
-		ok "created $CLAUDE_DIR"
-	else
-		ok "$CLAUDE_DIR exists"
-	fi
+	mkdir -p "$CLAUDE_DIR"
 }
 
 install_agents() {
-	step "installing agents"
+	step "agents"
 
 	backup_if_exists "$CLAUDE_DIR/agents" || true
 	cp -r "$SCRIPT_DIR/agents" "$CLAUDE_DIR/"
 
-	local count
-	count=$(find "$CLAUDE_DIR/agents" -name "*.md" | wc -l | tr -d ' ')
-	ok "$count agents installed"
+	COUNT_AGENTS=$(find "$CLAUDE_DIR/agents" -name "*.md" | wc -l | tr -d ' ')
+	ok "$COUNT_AGENTS agents"
 }
 
 install_skills() {
-	step "installing skills"
+	step "skills"
 
 	backup_if_exists "$CLAUDE_DIR/skills" || true
 	cp -r "$SCRIPT_DIR/skills" "$CLAUDE_DIR/"
 
-	local count
-	count=$(find "$CLAUDE_DIR/skills" -name "SKILL.md" | wc -l | tr -d ' ')
-	ok "$count skills installed"
+	COUNT_SKILLS=$(find "$CLAUDE_DIR/skills" -name "SKILL.md" | wc -l | tr -d ' ')
+	ok "$COUNT_SKILLS skills"
 }
 
 install_claude_md() {
-	step "configuring CLAUDE.md"
+	step "config"
 
 	local claude_md="$CLAUDE_DIR/CLAUDE.md"
 
@@ -282,11 +290,11 @@ install_claude_md() {
 		cat "$SCRIPT_DIR/CLAUDE.md.template"
 	} >"$claude_md"
 
-	ok "CLAUDE.md installed"
+	ok "CLAUDE.md"
 }
 
 install_hooks() {
-	step "installing hooks"
+	step "hooks"
 
 	# All hooks go to loom/ subdirectory to keep them separate from user hooks
 	local hooks_dir="$CLAUDE_DIR/hooks/loom"
@@ -308,27 +316,25 @@ install_hooks() {
 		"skill-trigger.sh"
 	)
 
-	local count=0
-
 	if [[ -d "$SCRIPT_DIR/hooks" ]]; then
 		for hook_name in "${all_hooks[@]}"; do
 			local hook="$SCRIPT_DIR/hooks/$hook_name"
 			if [[ -f "$hook" ]]; then
 				cp "$hook" "$hooks_dir/"
 				chmod +x "$hooks_dir/$hook_name"
-				((++count))
+				((++COUNT_HOOKS))
 			fi
 		done
 	fi
 
-	ok "$count hooks installed"
+	ok "$COUNT_HOOKS hooks"
 
 	# Build skill keyword index
 	build_skill_index
 }
 
 install_loom_local() {
-	step "installing loom CLI"
+	step "cli"
 
 	local install_dir="$HOME/.local/bin"
 	local loom_bin="$install_dir/loom"
@@ -336,39 +342,29 @@ install_loom_local() {
 
 	# Check for local binary first
 	if [[ -x "$local_loom" ]]; then
-		# Create install directory if needed
-		if [[ ! -d "$install_dir" ]]; then
-			mkdir -p "$install_dir"
-			info "created $install_dir"
-		fi
-
+		mkdir -p "$install_dir"
 		cp "$local_loom" "$loom_bin"
 		chmod +x "$loom_bin"
-		ok "loom CLI installed from local build"
+		ok "loom"
 
-		# Check if ~/.local/bin is in PATH
 		if [[ ":$PATH:" != *":$install_dir:"* ]]; then
-			info "add $install_dir to your PATH to use loom"
+			info "add ~/.local/bin to PATH"
 		fi
 		return 0
 	fi
 
 	# No local binary, fall back to download
-	info "no local build found, downloading from GitHub..."
+	info "no local build, downloading..."
 	install_loom_remote
 }
 
 install_loom_remote() {
-	step "installing loom CLI"
+	step "cli"
 
 	local install_dir="$HOME/.local/bin"
 	local loom_bin="$install_dir/loom"
 
-	# Create install directory if needed
-	if [[ ! -d "$install_dir" ]]; then
-		mkdir -p "$install_dir"
-		info "created $install_dir"
-	fi
+	mkdir -p "$install_dir"
 
 	# Detect platform and architecture
 	local os arch target
@@ -379,7 +375,6 @@ install_loom_remote() {
 	Linux)
 		case "$arch" in
 		x86_64)
-			# Detect libc type
 			if ldd --version 2>&1 | grep -q musl; then
 				target="loom-x86_64-unknown-linux-musl"
 			else
@@ -390,8 +385,7 @@ install_loom_remote() {
 			target="loom-aarch64-unknown-linux-gnu"
 			;;
 		*)
-			warn "unsupported architecture: $arch"
-			info "loom CLI not installed"
+			warn "unsupported arch: $arch"
 			return 0
 			;;
 		esac
@@ -405,49 +399,41 @@ install_loom_remote() {
 			target="loom-aarch64-apple-darwin"
 			;;
 		*)
-			warn "unsupported architecture: $arch"
-			info "loom CLI not installed"
+			warn "unsupported arch: $arch"
 			return 0
 			;;
 		esac
 		;;
 	*)
-		warn "unsupported platform: $os (only Linux and macOS are supported)"
-		info "loom CLI not installed"
+		warn "unsupported platform: $os"
 		return 0
 		;;
 	esac
 
-	# Download loom binary
 	local download_url="${GITHUB_RELEASES}/$target"
-	info "downloading $target"
 
 	if command -v curl &>/dev/null; then
 		if ! curl -fsSL "$download_url" -o "$loom_bin"; then
-			warn "failed to download loom CLI"
-			info "you can manually install from: $download_url"
+			warn "download failed"
+			info "manual install: $download_url"
 			return 0
 		fi
 	elif command -v wget &>/dev/null; then
 		if ! wget -q "$download_url" -O "$loom_bin"; then
-			warn "failed to download loom CLI"
-			info "you can manually install from: $download_url"
+			warn "download failed"
+			info "manual install: $download_url"
 			return 0
 		fi
 	else
-		warn "curl or wget required to download loom"
-		info "install curl or wget, then download from: $download_url"
+		warn "curl or wget required"
 		return 0
 	fi
 
-	# Make executable
 	chmod +x "$loom_bin"
+	ok "loom"
 
-	ok "loom CLI installed to $install_dir"
-
-	# Check if ~/.local/bin is in PATH
 	if [[ ":$PATH:" != *":$install_dir:"* ]]; then
-		info "add $install_dir to your PATH to use loom"
+		info "add ~/.local/bin to PATH"
 	fi
 }
 
@@ -464,7 +450,7 @@ cleanup_backups() {
 	fi
 
 	echo ""
-	echo -en "   ${BOLD}delete backup files? [y/N]${NC} "
+	echo -en "   ${B}delete backup files? [y/N]${N} "
 	read -r response </dev/tty
 	if [[ "$response" =~ ^[Yy]$ ]]; then
 		for backup in "${backups[@]}"; do
@@ -478,45 +464,46 @@ cleanup_backups() {
 
 print_summary() {
 	echo ""
-	echo -e "${GREEN}done.${NC}"
+	echo -e "   ${G}installed${N}"
 	echo ""
-	echo -e "${DIM}installed to ~/.claude/${NC}"
-	echo -e "  agents/      ${DIM}specialized subagents${NC}"
-	echo -e "  skills/      ${DIM}reusable capabilities${NC}"
-	echo -e "  hooks/       ${DIM}Claude Code event hooks${NC}"
-	echo -e "  CLAUDE.md    ${DIM}orchestration rules${NC}"
+	echo -e "   ${D}~/.claude/${N}"
+	echo -e "     agents/     ${D}$COUNT_AGENTS specialized subagents${N}"
+	echo -e "     skills/     ${D}$COUNT_SKILLS domain knowledge modules${N}"
+	echo -e "     hooks/      ${D}$COUNT_HOOKS lifecycle event handlers${N}"
+	echo -e "     CLAUDE.md   ${D}orchestration rules${N}"
 	echo ""
-	echo -e "${DIM}installed to ~/.local/bin/${NC}"
-	echo -e "  loom         ${DIM}parallel work orchestrator${NC}"
+	echo -e "   ${D}~/.local/bin/${N}"
+	echo -e "     loom        ${D}parallel work orchestrator${N}"
 	echo ""
-	echo -e "${DIM}hooks are auto-configured when you run:${NC}"
-	echo -e "  ${CYAN}loom init${NC} <plan.md>    ${DIM}in your project${NC}"
-	echo ""
-	echo -e "run ${CYAN}loom run${NC} to start"
+	echo -e "   ${D}next steps${N}"
+	echo -e "     ${C}loom init${N} <plan.md>   ${D}initialize a project${N}"
+	echo -e "     ${C}loom run${N}              ${D}start orchestration${N}"
 	echo ""
 }
 
 main() {
 	print_banner
+	print_components
 
 	if is_curl_pipe; then
-		info "running from curl pipe, downloading from GitHub..."
+		info "downloading from github"
+		echo ""
 		check_dependencies
 		ensure_claude_dir
+		install_loom_remote
 		install_agents_remote
 		install_skills_remote
-		install_claude_md_remote
 		install_hooks_remote
-		install_loom_remote
+		install_claude_md_remote
 	else
 		check_requirements
 		confirm_overwrites
 		ensure_claude_dir
+		install_loom_local
 		install_agents
 		install_skills
-		install_claude_md
 		install_hooks
-		install_loom_local
+		install_claude_md
 		cleanup_backups
 	fi
 
