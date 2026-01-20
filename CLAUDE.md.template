@@ -735,9 +735,10 @@ Delegate implementation to subagents. Spawn PARALLEL when files don't overlap.
 
 ### Session Start
 
-1. Check `.work/signals/` for your session ID
-2. Signal found? Execute. No signal? Ask user.
-3. If starting fresh, consider running `loom knowledge init` to create knowledge files
+1. **Read knowledge files first** — If `doc/loom/knowledge/` exists, read ALL files there before starting work. This contains critical context: entry points, patterns, conventions, and past mistakes. Skipping this wastes time rediscovering known information.
+2. Check `.work/signals/` for your session ID
+3. Signal found? Execute. No signal? Ask user.
+4. If starting fresh, consider running `loom knowledge init` to create knowledge files
 
 ### Stage Lifecycle
 
@@ -832,32 +833,37 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 │  4. IN WORKTREE: Commit + complete stage or hook BLOCKS exit.      │
 │     → cd to WORKTREE ROOT before running loom stage complete       │
 │                                                                    │
-│  5. KNOWLEDGE-BOOTSTRAP IS MANDATORY FIRST STAGE:                  │
+│  5. READ KNOWLEDGE FILES AT SESSION START:                         │
+│     → If doc/loom/knowledge/ exists, READ IT FIRST. Always.        │
+│     → Contains: entry-points, patterns, conventions, mistakes      │
+│     → Skipping this = repeating past mistakes & wasting time       │
+│                                                                    │
+│  6. KNOWLEDGE-BOOTSTRAP IS MANDATORY FIRST STAGE (for plans):      │
 │     → EVERY plan starts with knowledge-bootstrap. NO EXCEPTIONS.   │
 │     → Read existing knowledge. Update with discoveries.            │
 │     → RECORD MISTAKES or you will repeat them.                     │
 │     → USE ONLY `loom knowledge` CLI commands (not Write/Edit)      │
 │     → Long content? Break into multiple CLI invocations.           │
 │                                                                    │
-│  6. PARALLELIZATION ORDER (THIS IS CRITICAL):                      │
+│  7. PARALLELIZATION ORDER (THIS IS CRITICAL):                      │
 │     → FIRST: Parallel SUBAGENTS within ONE stage                   │
 │     → SECOND: Multiple stages ONLY when files conflict             │
 │     → DO NOT create separate stages for non-overlapping tasks!     │
 │                                                                    │
-│  7. STAGE DESCRIPTIONS MUST INCLUDE EXECUTION PLANS:               │
+│  8. STAGE DESCRIPTIONS MUST INCLUDE EXECUTION PLANS:               │
 │     → Which subagents run in parallel?                             │
 │     → What files does each subagent own?                           │
 │     → Why sequential if not parallelizable?                        │
 │                                                                    │
-│  8. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
+│  9. SKILLS & AGENTS: Check /auth, /testing, etc. BEFORE coding.    │
 │     → Use specialized agents for security, infra, architecture     │
 │                                                                    │
-│  9. PLANS: integration-verify LAST. No exceptions.                 │
+│  10. PLANS: integration-verify LAST. No exceptions.                │
 │     → TESTS PASSING ≠ FEATURE WORKING                              │
 │     → MUST include FUNCTIONAL verification (smoke test, wiring)    │
 │     → Code that compiles but is never wired up is USELESS          │
 │                                                                    │
-│  10. ACCEPTANCE CRITERIA: Think before you write them!             │
+│  11. ACCEPTANCE CRITERIA: Think before you write them!             │
 │     → What is working_dir? Commands run FROM there.                │
 │     → Do paths EXIST relative to working_dir?                      │
 │     → Wrong dir/paths = failing criteria even with correct code.   │

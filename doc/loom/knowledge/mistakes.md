@@ -14,3 +14,11 @@
 **Why:** Followed settings.json path directly to installed file without considering source/install separation.
 
 **Avoid:** Always edit hooks in project's `hooks/` directory. Installed copies (`~/.claude/hooks/loom/`) get overwritten on reinstall.
+
+## Duplicate test files after refactoring
+
+**What:** Splitting tests.rs into tests/mod.rs but not deleting original tests.rs caused E0761 (ambiguous module).
+
+**Affected:** src/fs/permissions/ and src/verify/criteria/ had both tests.rs AND tests/mod.rs.
+
+**Fix:** When refactoring tests.rs to tests/ directory, DELETE the original tests.rs file. Rust finds both patterns and fails.
