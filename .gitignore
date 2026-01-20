@@ -15,8 +15,8 @@ Desktop.ini
 .project
 .settings/
 
-# Claude Code local settings (user-specific)
-.claude/settings.local.json
+# Claude Code (user-specific session data)
+.claude/
 
 # Logs
 *.log
@@ -26,3 +26,10 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+# loom workspace (created by `loom init`)
+.work/
+
+# Rust build artifacts
+target/
+.worktrees/
