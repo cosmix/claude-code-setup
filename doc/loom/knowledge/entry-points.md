@@ -237,3 +237,14 @@ Plus: kill_session, is_session_alive, backend_type.
 - native/spawner.rs - spawn_in_terminal() with reaper thread
 - native/pid_tracking.rs - PID files and /proc scanning (Linux-only)
 - native/window_ops.rs - wmctrl/xdotool window management (Linux-only)
+
+## macOS Terminal Support
+
+- emulator.rs:23-24 - TerminalApp and ITerm2 enum variants
+- emulator.rs:199-227 - macOS AppleScript build_command()
+
+native/detection.rs:120-158 - macOS terminal detection (iTerm2 > cross-platform > Terminal.app)
+
+native/window_ops.rs:65-109,164-212 - macOS AppleScript window operations
+
+native/pid_tracking.rs:170-249 - macOS PID discovery using ps/lsof

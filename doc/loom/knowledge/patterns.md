@@ -788,3 +788,14 @@ Instead of /proc scanning:
 - lsof +D /path/to/worktree: Find processes with files open in dir
 
 Wrapper script approach still works - bash is available on macOS.
+
+## macOS Platform Layer
+
+macOS terminal support uses AppleScript via osascript binary.
+
+Detection priority: iTerm2 (/Applications/iTerm.app) > cross-platform (kitty, alacritty, wezterm) > Terminal.app (fallback)
+
+## AppleScript Window Management
+
+Escape double quotes with replace('"', '\\"') before embedding in AppleScript strings.
+Window title search uses 'whose name contains' for partial matching.

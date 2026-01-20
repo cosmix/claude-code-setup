@@ -626,3 +626,8 @@ Without --assume-merged: dependents NOT triggered
 - test_detect_terminal_finds_something allows failure in minimal envs
 - Window operation tests check graceful handling of missing wmctrl/xdotool
 - Use tempfile::TempDir for PID file tests
+
+## macOS PID Discovery
+
+Use ps aux to list processes, filter for 'claude', then lsof -p PID to get cwd.
+Compare cwd with expected worktree path to identify correct process.
