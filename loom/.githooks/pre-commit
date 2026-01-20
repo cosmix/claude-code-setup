@@ -1,16 +1,36 @@
 #!/bin/sh
-# Pre-commit hook: ensure Rust code is properly formatted
+# Pre-commit hook: ensure Rust code is formatted, passes tests, and clippy
 
 # Get the repo root (where .git is)
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Run cargo fmt check in the loom directory
+# Run checks in the loom directory
 cd "$REPO_ROOT/loom" || exit 1
 
+# Check formatting
 if ! cargo fmt --check 2>/dev/null; then
     echo ""
     echo "ERROR: Rust code is not formatted correctly."
     echo "Run 'cargo fmt' in the loom/ directory to fix."
+    echo ""
+    exit 1
+fi
+
+# Run clippy with warnings as errors
+if ! cargo clippy -- -D warnings 2>&1; then
+    echo ""
+    echo "ERROR: Clippy found issues."
+    echo "Fix the warnings above before committing."
+    echo ""
+    exit 1
+fi
+
+# Run tests
+# Unset git env vars to prevent interference with test repo creation
+if ! env -u GIT_INDEX_FILE -u GIT_DIR -u GIT_WORK_TREE cargo test 2>&1; then
+    echo ""
+    echo "ERROR: Tests failed."
+    echo "Fix the failing tests before committing."
     echo ""
     exit 1
 fi
