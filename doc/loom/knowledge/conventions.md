@@ -588,10 +588,12 @@ Without --assume-merged: dependents NOT triggered
 ## Re-export Conventions in mod.rs
 
 ### Two-Step Pattern
+
 1. Declare submodules: `mod base; mod checks; mod operations;`
 2. Re-export public API: `pub use base::Item; pub use checks::func;`
 
 ### Re-export Rules
+
 - Group re-exports by source module
 - Only export public API items (keep helpers private)
 - Use explicit item lists, never wildcards (`*`)
@@ -600,14 +602,17 @@ Without --assume-merged: dependents NOT triggered
 ## Test File Conventions
 
 ### Inline Tests
+
 - Use `#[cfg(test)] mod tests { }` at end of source file
 - For simple unit tests (< 5 tests)
 
 ### Separate Test Files
+
 - Use tests.rs in module directory with complex suites
 - Declare in mod.rs: `#[cfg(test)] mod tests;`
 
 ### Integration Tests
+
 - Located in loom/tests/integration/
 - Use `serial_test` crate for test isolation
 - Shared helpers in helpers.rs module
@@ -615,6 +620,7 @@ Without --assume-merged: dependents NOT triggered
 ## Terminal Module Conventions
 
 ### File Organization
+
 - emulator.rs: Enum + command building (no platform-specific code)
 - native/detection.rs: Platform-specific detection logic
 - native/pid_tracking.rs: Platform-specific PID discovery
@@ -622,6 +628,7 @@ Without --assume-merged: dependents NOT triggered
 - native/spawner.rs: Cross-platform spawn orchestration
 
 ### Testing Patterns
+
 - Tests are designed to not panic on missing tools
 - test_detect_terminal_finds_something allows failure in minimal envs
 - Window operation tests check graceful handling of missing wmctrl/xdotool
