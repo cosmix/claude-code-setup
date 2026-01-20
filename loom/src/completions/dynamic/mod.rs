@@ -100,9 +100,7 @@ pub fn complete_dynamic(ctx: &CompletionContext) -> Result<()> {
         "remove" if ctx.cmdline.contains("worktree") => complete_stage_ids(cwd, prefix)?,
 
         // Knowledge show/update file completions (must come before general stage commands)
-        "show" | "update" if ctx.cmdline.contains("knowledge") => {
-            complete_knowledge_files(prefix)?
-        }
+        "show" | "update" if ctx.cmdline.contains("knowledge") => complete_knowledge_files(prefix)?,
 
         // Stage subcommands that take stage_id (all in one pattern)
         "complete" | "block" | "reset" | "waiting" | "hold" | "release" | "skip" | "retry"
