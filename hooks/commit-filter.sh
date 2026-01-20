@@ -63,13 +63,13 @@ fi
 # Block git commits with Co-Authored-By lines mentioning Claude/Anthropic (per CLAUDE.md rule 8)
 
 # Check if this is a git commit command
-if echo "$COMMAND" | rg -qi 'git\s+(-C\s+\S+\s+)?commit'; then
+if echo "$COMMAND" | grep -qiE 'git[[:space:]].*commit'; then
 	{
 		echo "DEBUG: Detected git commit command"
 	} >>"$DEBUG_LOG" 2>&1
 
 	# Check for forbidden Co-Authored-By patterns
-	if echo "$COMMAND" | rg -qi 'co-authored-by.*(claude|anthropic|noreply@anthropic)'; then
+	if echo "$COMMAND" | grep -qiE 'co-authored-by.*(claude|anthropic|noreply@anthropic)'; then
 		{
 			echo "DEBUG: BLOCKED - Detected forbidden Co-Authored-By pattern"
 		} >>"$DEBUG_LOG" 2>&1
