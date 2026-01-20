@@ -120,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Requires a terminal emulator - skipped in CI
     fn test_running_session_count() {
         let config = create_test_config();
         let graph = create_simple_graph();
