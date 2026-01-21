@@ -419,3 +419,44 @@ fn test_merge_session_completed_event() {
     assert_eq!(event1, event2);
     assert_ne!(event1, event3);
 }
+
+#[test]
+fn test_check_session_alive_with_pid_file() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let work_dir = temp_dir.path().to_path_buf();
+
+    let config = MonitorConfig {
+        work_dir: work_dir.clone(),
+        ..Default::default()
+    };
+    let handlers = Handlers::new(config);
+
+    let mut session = Session::new();
+    session.assign_to_stage("test-stage".to_string());
+    session.set_pid(99999); // Non-existent PID
+
+    // Without PID file, should use session.pid and return false (process doesn't exist)
+    let result = handlers.check_session_alive(&session).unwrap();
+    assert_eq!(result, Some(false));
+
+    // Create PID file with current process PID (should be alive)
+    let pids_dir = work_dir.join("pids");
+    std::fs::create_dir_all(&pids_dir).unwrap();
+    let pid_file = pids_dir.join("test-stage.pid");
+    std::fs::write(&pid_file, std::process::id().to_string()).unwrap();
+
+    // With PID file pointing to alive process, should return true
+    let result = handlers.check_session_alive(&session).unwrap();
+    assert_eq!(result, Some(true));
+
+    // Write a non-existent PID to the file
+    std::fs::write(&pid_file, "99998").unwrap();
+
+    // With PID file pointing to dead process, should return false and clean up the file
+    let result = handlers.check_session_alive(&session).unwrap();
+    assert_eq!(result, Some(false));
+    // PID file should be cleaned up after detecting dead process
+    assert!(!pid_file.exists());
+}

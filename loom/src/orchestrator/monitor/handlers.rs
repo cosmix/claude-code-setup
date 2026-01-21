@@ -28,20 +28,37 @@ impl Handlers {
 
     /// Check if a session is still alive by checking its process
     ///
-    /// Checks the PID if available (works for both native and terminal sessions).
+    /// Uses a layered approach:
+    /// 1. Try reading from PID file (most current PID from wrapper script)
+    /// 2. Check if that PID is alive
+    /// 3. Fallback to stored session.pid
+    ///
+    /// Returns Ok(Some(true/false)) if we can determine liveness, Ok(None) if no PID available.
     pub fn check_session_alive(&self, session: &Session) -> Result<Option<bool>> {
-        // Check PID if available (works for both native and terminal sessions)
-        if let Some(pid) = session.pid {
-            let output = std::process::Command::new("kill")
-                .arg("-0")
-                .arg(pid.to_string())
-                .output()
-                .context("Failed to check if process is alive")?;
+        // First, try to get the most current PID from the PID file (if stage_id is available)
+        // The PID file is written by the wrapper script and may be more current than session.pid
+        if let Some(stage_id) = &session.stage_id {
+            let pid_file_path = self.config.work_dir.join("pids").join(format!("{}.pid", stage_id));
 
-            if output.status.success() {
-                return Ok(Some(true));
+            if let Ok(pid_content) = std::fs::read_to_string(&pid_file_path) {
+                if let Ok(current_pid) = pid_content.trim().parse::<u32>() {
+                    // We have a PID from the tracking file, check if it's alive
+                    let is_alive = check_pid_alive_internal(current_pid)?;
+
+                    if !is_alive {
+                        // PID file exists but process is dead - clean up the file
+                        let _ = std::fs::remove_file(&pid_file_path);
+                    }
+
+                    return Ok(Some(is_alive));
+                }
             }
-            return Ok(Some(false));
+        }
+
+        // Fallback to the stored PID from the session
+        if let Some(pid) = session.pid {
+            let is_alive = check_pid_alive_internal(pid)?;
+            return Ok(Some(is_alive));
         }
 
         // No PID - cannot track liveness
@@ -155,4 +172,15 @@ impl Handlers {
             }
         }
     }
+}
+
+/// Internal helper to check if a PID is alive using kill -0
+fn check_pid_alive_internal(pid: u32) -> Result<bool> {
+    let output = std::process::Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .output()
+        .context("Failed to check if process is alive")?;
+
+    Ok(output.status.success())
 }
