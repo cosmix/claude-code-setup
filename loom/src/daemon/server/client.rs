@@ -13,6 +13,11 @@ pub fn handle_client_connection(
     status_subscribers: Arc<Mutex<Vec<UnixStream>>>,
     log_subscribers: Arc<Mutex<Vec<UnixStream>>>,
 ) -> Result<()> {
+    // Ensure stream is in blocking mode - on macOS, accepted streams from
+    // a non-blocking listener may inherit non-blocking mode, causing
+    // read_message to fail with WouldBlock immediately.
+    stream.set_nonblocking(false)?;
+
     loop {
         let request: Request = match read_message(&mut stream) {
             Ok(req) => req,
