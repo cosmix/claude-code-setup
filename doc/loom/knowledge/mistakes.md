@@ -44,3 +44,11 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 **Why:** Agent didn't verify acceptance criteria passed before completing.
 
 **How to avoid:** Always run acceptance criteria before marking stages complete.
+
+## Acceptance Criteria Path Mismatch
+
+**Issue:** Stage had working_dir: loom but acceptance paths assumed worktree root.
+
+**Root cause:** Paths like loom/src/... failed when running from within loom/.
+
+**Fix:** Use paths relative to working_dir: src/file.rs (not loom/src/file.rs), ../TEMPLATE (not TEMPLATE).
