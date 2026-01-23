@@ -22,3 +22,7 @@
 **Affected:** src/fs/permissions/ and src/verify/criteria/ had both tests.rs AND tests/mod.rs.
 
 **Fix:** When refactoring tests.rs to tests/ directory, DELETE the original tests.rs file. Rust finds both patterns and fails.
+
+## Acceptance criteria path issue
+
+Used loom/src/... when working_dir=loom. Should use src/... (relative to working_dir).
