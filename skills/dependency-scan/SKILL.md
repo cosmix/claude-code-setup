@@ -54,24 +54,28 @@ This skill focuses on identifying security vulnerabilities, outdated packages, a
 ### 5. Language-Specific Scanning
 
 **JavaScript/Node.js:**
+
 - Use `npm audit` or `yarn audit` for vulnerability scanning
 - Check `package-lock.json` or `yarn.lock` for reproducibility
 - Consider `npm-check-updates` for upgrade analysis
 - Use `license-checker` for license compliance
 
 **Python:**
+
 - Use `pip-audit` or `safety` for CVE scanning
 - Check `requirements.txt` and `Pipfile.lock`
 - Use `pip-compile` with `--generate-hashes` for integrity
 - Consider `pipdeptree` for dependency visualization
 
 **Rust:**
+
 - Use `cargo audit` for RustSec advisories
 - Check `Cargo.lock` for reproducible builds
 - Use `cargo outdated` for version analysis
 - Consider `cargo deny` for policy enforcement
 
 **Go:**
+
 - Use `govulncheck` for vulnerability scanning
 - Check `go.sum` for module integrity
 - Use `go list -m all` to enumerate dependencies
@@ -82,11 +86,13 @@ This skill focuses on identifying security vulnerabilities, outdated packages, a
 Generate Software Bill of Materials for supply chain transparency:
 
 **CycloneDX:**
+
 - `npm install -g @cyclonedx/cyclonedx-npm && cyclonedx-npm --output-file sbom.json`
 - `cargo install cargo-cyclonedx && cargo cyclonedx`
 - `pip install cyclonedx-bom && cyclonedx-py`
 
 **SPDX:**
+
 - Use `syft` (universal tool): `syft . -o spdx-json > sbom.spdx.json`
 - Use `trivy` for container images: `trivy image --format spdx-json myimage:tag`
 
@@ -97,12 +103,14 @@ Generate Software Bill of Materials for supply chain transparency:
 Ensure all dependencies have compatible licenses:
 
 **Automated Tools:**
+
 - Node.js: `npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC'`
 - Rust: `cargo deny check licenses`
 - Python: `pip-licenses`
 - Universal: `fossology`, `scancode-toolkit`
 
 **License Categories:**
+
 - Permissive: MIT, Apache-2.0, BSD (generally safe)
 - Weak Copyleft: MPL, LGPL (check linking requirements)
 - Strong Copyleft: GPL, AGPL (may require source disclosure)

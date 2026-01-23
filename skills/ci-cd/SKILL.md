@@ -121,29 +121,29 @@ This skill covers the complete lifecycle of CI/CD pipeline design, implementatio
 
 ### Testing in CI/CD
 
-9. **Test Pyramid**: More unit tests, fewer integration tests, minimal E2E
-10. **Isolation**: Tests should not depend on execution order
-11. **Determinism**: Eliminate flaky tests or quarantine them
-12. **Fast Feedback**: Unit tests < 5min, full suite < 15min target
-13. **Coverage Gates**: Enforce minimum coverage thresholds
-14. **Service Mocking**: Use test doubles for external dependencies
+1. **Test Pyramid**: More unit tests, fewer integration tests, minimal E2E
+2. **Isolation**: Tests should not depend on execution order
+3. **Determinism**: Eliminate flaky tests or quarantine them
+4. **Fast Feedback**: Unit tests < 5min, full suite < 15min target
+5. **Coverage Gates**: Enforce minimum coverage thresholds
+6. **Service Mocking**: Use test doubles for external dependencies
 
 ### Security
 
-15. **Shift Left**: Run security scans early in the pipeline
-16. **Dependency Scanning**: Check for CVEs in all dependencies
-17. **Secrets Management**: Never hardcode secrets, use secure vaults
-18. **Least Privilege**: Minimal permissions for pipeline runners
-19. **Supply Chain Security**: Verify and sign artifacts
-20. **Audit Trail**: Log all deployments and access
+1. **Shift Left**: Run security scans early in the pipeline
+2. **Dependency Scanning**: Check for CVEs in all dependencies
+3. **Secrets Management**: Never hardcode secrets, use secure vaults
+4. **Least Privilege**: Minimal permissions for pipeline runners
+5. **Supply Chain Security**: Verify and sign artifacts
+6. **Audit Trail**: Log all deployments and access
 
 ### Performance
 
-21. **Incremental Builds**: Only rebuild changed components
-22. **Layer Caching**: Optimize Dockerfile layer order
-23. **Dependency Locking**: Pin versions for reproducibility
-24. **Resource Limits**: Prevent resource exhaustion
-25. **Path Filtering**: Skip jobs when irrelevant files change
+1. **Incremental Builds**: Only rebuild changed components
+2. **Layer Caching**: Optimize Dockerfile layer order
+3. **Dependency Locking**: Pin versions for reproducibility
+4. **Resource Limits**: Prevent resource exhaustion
+5. **Path Filtering**: Skip jobs when irrelevant files change
 
 ## Examples
 

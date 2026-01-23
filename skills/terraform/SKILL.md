@@ -9,6 +9,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ## Overview
 
 This skill covers comprehensive Terraform and OpenTofu infrastructure management including:
+
 - Module design and development patterns
 - State management and backends
 - Multi-environment strategies (workspaces, tfvars, directory structure)
@@ -35,7 +36,8 @@ This skill covers comprehensive Terraform and OpenTofu infrastructure management
 ### 2. Write Terraform Configuration
 
 **Module Structure:**
-```
+
+```text
 terraform/
 ├── modules/
 │   ├── vpc/
@@ -57,6 +59,7 @@ terraform/
 ```
 
 **Configuration Principles:**
+
 - Structure code in reusable modules with clear interfaces
 - Define all variables with descriptions and validation rules
 - Configure providers with version constraints
@@ -68,6 +71,7 @@ terraform/
 ### 3. Module Development Patterns
 
 **Module Interface Design:**
+
 ```hcl
 # modules/app-service/variables.tf
 variable "name" {
@@ -110,6 +114,7 @@ variable "tags" {
 ```
 
 **Module Composition:**
+
 ```hcl
 # modules/app-infrastructure/main.tf
 module "vpc" {
@@ -147,6 +152,7 @@ module "app" {
 ```
 
 **Module Versioning:**
+
 ```hcl
 # Use versioned modules for stability
 module "vpc" {
@@ -169,6 +175,7 @@ module "internal" {
 **Remote State Backend Configuration:**
 
 **AWS S3 + DynamoDB:**
+
 ```hcl
 # backend.tf
 terraform {
@@ -189,6 +196,7 @@ terraform {
 ```
 
 **Setup Commands:**
+
 ```bash
 # Create state bucket and lock table
 aws s3api create-bucket \
@@ -219,6 +227,7 @@ aws dynamodb create-table \
 ```
 
 **State Operations:**
+
 ```bash
 # List resources in state
 tofu state list
@@ -247,11 +256,13 @@ tofu state replace-provider registry.terraform.io/hashicorp/aws \
 ```
 
 **State Locking:**
+
 - Always use state locking to prevent concurrent modifications
 - DynamoDB for AWS, GCS for Google Cloud, Azure Storage for Azure
 - If lock is stuck, verify no operations running before forcing: `tofu force-unlock LOCK_ID`
 
 **State Migration:**
+
 ```bash
 # Migrate from local to remote backend
 # 1. Configure backend in backend.tf
@@ -267,6 +278,7 @@ tofu init -migrate-state -backend-config="bucket=new-bucket"
 ### 5. Multi-Environment Management
 
 **Strategy 1: Workspaces (Simple, Same Backend)**
+
 ```bash
 # Create and switch workspaces
 tofu workspace new dev
@@ -291,7 +303,8 @@ locals {
 ```
 
 **Strategy 2: Directory Structure (Complex, Isolated)**
-```
+
+```text
 terraform/
 ├── modules/          # Shared modules
 ├── environments/
@@ -305,6 +318,7 @@ terraform/
 ```
 
 **Strategy 3: tfvars Files (Flexible)**
+
 ```bash
 # environments/dev.tfvars
 environment      = "dev"
@@ -327,6 +341,7 @@ tofu apply -var-file="environments/prod.tfvars"
 ### 6. Security Best Practices
 
 **IAM and Least Privilege:**
+
 ```hcl
 # Create role with specific permissions
 resource "aws_iam_role" "app" {
@@ -366,6 +381,7 @@ resource "aws_iam_role_policy" "app" {
 ```
 
 **Secrets Management:**
+
 ```hcl
 # Store secrets in AWS Secrets Manager
 resource "aws_secretsmanager_secret" "db_password" {
@@ -412,6 +428,7 @@ output "database_password_arn" {
 ```
 
 **Encryption:**
+
 ```hcl
 # KMS key for encryption
 resource "aws_kms_key" "data" {
@@ -473,6 +490,7 @@ resource "aws_db_instance" "main" {
 ```
 
 **Network Security:**
+
 ```hcl
 # Security group with minimal access
 resource "aws_security_group" "app" {
@@ -533,6 +551,7 @@ resource "aws_network_acl" "private" {
 ### 7. Provider Configuration
 
 **Version Constraints:**
+
 ```hcl
 # versions.tf
 terraform {
@@ -580,6 +599,7 @@ provider "kubernetes" {
 ```
 
 **Provider Aliases (Multi-Region/Account):**
+
 ```hcl
 provider "aws" {
   alias  = "primary"
@@ -605,6 +625,7 @@ resource "aws_s3_bucket" "replica" {
 ### 8. Advanced Patterns
 
 **Dynamic Blocks:**
+
 ```hcl
 resource "aws_security_group" "app" {
   name   = "${var.name}-sg"
@@ -624,6 +645,7 @@ resource "aws_security_group" "app" {
 ```
 
 **For Expressions:**
+
 ```hcl
 locals {
   # Create map from list
@@ -652,6 +674,7 @@ locals {
 ```
 
 **Count vs For_Each:**
+
 ```hcl
 # BAD - count creates unstable addresses
 resource "aws_instance" "app" {
@@ -675,6 +698,7 @@ resource "aws_instance" "app" {
 ```
 
 **Lifecycle Rules:**
+
 ```hcl
 resource "aws_instance" "app" {
   ami           = var.ami_id
@@ -697,6 +721,7 @@ resource "aws_instance" "app" {
 ```
 
 **Depends_on (Explicit Dependencies):**
+
 ```hcl
 resource "aws_iam_role_policy" "app" {
   name = "${var.name}-policy"
@@ -718,6 +743,7 @@ resource "aws_instance" "app" {
 ### 9. Troubleshooting Common Issues
 
 **Issue: State Lock Timeout**
+
 ```bash
 # Problem: Another process has state locked
 # Solution 1: Wait for other process to complete
@@ -726,6 +752,7 @@ tofu force-unlock <LOCK_ID>
 ```
 
 **Issue: Provider Plugin Errors**
+
 ```bash
 # Problem: Corrupted provider cache
 # Solution: Clear cache and re-initialize
@@ -735,6 +762,7 @@ tofu init
 ```
 
 **Issue: Resource Already Exists**
+
 ```bash
 # Problem: Resource exists but not in state
 # Solution: Import existing resource
@@ -744,6 +772,7 @@ tofu import aws_instance.example i-1234567890abcdef0
 ```
 
 **Issue: Circular Dependency**
+
 ```hcl
 # Problem: Resources depend on each other
 # Solution 1: Use separate apply steps
@@ -761,6 +790,7 @@ resource "aws_security_group_rule" "app_to_db" {
 ```
 
 **Issue: Sensitive Data in State**
+
 ```bash
 # Problem: Passwords/keys visible in state file
 # Solution: Always use remote state with encryption
@@ -769,6 +799,7 @@ resource "aws_security_group_rule" "app_to_db" {
 ```
 
 **Issue: Resource Drift**
+
 ```bash
 # Detect drift
 tofu plan -refresh-only
@@ -784,6 +815,7 @@ tofu apply
 ```
 
 **Issue: Module Source Changes**
+
 ```bash
 # Problem: Module source or version changed
 # Solution: Re-initialize and upgrade
@@ -794,6 +826,7 @@ tofu providers lock
 ```
 
 **Issue: Large Plan Output**
+
 ```bash
 # Filter plan output
 tofu plan | grep "will be created"
@@ -807,6 +840,7 @@ tofu plan | grep "aws_instance"
 ```
 
 **Issue: Timeout Errors**
+
 ```hcl
 # Configure timeouts for long-running operations
 resource "aws_db_instance" "main" {
@@ -823,6 +857,7 @@ resource "aws_db_instance" "main" {
 ### 10. Testing and Validation
 
 **Pre-Apply Validation:**
+
 ```bash
 # Format code
 tofu fmt -recursive
@@ -841,6 +876,7 @@ terraform-compliance -f compliance/ -p .
 ```
 
 **Plan Review Checklist:**
+
 - All changes are expected
 - No resources marked for deletion unintentionally
 - Sensitive data not exposed in outputs

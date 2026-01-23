@@ -22,6 +22,7 @@ This skill creates clear, comprehensive, and maintainable documentation across a
 ### 2. Code Documentation
 
 **Docstrings/Doc Comments:**
+
 - Add language-appropriate documentation (JSDoc, rustdoc, pydoc, etc.)
 - Document purpose, parameters, return values, and exceptions
 - Include type information when language supports it
@@ -29,6 +30,7 @@ This skill creates clear, comprehensive, and maintainable documentation across a
 - Explain non-obvious behavior and edge cases
 
 **Inline Comments:**
+
 - Explain WHY, not WHAT (code shows what)
 - Document complex algorithms or business logic
 - Flag known limitations or TODOs with issue references
@@ -46,6 +48,7 @@ This skill creates clear, comprehensive, and maintainable documentation across a
 ### 4. README Files
 
 **Essential Sections:**
+
 - Project name and one-line description
 - Installation/setup instructions
 - Quick start example
@@ -56,6 +59,7 @@ This skill creates clear, comprehensive, and maintainable documentation across a
 - License information
 
 **README Best Practices:**
+
 - Put most important information first
 - Use clear headings for scannability
 - Include badges for build status, version, license
@@ -65,6 +69,7 @@ This skill creates clear, comprehensive, and maintainable documentation across a
 ### 5. Architecture Decision Records (ADRs)
 
 Document significant architectural decisions with:
+
 - Context: What problem are we solving?
 - Decision: What did we choose?
 - Consequences: Trade-offs and implications
@@ -74,6 +79,7 @@ Document significant architectural decisions with:
 ### 6. Changelogs
 
 Follow semantic versioning and conventional commits:
+
 - Group changes by type (Added, Changed, Fixed, Removed, Security)
 - Link to relevant issues/PRs
 - Include breaking changes prominently
@@ -83,18 +89,21 @@ Follow semantic versioning and conventional commits:
 ### 7. Technical Writing Principles
 
 **Clarity:**
+
 - Use simple, direct language
 - Define technical terms on first use
 - Write short sentences (aim for 15-20 words)
 - One idea per paragraph
 
 **Structure:**
+
 - Use consistent heading hierarchy
 - Break up long sections with subheadings
 - Use lists for sequential steps or related items
 - Add tables for structured comparisons
 
 **Accessibility:**
+
 - Avoid jargon unless necessary
 - Provide examples for abstract concepts
 - Use active voice ("Run the command" not "The command should be run")

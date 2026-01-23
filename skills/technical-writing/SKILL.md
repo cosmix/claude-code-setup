@@ -31,7 +31,7 @@ Comprehensive technical writing skill covering all software documentation needs:
 
 Standard documentation structure:
 
-```
+```text
 1. Overview/Introduction
    - What is this?
    - Why does it exist?
@@ -199,12 +199,14 @@ client.authenticate({ key: apiKey, type: 'bearer' });
 Error messages should be actionable, specific, and respectful:
 
 **Structure:**
+
 1. What happened (the error)
 2. Why it happened (the cause)
 3. What to do (the solution)
 
 **Good error messages:**
-```
+
+```text
 Error: Configuration file not found at '/config.json'
 
 The application looks for config.json in the current directory.
@@ -217,13 +219,15 @@ Example: myapp --config /path/to/config.json
 ```
 
 **Bad error messages:**
-```
+
+```text
 Error: null reference exception
 Invalid input
 Something went wrong
 ```
 
 **Guidelines:**
+
 - Be specific about what failed
 - Avoid technical jargon for user-facing errors
 - Provide actionable next steps
@@ -307,6 +311,7 @@ client.authenticate({ token, type: 'bearer' });
 ```
 
 **Guidelines:**
+
 - Lead with user impact, not implementation details
 - Group by type (features, fixes, breaking changes)
 - Provide migration paths for breaking changes
@@ -319,6 +324,7 @@ client.authenticate({ token, type: 'bearer' });
 Developer documentation requires technical depth with clarity:
 
 **API Documentation Structure:**
+
 ```markdown
 ## MethodName
 
@@ -398,6 +404,7 @@ try {
 ```
 
 **Architecture Documentation:**
+
 - Include diagrams (ASCII art, mermaid, or references to images)
 - Explain the "why" behind design decisions
 - Document trade-offs and alternatives considered
@@ -405,6 +412,7 @@ try {
 - Link to relevant ADRs (Architecture Decision Records)
 
 **Code Comments (when needed):**
+
 - Explain "why" not "what" (code shows what)
 - Document non-obvious behavior
 - Explain workarounds or hacks

@@ -84,6 +84,7 @@ Seven-stage process:
 ### Step 2: Create Data Flow Diagram
 
 Identify:
+
 - **External entities**: Users, third-party services
 - **Processes**: Application components, services
 - **Data stores**: Databases, caches, file systems
@@ -231,30 +232,35 @@ Identify:
 Focus areas for REST, GraphQL, and gRPC APIs:
 
 **Authentication & Authorization**
+
 - Token-based auth vulnerabilities (JWT, OAuth 2.0)
 - Broken object-level authorization (BOLA/IDOR)
 - Broken function-level authorization
 - API key leakage and rotation issues
 
 **Data Exposure**
+
 - Excessive data exposure in responses
 - Mass assignment vulnerabilities
 - GraphQL introspection in production
 - Verbose error messages leaking architecture
 
 **Rate Limiting & Abuse**
+
 - Missing or bypassable rate limits
 - Resource exhaustion (large payloads, deep queries)
 - Batch request abuse
 - Pagination vulnerabilities
 
 **Input Validation**
+
 - Injection attacks (SQL, NoSQL, command, LDAP)
 - XML external entity (XXE) attacks
 - Server-side request forgery (SSRF)
 - GraphQL query complexity attacks
 
 **API-Specific Mitigations**
+
 - Schema validation (OpenAPI, GraphQL schema)
 - Query depth/complexity limiting
 - Field-level authorization
@@ -266,6 +272,7 @@ Focus areas for REST, GraphQL, and gRPC APIs:
 Focus areas for cloud, containers, and orchestration:
 
 **Cloud Services**
+
 - Misconfigured S3 buckets/blob storage (public access)
 - IAM privilege escalation paths
 - Metadata service abuse (SSRF to credentials)
@@ -273,6 +280,7 @@ Focus areas for cloud, containers, and orchestration:
 - Network security group misconfigurations
 
 **Container Security**
+
 - Vulnerable base images
 - Secrets in environment variables/layers
 - Privileged containers
@@ -280,6 +288,7 @@ Focus areas for cloud, containers, and orchestration:
 - Registry security (image signing, scanning)
 
 **Orchestration (Kubernetes, Docker Swarm)**
+
 - Exposed API servers (unauthenticated kubelet)
 - RBAC misconfigurations
 - Pod security policies/standards violations
@@ -287,6 +296,7 @@ Focus areas for cloud, containers, and orchestration:
 - Secrets management (etcd encryption, external vaults)
 
 **CI/CD Pipeline**
+
 - Compromised build agents
 - Dependency confusion/substitution
 - Secrets in version control
@@ -294,6 +304,7 @@ Focus areas for cloud, containers, and orchestration:
 - Pipeline injection attacks
 
 **Infrastructure Mitigations**
+
 - Infrastructure as Code security scanning
 - Least privilege IAM policies
 - Network segmentation (VPCs, subnets, security groups)
@@ -305,30 +316,35 @@ Focus areas for cloud, containers, and orchestration:
 Focus areas for machine learning systems:
 
 **Adversarial Attacks**
+
 - Evasion attacks (adversarial examples at inference)
 - Poisoning attacks (training data manipulation)
 - Model inversion (extracting training data)
 - Membership inference (detecting if data was in training set)
 
 **Model Theft**
+
 - Model extraction via API queries
 - Intellectual property leakage
 - Hyperparameter discovery
 - Architecture reverse engineering
 
 **Data Privacy**
+
 - Training data exposure
 - PII leakage in model outputs
 - Differential privacy violations
 - GDPR right-to-explanation challenges
 
 **Deployment Risks**
+
 - Model serving API vulnerabilities
 - Feature store poisoning
 - Model registry security
 - A/B testing exploitation
 
 **ML-Specific Mitigations**
+
 - Adversarial training and robustness testing
 - Input sanitization and anomaly detection
 - Model watermarking
@@ -340,36 +356,42 @@ Focus areas for machine learning systems:
 ## Quick Reference: Common Threats by Component
 
 ### Web Application
+
 - XSS, CSRF, clickjacking
 - Session hijacking
 - Insecure direct object references
 - Open redirects
 
 ### API
+
 - Broken authentication/authorization
 - Mass assignment
 - Rate limiting bypass
 - Injection attacks
 
 ### Database
+
 - SQL injection
 - Privilege escalation
 - Unencrypted data
 - Backup exposure
 
 ### Authentication
+
 - Credential stuffing
 - Session fixation
 - Token leakage
 - MFA bypass
 
 ### File Upload
+
 - Malware upload
 - Path traversal
 - Remote code execution
 - Storage exhaustion
 
 ### Third-Party Integrations
+
 - API key exposure
 - Webhook spoofing
 - Supply chain attacks

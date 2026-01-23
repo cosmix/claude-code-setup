@@ -133,7 +133,7 @@ async function exchangeCode(code: string): Promise<TokenResponse> {
 function generatePKCE(): { verifier: string; challenge: string } {
   const verifier = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
   const challenge = base64UrlEncode(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
   );
   return { verifier, challenge };
 }
@@ -191,7 +191,7 @@ function signToken(payload: Omit<TokenPayload, "iat" | "exp">): string {
       expiresIn: "15m",
       issuer: "https://api.example.com",
       audience: "https://app.example.com",
-    }
+    },
   );
 }
 
@@ -351,7 +351,7 @@ async function createSession(userId: string, req: Request): Promise<string> {
   await redis.setex(
     `session:${sessionId}`,
     SESSION_TTL,
-    JSON.stringify(session)
+    JSON.stringify(session),
   );
   await redis.sadd(`user-sessions:${userId}`, sessionId);
 
@@ -369,7 +369,7 @@ async function validateSession(sessionId: string): Promise<Session | null> {
   await redis.setex(
     `session:${sessionId}`,
     SESSION_TTL,
-    JSON.stringify(session)
+    JSON.stringify(session),
   );
 
   return session;
@@ -454,7 +454,7 @@ async function hashPasswordArgon2(password: string): Promise<string> {
 
 async function verifyPasswordArgon2(
   hash: string,
-  password: string
+  password: string,
 ): Promise<boolean> {
   return argon2.verify(hash, password);
 }
@@ -468,7 +468,7 @@ async function hashPasswordBcrypt(password: string): Promise<string> {
 
 async function verifyPasswordBcrypt(
   hash: string,
-  password: string
+  password: string,
 ): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
@@ -503,7 +503,7 @@ import QRCode from "qrcode";
 // TOTP Setup
 async function setupTOTP(
   userId: string,
-  email: string
+  email: string,
 ): Promise<{ secret: string; qrCode: string }> {
   const secret = authenticator.generateSecret();
   const otpauth = authenticator.keyuri(email, "MyApp", secret);
@@ -523,10 +523,10 @@ function verifyTOTP(secret: string, token: string): boolean {
 // Backup codes generation
 function generateBackupCodes(): { codes: string[]; hashes: string[] } {
   const codes = Array.from({ length: 10 }, () =>
-    crypto.randomBytes(4).toString("hex").toUpperCase()
+    crypto.randomBytes(4).toString("hex").toUpperCase(),
   );
   const hashes = codes.map((code) =>
-    crypto.createHash("sha256").update(code).digest("hex")
+    crypto.createHash("sha256").update(code).digest("hex"),
   );
   return { codes, hashes };
 }
@@ -548,7 +548,7 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
   // Try backup code
   const codeHash = crypto.createHash("sha256").update(code).digest("hex");
   const backupCode = user.mfaSettings.backupCodes.find(
-    (bc) => bc.hash === codeHash && !bc.usedAt
+    (bc) => bc.hash === codeHash && !bc.usedAt,
   );
 
   if (backupCode) {
@@ -568,7 +568,6 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
 **Critical Security Checklist** (for security-engineer review):
 
 1. **Credential Storage**
-
    - Never log passwords, tokens, or API keys
    - Hash passwords with Argon2id or bcrypt (12+ rounds)
    - Hash API keys before database storage
@@ -576,7 +575,6 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
    - Never return sensitive data in error messages
 
 2. **Token Security**
-
    - Validate ALL token claims (signature, exp, iss, aud, nbf)
    - Use RS256 or ES256 for JWT signatures (never HS256 in distributed systems)
    - Set minimum token expiration (access: 15 min, refresh: 7 days max)
@@ -584,7 +582,6 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
    - Use PKCE for all public clients (SPAs, mobile)
 
 3. **Attack Prevention**
-
    - Implement rate limiting on auth endpoints (5 attempts per 15 min)
    - Account lockout after failed login attempts (10 failures = 30 min lockout)
    - Use timing-safe comparison for password/token validation
@@ -592,7 +589,6 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
    - Validate redirect URIs against allowlist (prevent open redirects)
 
 4. **Session Security**
-
    - Set httpOnly, secure, sameSite=strict on cookies
    - Regenerate session ID after privilege escalation
    - Implement absolute timeout (24h) and idle timeout (30min)
@@ -600,7 +596,6 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
    - Detect and alert on concurrent sessions from different IPs
 
 5. **Transport Security**
-
    - Require HTTPS for all auth endpoints (HSTS header)
    - Use secure WebSocket (wss://) for real-time auth
    - Validate Content-Type headers (prevent CSRF)
@@ -625,28 +620,24 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
 ## Best Practices
 
 1. **Token Security**
-
    - Use short-lived access tokens (15 minutes or less)
    - Store refresh tokens securely (httpOnly cookies, encrypted storage)
    - Implement token rotation for refresh tokens
    - Always validate token signature, expiration, issuer, and audience
 
 2. **Password Security**
-
    - Use Argon2id for new implementations
    - Never store plaintext passwords
    - Implement account lockout after failed attempts
    - Use secure password reset flows with time-limited tokens
 
 3. **Session Security**
-
    - Regenerate session ID after authentication
    - Implement absolute and idle timeouts
    - Bind sessions to user agent/IP when appropriate
    - Provide session management UI for users
 
 4. **API Key Security**
-
    - Hash API keys before storage
    - Use prefixes for key identification
    - Implement scopes and rate limiting
@@ -666,7 +657,7 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
 async function login(
   email: string,
   password: string,
-  mfaCode?: string
+  mfaCode?: string,
 ): Promise<AuthResponse> {
   // Find user
   const user = await db.users.findUnique({ where: { email } });

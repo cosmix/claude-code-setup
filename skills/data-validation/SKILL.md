@@ -12,6 +12,7 @@ Data validation ensures that input data meets expected formats, types, and const
 ## Trigger Keywords
 
 Use this skill when working with:
+
 - **Schema validation**: JSON Schema, Zod, Pydantic, Joi, Yup, Ajv, class-validator
 - **Input processing**: validate, validation, sanitize, sanitization, input validation, form validation
 - **Security validation**: XSS prevention, injection prevention, escape, encode, whitelist, blacklist

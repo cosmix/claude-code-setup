@@ -310,7 +310,7 @@ harness = false
 
 ### Workspace Structure
 
-```
+```text
 myworkspace/
 ├── Cargo.toml          # Workspace root
 ├── crates/

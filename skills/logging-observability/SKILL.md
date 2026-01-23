@@ -572,41 +572,41 @@ groups:
 
 ### Distributed Tracing
 
-6. **Trace Boundaries**: Create spans at service boundaries, database calls, external API calls, and significant operations.
+1. **Trace Boundaries**: Create spans at service boundaries, database calls, external API calls, and significant operations.
 
-7. **Propagate Context**: Pass trace IDs and span IDs across service boundaries via HTTP headers (OpenTelemetry standards).
+2. **Propagate Context**: Pass trace IDs and span IDs across service boundaries via HTTP headers (OpenTelemetry standards).
 
-8. **Add Meaningful Attributes**: Include business context (user_id, order_id) and technical context (db_query, cache_hit) in span attributes.
+3. **Add Meaningful Attributes**: Include business context (user_id, order_id) and technical context (db_query, cache_hit) in span attributes.
 
-9. **Sample Appropriately**: Use adaptive sampling - trace 100% of errors, sample successful requests based on traffic volume.
+4. **Sample Appropriately**: Use adaptive sampling - trace 100% of errors, sample successful requests based on traffic volume.
 
 ### Metrics
 
-10. **Track Golden Signals**: Monitor the Four Golden Signals - latency, traffic, errors, saturation.
+1. **Track Golden Signals**: Monitor the Four Golden Signals - latency, traffic, errors, saturation.
 
-11. **Use Correct Metric Types**: Counters for totals (requests), Gauges for current values (memory), Histograms for distributions (latency).
+2. **Use Correct Metric Types**: Counters for totals (requests), Gauges for current values (memory), Histograms for distributions (latency).
 
-12. **Label Cardinality**: Keep label cardinality low - avoid high-cardinality values like user IDs in metric labels.
+3. **Label Cardinality**: Keep label cardinality low - avoid high-cardinality values like user IDs in metric labels.
 
-13. **Naming Conventions**: Follow Prometheus naming - `http_requests_total` (counter), `process_memory_bytes` (gauge), `http_request_duration_seconds` (histogram).
+4. **Naming Conventions**: Follow Prometheus naming - `http_requests_total` (counter), `process_memory_bytes` (gauge), `http_request_duration_seconds` (histogram).
 
 ### Alerting
 
-14. **Alert on Symptoms**: Alert on user-impacting issues (error rate, latency), not causes (CPU usage). Symptoms indicate what is broken, causes explain why.
+1. **Alert on Symptoms**: Alert on user-impacting issues (error rate, latency), not causes (CPU usage). Symptoms indicate what is broken, causes explain why.
 
-15. **Include Runbooks**: Every alert must link to a runbook with investigation steps, common causes, and remediation procedures.
+2. **Include Runbooks**: Every alert must link to a runbook with investigation steps, common causes, and remediation procedures.
 
-16. **Use Appropriate Thresholds**: Set thresholds based on SLOs and historical data, not arbitrary values.
+3. **Use Appropriate Thresholds**: Set thresholds based on SLOs and historical data, not arbitrary values.
 
-17. **Alert Fatigue**: Ensure alerts are actionable. Non-actionable alerts lead to alert fatigue and ignored critical issues.
+4. **Alert Fatigue**: Ensure alerts are actionable. Non-actionable alerts lead to alert fatigue and ignored critical issues.
 
 ### Integration
 
-18. **End-to-End Correlation**: Link logs, traces, and metrics using correlation IDs to enable cross-system debugging.
+1. **End-to-End Correlation**: Link logs, traces, and metrics using correlation IDs to enable cross-system debugging.
 
-19. **Centralize**: Use centralized log aggregation (ELK, Loki) and trace collection (Jaeger, Zipkin) for cross-service visibility.
+2. **Centralize**: Use centralized log aggregation (ELK, Loki) and trace collection (Jaeger, Zipkin) for cross-service visibility.
 
-20. **Test Observability**: Verify logging, tracing, and metrics in development - don't discover gaps in production.
+3. **Test Observability**: Verify logging, tracing, and metrics in development - don't discover gaps in production.
 
 ## Examples
 

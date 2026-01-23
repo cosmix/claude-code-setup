@@ -357,7 +357,7 @@ Now extract data from:
 Input: "{new_product_description}"
 Output:
 
-````
+````text
 
 ### Example 4: Chain of Thought Prompting
 ```markdown
@@ -473,12 +473,12 @@ Analyze the sentiment of the following customer reviews. For each review, provid
 ```
 ````
 
-## Reviews to Analyze:
+## Reviews to Analyze
 
 {reviews_list}
 
-## Analysis:
+## Analysis
 
-```
+```text
 
 ```

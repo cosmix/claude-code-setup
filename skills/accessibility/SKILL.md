@@ -33,6 +33,7 @@ WCAG is organized around four principles (POUR):
 #### Quick Compliance Checklist
 
 **Level A (Essential):**
+
 - All images have alt text (1.1.1)
 - Videos have captions (1.2.2)
 - Color is not the only visual means of conveying information (1.4.1)
@@ -47,6 +48,7 @@ WCAG is organized around four principles (POUR):
 - Name, role, value available for all UI components (4.1.2)
 
 **Level AA (Standard):**
+
 - Captions for all live audio (1.2.4)
 - Audio description for video (1.2.5)
 - Contrast ratio at least 4.5:1 for normal text, 3:1 for large text (1.4.3)
@@ -60,6 +62,7 @@ WCAG is organized around four principles (POUR):
 - Error prevention for legal/financial transactions (3.3.4)
 
 **Level AAA (Enhanced):**
+
 - Sign language interpretation for videos (1.2.6)
 - Extended audio description (1.2.7)
 - Contrast ratio at least 7:1 (1.4.6)
@@ -394,12 +397,14 @@ function Notification({ message, type }) {
 #### Common Widget Patterns
 
 **Tabs:**
+
 - Tab: Enter tab list
 - Arrow Left/Right: Navigate between tabs
 - Home/End: First/last tab
 - Tab: Exit to tab panel content
 
 **Menu:**
+
 - Arrow Up/Down: Navigate menu items
 - Arrow Right: Open submenu
 - Arrow Left: Close submenu
@@ -408,17 +413,20 @@ function Notification({ message, type }) {
 - Letter keys: Jump to item starting with letter
 
 **Dialog:**
+
 - Tab/Shift+Tab: Cycle through dialog elements (focus trap)
 - Escape: Close dialog
 - Focus returns to trigger element on close
 
 **Accordion:**
+
 - Tab: Move to next accordion header
 - Arrow Up/Down: Navigate accordion headers (optional)
 - Enter/Space: Toggle accordion panel
 - Home/End: First/last header (optional)
 
 **Combobox:**
+
 - Arrow Down: Open listbox
 - Arrow Up/Down: Navigate options
 - Enter: Select option and close
@@ -563,6 +571,7 @@ function SkipLink({ targetId, children = "Skip to main content" }) {
 #### Screen Reader Testing Checklist
 
 **Navigation:**
+
 - Page title announces on load
 - Headings create logical outline (h1 → h6 hierarchy maintained)
 - Landmark regions are properly labeled (banner, navigation, main, complementary, contentinfo)
@@ -570,6 +579,7 @@ function SkipLink({ targetId, children = "Skip to main content" }) {
 - Focus order follows visual reading order
 
 **Content:**
+
 - All images have appropriate alt text (decorative images have empty alt="")
 - Links have descriptive text (avoid "click here")
 - Buttons clearly indicate their action
@@ -577,6 +587,7 @@ function SkipLink({ targetId, children = "Skip to main content" }) {
 - Tables have proper headers and captions
 
 **Forms:**
+
 - Form labels are properly associated with inputs
 - Error messages are associated with form fields (aria-describedby)
 - Required fields indicated (aria-required)
@@ -584,6 +595,7 @@ function SkipLink({ targetId, children = "Skip to main content" }) {
 - Error summary announced on submit
 
 **Interactions:**
+
 - Modal focus is trapped inside dialog
 - Modal announces its role and label
 - Keyboard shortcuts don't conflict with screen reader shortcuts
@@ -1187,11 +1199,13 @@ if (listItems[index]) {
 ### Testing Checklist
 
 **Automated (Run on every PR):**
+
 - axe-core (via jest-axe or @axe-core/playwright)
 - Lighthouse accessibility score
 - ESLint plugin: eslint-plugin-jsx-a11y
 
 **Manual (Run before release):**
+
 - Keyboard only navigation (unplug mouse)
 - Screen reader testing (NVDA/VoiceOver)
 - Browser zoom to 200%
@@ -1202,6 +1216,7 @@ if (listItems[index]) {
 - Test with high contrast mode
 
 **Browser DevTools:**
+
 - Chrome: Lighthouse, Accessibility tree view
 - Firefox: Accessibility inspector
 - Safari: Accessibility audit

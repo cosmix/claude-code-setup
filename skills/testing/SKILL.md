@@ -35,11 +35,13 @@ This skill provides comprehensive testing expertise across all domains and test 
 ### 2. Design Test Strategy
 
 **Test Pyramid Approach:**
+
 - Unit tests (70%): Fast, isolated, test single units
 - Integration tests (20%): Test component interactions
 - E2E tests (10%): Test full user workflows
 
 **Planning:**
+
 - Determine appropriate test types for each component
 - Set coverage targets (aim for 80%+ line coverage, 100% critical paths)
 - Identify mocking requirements and boundaries
@@ -49,34 +51,41 @@ This skill provides comprehensive testing expertise across all domains and test 
 ### 3. Write Tests Following AAA Pattern
 
 **Arrange-Act-Assert:**
+
 - **Arrange**: Set up test data, mocks, and conditions
 - **Act**: Execute the code under test
 - **Assert**: Verify expected outcomes with clear failure messages
 
 **Naming Convention:**
-```
+
+```text
 test_<unit>_<scenario>_<expected_outcome>
 ```
+
 Example: `test_shopping_cart_add_duplicate_item_increases_quantity`
 
 ### 4. Handle Special Cases
 
 **Async Operations:**
+
 - Use proper async test utilities (async/await, done callbacks)
 - Set appropriate timeouts
 - Test race conditions and timing issues
 
 **Error Conditions:**
+
 - Test all error paths explicitly
 - Verify error messages and types
 - Test recovery mechanisms
 
 **External Dependencies:**
+
 - Mock HTTP clients, databases, file systems
 - Use test doubles (mocks, stubs, fakes)
 - Consider contract testing for APIs
 
 **Database Testing:**
+
 - Use transactions with rollback for isolation
 - Use in-memory databases for speed
 - Seed test data consistently
@@ -86,18 +95,21 @@ Example: `test_shopping_cart_add_duplicate_item_increases_quantity`
 ### Data Pipeline Testing
 
 **Data Quality Tests:**
+
 - Schema validation (column types, nullability, constraints)
 - Data completeness (row counts, null checks)
 - Data accuracy (statistical checks, business rule validation)
 - Data freshness (timestamp checks)
 
 **Pipeline Tests:**
+
 - Idempotency: Running twice produces same result
 - Incremental processing: Only new data is processed
 - Failure recovery: Handles partial failures gracefully
 - Performance: Processing time within SLAs
 
 **Example:**
+
 ```python
 def test_etl_pipeline_preserves_row_count():
     # Arrange
@@ -114,21 +126,25 @@ def test_etl_pipeline_preserves_row_count():
 ### ML Model Testing
 
 **Model Behavior Tests:**
+
 - Invariance tests: Predictions stable under irrelevant changes
 - Directional expectation: Feature changes affect predictions correctly
 - Minimum functionality: Model beats baseline on key examples
 
 **Data Tests:**
+
 - Training/validation split integrity
 - Feature distribution alignment
 - Label balance and quality
 
 **Performance Tests:**
+
 - Accuracy/precision/recall on test set
 - Inference latency requirements
 - Resource usage (memory, CPU)
 
 **Example:**
+
 ```python
 def test_sentiment_model_invariance_to_punctuation():
     model = load_model("sentiment_classifier")
@@ -146,18 +162,21 @@ def test_sentiment_model_invariance_to_punctuation():
 ### Infrastructure Testing
 
 **Infrastructure as Code Tests:**
+
 - Syntax validation (terraform validate, yaml lint)
 - Policy compliance (security groups, IAM policies)
 - Resource tagging and naming conventions
 - Cost estimation thresholds
 
 **Integration Tests:**
+
 - Deployment smoke tests
 - Health check endpoints
 - Service connectivity
 - Configuration validation
 
 **Example:**
+
 ```python
 def test_terraform_no_public_s3_buckets():
     tf_plan = load_terraform_plan("main.tfplan.json")
@@ -191,6 +210,7 @@ def test_terraform_no_public_s3_buckets():
 ### Debugging Flaky Tests
 
 **Common Causes:**
+
 - Race conditions and timing dependencies
 - Shared mutable state between tests
 - External service dependencies
@@ -198,6 +218,7 @@ def test_terraform_no_public_s3_buckets():
 - Test execution order dependencies
 
 **Solutions:**
+
 - Add explicit waits instead of sleep
 - Reset state in setup/teardown
 - Mock external dependencies
@@ -207,11 +228,13 @@ def test_terraform_no_public_s3_buckets():
 ### TDD Workflow
 
 **Red-Green-Refactor Cycle:**
+
 1. **Red**: Write failing test for desired behavior
 2. **Green**: Write minimal code to make test pass
 3. **Refactor**: Improve code while keeping tests passing
 
 **Benefits:**
+
 - Forces thinking about design before implementation
 - Ensures tests actually catch failures
 - Provides fast feedback loop
@@ -323,7 +346,7 @@ mod tests {
 
 ### Test Organization
 
-```
+```text
 tests/
 ├── unit/              # Fast, isolated unit tests
 │   ├── models/
@@ -474,6 +497,7 @@ it('renders user card correctly', () => {
 ## Summary
 
 This skill provides comprehensive testing expertise across:
+
 - All test types (unit, integration, e2e)
 - All domains (backend, frontend, data, ML, infrastructure)
 - Test architecture and strategy

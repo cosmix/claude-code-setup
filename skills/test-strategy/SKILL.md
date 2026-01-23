@@ -15,7 +15,7 @@ Test strategy defines how to approach testing for a project, balancing thoroughn
 
 Structure tests in layers with appropriate ratios:
 
-```
+```text
          /\
         /  \        E2E Tests (5-10%)
        /----\       - Critical user journeys
@@ -96,7 +96,7 @@ test("user cannot change name to empty string", () => {
 
 **Directory Structure:**
 
-```
+```text
 tests/
 ├── unit/
 │   ├── services/
@@ -132,7 +132,7 @@ describe("[e2e][critical] CheckoutFlow", () => {});
 
 **Naming Conventions:**
 
-```
+```text
 [ComponentName].[scenario].[expected_result].test.ts
 
 Examples:
@@ -256,7 +256,7 @@ jobs:
 
 **API Test Organization:**
 
-```
+```text
 tests/api/
 ├── contracts/          # Schema validation tests
 ├── endpoints/          # Per-endpoint behavior tests
@@ -420,7 +420,7 @@ run "verify_security_group_rules" {
 
 **Flaky Test Diagnosis Workflow:**
 
-```
+```text
 1. Reproduce Locally
    ├─ Run test 100 times: `for i in {1..100}; do npm test -- TestName || break; done`
    ├─ Run with different seeds: `npm test -- --seed=$RANDOM`

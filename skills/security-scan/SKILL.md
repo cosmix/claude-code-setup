@@ -330,12 +330,14 @@ workflows:
 ### Common False Positives
 
 **Secret Detection**:
+
 - Test fixtures with fake keys
 - Documentation examples
 - Base64-encoded non-secrets
 - UUIDs and random IDs
 
 **Dependency Scans**:
+
 - Dev-only dependencies
 - Unused code paths
 - Already-mitigated issues

@@ -600,7 +600,7 @@ CMD ["node", "dist/index.js"]
 
 ### Example 8: .dockerignore
 
-```
+```gitignore
 # Git
 .git
 .gitignore

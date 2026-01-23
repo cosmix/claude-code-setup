@@ -34,6 +34,7 @@ Every API should document:
 ## Best Practices
 
 ### Technical Accuracy
+
 - Use consistent terminology throughout
 - Keep schemas DRY with $ref
 - Document all possible response codes
@@ -41,6 +42,7 @@ Every API should document:
 - Include proper JSON Schema constraints
 
 ### Clarity and Usability (from technical-writer expertise)
+
 - Write for the developer audience: assume technical competence, skip patronizing explanations
 - Lead with practical examples: show before explaining
 - Use active voice and direct language
@@ -51,6 +53,7 @@ Every API should document:
 - Include troubleshooting tips for frequent issues
 
 ### Interactive Documentation
+
 - Design for auto-generated docs (Redoc, Swagger UI, Stoplight)
 - Use operationId for stable client generation
 - Tag endpoints logically for navigation
@@ -60,16 +63,19 @@ Every API should document:
 ## OpenAPI 3.1 Key Features
 
 ### Full JSON Schema Support
+
 - Use JSON Schema 2020-12 vocabulary
 - Support const, if/then/else, dependentSchemas
 - Native oneOf/anyOf/allOf with discriminators
 
 ### Example Handling
+
 - Single example: use `example` property
 - Multiple examples: use `examples` object with named scenarios
 - Examples in both schema definitions AND operation level
 
 ### Webhooks Documentation
+
 ```yaml
 webhooks:
   userCreated:
@@ -82,6 +88,7 @@ webhooks:
 ```
 
 ### Content Negotiation
+
 ```yaml
 content:
   application/json:
@@ -94,6 +101,7 @@ content:
 ```
 
 ### Security Schemes
+
 - OAuth2 with multiple flows
 - OpenID Connect Discovery
 - Mutual TLS
@@ -997,16 +1005,19 @@ const user: User = await client.users.create(params);
 ### Interactive Documentation Generators
 
 **Redoc** - Clean, three-panel layout with search
+
 ```bash
 npx @redocly/cli build-docs openapi.yaml --output docs.html
 ```
 
 **Swagger UI** - Try-it-out functionality, widely recognized
+
 ```bash
 docker run -p 80:8080 -e SWAGGER_JSON=/api/openapi.yaml -v $(pwd):/api swaggerapi/swagger-ui
 ```
 
 **Stoplight Elements** - Embeddable web components
+
 ```html
 <script src="https://unpkg.com/@stoplight/elements/web-components.min.js"></script>
 <elements-api apiDescriptionUrl="./openapi.yaml" router="hash"/>
@@ -1015,12 +1026,14 @@ docker run -p 80:8080 -e SWAGGER_JSON=/api/openapi.yaml -v $(pwd):/api swaggerap
 ### Validation and Linting
 
 **Redocly CLI** - Lint OpenAPI specs
+
 ```bash
 npx @redocly/cli lint openapi.yaml
 npx @redocly/cli bundle openapi.yaml --output bundled.yaml
 ```
 
 **Spectral** - Flexible linting with custom rules
+
 ```bash
 spectral lint openapi.yaml --ruleset .spectral.yaml
 ```
@@ -1028,11 +1041,13 @@ spectral lint openapi.yaml --ruleset .spectral.yaml
 ### Client Generation
 
 **OpenAPI Generator** - Multi-language client/server generation
+
 ```bash
 openapi-generator-cli generate -i openapi.yaml -g typescript-fetch -o ./client
 ```
 
 **Postman Collection Export**
+
 ```bash
 npm install -g openapi-to-postmanv2
 openapi2postmanv2 -s openapi.yaml -o collection.json
@@ -1041,12 +1056,14 @@ openapi2postmanv2 -s openapi.yaml -o collection.json
 ### Testing and Mocking
 
 **Prism** - Mock server from OpenAPI spec
+
 ```bash
 prism mock openapi.yaml
 # Returns example responses from your spec
 ```
 
 **Dredd** - Test API against OpenAPI contract
+
 ```bash
 dredd openapi.yaml http://localhost:3000
 ```
@@ -1054,26 +1071,32 @@ dredd openapi.yaml http://localhost:3000
 ## Documentation Patterns
 
 ### Progressive Disclosure
+
 Structure docs from quick start to advanced topics:
+
 1. Authentication quick start (single example)
 2. Common use cases (recipes)
 3. Complete endpoint reference
 4. Advanced topics (webhooks, pagination strategies)
 
 ### Code Examples Strategy
+
 - Provide examples in multiple languages (curl, JavaScript, Python, Go)
 - Use realistic data (not foo/bar)
 - Show complete working examples, not fragments
 - Include error handling in examples
 
 ### API Explorer Integration
+
 Include "Try It" functionality:
+
 - Pre-fill authentication from environment
 - Provide example payloads
 - Show actual requests/responses
 - Support environment switching (sandbox/production)
 
 ### Versioning Communication
+
 - Announce deprecations 6+ months in advance
 - Provide migration guides with side-by-side comparisons
 - Include deprecation headers in API responses

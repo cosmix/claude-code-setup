@@ -26,7 +26,7 @@ Plans maximize throughput through two levels of parallelism: subagents within st
 
 **MANDATORY:** Write all plans to:
 
-```
+```text
 doc/plans/PLAN-<description>.md
 ```
 
@@ -36,7 +36,7 @@ doc/plans/PLAN-<description>.md
 
 Maximize parallel execution at TWO levels:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PARALLELIZATION PRIORITY                                           │
 │                                                                     │
@@ -57,7 +57,7 @@ Maximize parallel execution at TWO levels:
 
 **EVERY stage description MUST include this line:**
 
-```
+```text
 Use parallel subagents and skills to maximize performance.
 ```
 
@@ -67,7 +67,7 @@ This ensures Claude Code instances spawn concurrent subagents for independent ta
 
 Every plan MUST follow this structure:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  MANDATORY PLAN STRUCTURE                                           │
 │                                                                     │
@@ -79,7 +79,7 @@ Every plan MUST follow this structure:
 
 Include a visual execution diagram:
 
-```
+```text
 [knowledge-bootstrap] --> [stage-a, stage-b] --> [stage-c] --> [integration-verify]
 ```
 
@@ -139,6 +139,7 @@ working_dir: "loom"   # Run from loom/ subdirectory
 **Why required?** Prevents acceptance failures due to forgotten directory context. Every stage must consciously declare its execution directory.
 
 **Examples:**
+
 ```yaml
 # Project with Cargo.toml at root
 - id: build-check
@@ -190,7 +191,7 @@ Captures codebase understanding before implementation:
 
 Verifies all work integrates correctly after merges AND that the feature actually works:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ⚠️ CRITICAL: TESTS PASSING ≠ FEATURE WORKING                       │
 │                                                                     │

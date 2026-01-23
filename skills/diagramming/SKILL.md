@@ -24,11 +24,13 @@ Create clear, maintainable technical diagrams using Mermaid syntax. This skill c
 ### 2. Mermaid Syntax Patterns
 
 **Direction Control:**
+
 - `flowchart TB` - Top to bottom
 - `flowchart LR` - Left to right
 - `sequenceDiagram` - Automatic top-down layout
 
 **Node Shapes:**
+
 - `[Rectangle]` - Process
 - `(Rounded)` - Start/end
 - `{Diamond}` - Decision
@@ -36,6 +38,7 @@ Create clear, maintainable technical diagrams using Mermaid syntax. This skill c
 - `((Circle))` - Connection point
 
 **Arrow Types:**
+
 - `-->` Solid line (flow)
 - `-.->` Dotted line (optional)
 - `->>` Thick line (message)
@@ -43,6 +46,7 @@ Create clear, maintainable technical diagrams using Mermaid syntax. This skill c
 - `==>` Extra thick (emphasis)
 
 **Subgraphs for Grouping:**
+
 ```mermaid
 flowchart TB
     subgraph "Subsystem Name"
@@ -71,6 +75,7 @@ flowchart TB
 ### Architecture Diagrams (C4 Model)
 
 The C4 model provides hierarchical system visualization:
+
 - **Level 1 (Context)**: System in its environment, external dependencies
 - **Level 2 (Container)**: High-level technical building blocks (apps, databases, services)
 - **Level 3 (Component)**: Internal structure of containers (classes, modules)
@@ -158,6 +163,7 @@ flowchart TB
 Use for API flows, request/response cycles, distributed system interactions, and multi-service communication.
 
 **Key Patterns:**
+
 - `participant` - Define actors upfront
 - `autonumber` - Add step numbers
 - `alt/else/end` - Conditional flows

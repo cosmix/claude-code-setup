@@ -495,15 +495,15 @@ ApplicationSets automate creation and management of multiple Argo CD application
 
 ### Generator Selection Guide
 
-| Generator | Use Case | Example |
-|-----------|----------|---------|
-| **Cluster** | Deploy same app to multiple clusters | Multi-region deployment |
-| **Git Directory** | Generate apps from repo directory structure | Monorepo with app-per-directory |
-| **Git File** | Generate apps from config files in Git | JSON/YAML config per app |
-| **List** | Static list of parameters | Tenant definitions |
-| **Matrix** | Combine multiple generators | Apps across clusters and environments |
-| **Pull Request** | Preview environments per PR | Ephemeral test environments |
-| **SCM Provider** | Discover repos from GitHub/GitLab | Org-wide app discovery |
+| Generator         | Use Case                                    | Example                               |
+| ----------------- | ------------------------------------------- | ------------------------------------- |
+| **Cluster**       | Deploy same app to multiple clusters        | Multi-region deployment               |
+| **Git Directory** | Generate apps from repo directory structure | Monorepo with app-per-directory       |
+| **Git File**      | Generate apps from config files in Git      | JSON/YAML config per app              |
+| **List**          | Static list of parameters                   | Tenant definitions                    |
+| **Matrix**        | Combine multiple generators                 | Apps across clusters and environments |
+| **Pull Request**  | Preview environments per PR                 | Ephemeral test environments           |
+| **SCM Provider**  | Discover repos from GitHub/GitLab           | Org-wide app discovery                |
 
 ### Multi-Environment with Git Directory
 
@@ -657,13 +657,13 @@ spec:
 
 ### Strategy Selection Guide
 
-| Strategy | Use Case | Risk | Automation |
-|----------|----------|------|------------|
-| **Automated + SelfHeal** | Non-prod environments | Low | Full |
-| **Automated (no SelfHeal)** | Staging with manual intervention | Medium | Partial |
-| **Manual** | Production deployments | High | None |
-| **Sync Windows** | Business hours restrictions | Medium | Scheduled |
-| **Progressive (Rollouts)** | Gradual production rollout | Low | Conditional |
+| Strategy                    | Use Case                         | Risk   | Automation  |
+| --------------------------- | -------------------------------- | ------ | ----------- |
+| **Automated + SelfHeal**    | Non-prod environments            | Low    | Full        |
+| **Automated (no SelfHeal)** | Staging with manual intervention | Medium | Partial     |
+| **Manual**                  | Production deployments           | High   | None        |
+| **Sync Windows**            | Business hours restrictions      | Medium | Scheduled   |
+| **Progressive (Rollouts)**  | Gradual production rollout       | Low    | Conditional |
 
 ### Automated Sync with Conditions
 
@@ -824,10 +824,10 @@ spec:
 
     # Use sync waves for blue-green
     syncWaves:
-      - wave: 0  # Deploy new version (green)
-      - wave: 1  # Run smoke tests
-      - wave: 2  # Switch traffic
-      - wave: 3  # Remove old version (blue)
+      - wave: 0 # Deploy new version (green)
+      - wave: 1 # Run smoke tests
+      - wave: 2 # Switch traffic
+      - wave: 3 # Remove old version (blue)
 ```
 
 ## Rollback Procedures
@@ -926,7 +926,7 @@ spec:
   syncPolicy:
     automated:
       prune: true
-      selfHeal: false  # Disable selfHeal for manual rollback control
+      selfHeal: false # Disable selfHeal for manual rollback control
 
     # Retry sync on failure
     retry:
@@ -940,6 +940,7 @@ spec:
   syncOptions:
     - Validate=true
     - FailOnSharedResource=false
+
 
 # Use PreSync hook to backup current state
 ---
@@ -1044,6 +1045,7 @@ spec:
     automated:
       prune: true
       selfHeal: true
+
 
 # PostSync hook to test rollback capability
 ---

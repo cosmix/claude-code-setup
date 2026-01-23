@@ -39,6 +39,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 This skill focuses on improving code quality through systematic refactoring techniques. It identifies code smells and applies proven refactoring patterns to enhance maintainability while preserving functionality.
 
 Use this skill when the user requests:
+
 - Code restructuring or cleanup
 - Reducing technical debt
 - Improving code organization
@@ -51,6 +52,7 @@ Use this skill when the user requests:
 ## Scope Selection
 
 **When to use this skill:**
+
 - Local refactoring (single module/file)
 - Pattern application (extract method, introduce interface)
 - Test refactoring and test suite improvements
@@ -58,6 +60,7 @@ Use this skill when the user requests:
 - Safe refactoring with test coverage
 
 **When to escalate to senior-software-engineer:**
+
 - Architectural changes affecting multiple modules
 - API redesign requiring migration paths
 - Cross-cutting refactoring with unclear scope
@@ -70,6 +73,7 @@ Use this skill when the user requests:
 ### 1. Identify Refactoring Opportunities
 
 **Code Smells to Search For:**
+
 - Long methods (>50 lines) or large classes (>300 lines)
 - Duplicated code blocks
 - High cyclomatic complexity
@@ -81,6 +85,7 @@ Use this skill when the user requests:
 - Primitive obsession (using primitives instead of objects)
 
 **Use Grep/Glob to find patterns:**
+
 ```bash
 # Find long functions (rough heuristic)
 rg "^(\s*)(def|function|fn|func)\s+\w+" --after-context=60
@@ -95,6 +100,7 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 ### 2. Plan the Refactoring
 
 **Before starting:**
+
 1. **Verify test coverage** - Run tests to establish baseline
 2. **List all changes** - Document sequence of refactorings
 3. **Identify dependencies** - What code depends on what you're changing?
@@ -102,6 +108,7 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 5. **Check for impact** - Grep for references to functions/classes being changed
 
 **Red flags that require escalation:**
+
 - No test coverage exists
 - Changes affect public APIs with external consumers
 - Unclear ownership or multiple teams involved
@@ -112,26 +119,31 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 #### Code Organization Patterns
 
 **Extract Method/Function:**
+
 - Break down long functions into smaller, focused ones
 - Each function should do one thing
 - Improves readability and testability
 
 **Extract Class:**
+
 - Split large classes with multiple responsibilities
 - Follow Single Responsibility Principle
 - Improves cohesion and reduces coupling
 
 **Move Method/Field:**
+
 - Relocate methods to classes that use their data
 - Reduces feature envy
 - Improves encapsulation
 
 **Inline Method/Variable:**
+
 - Remove unnecessary indirection
 - Simplify overly abstracted code
 - Use when abstraction doesn't add value
 
 **Rename:**
+
 - Improve naming clarity
 - Use domain language
 - Make intent explicit
@@ -139,21 +151,25 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 #### Structural Patterns
 
 **Replace Conditional with Polymorphism:**
+
 - Replace type switches with subclass methods
 - Enables Open/Closed Principle
 - Improves extensibility
 
 **Introduce Parameter Object:**
+
 - Group related parameters into objects
 - Reduces parameter lists
 - Makes data relationships explicit
 
 **Replace Magic Numbers with Constants:**
+
 - Define named constants for literals
 - Improves readability and maintainability
 - Centralizes configuration
 
 **Decompose Conditional:**
+
 - Extract complex conditions into named functions
 - Replace nested ifs with guard clauses
 - Improves readability
@@ -161,21 +177,25 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 #### Test Refactoring Patterns
 
 **Extract Test Fixture:**
+
 - Move common setup into fixture/factory
 - Reduces duplication in test files
 - Improves test maintainability
 
 **Introduce Test Data Builder:**
+
 - Replace complex object construction with builders
 - Makes test intent clearer
 - Simplifies test setup
 
 **Replace Assertion Roulette:**
+
 - Use descriptive assertion messages
 - One logical assertion per test
 - Clear failure messages
 
 **Extract Test Helper:**
+
 - Move repeated test logic into helpers
 - Keep tests focused on behavior
 - Improves test readability
@@ -183,16 +203,19 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 #### Data Pipeline Patterns
 
 **Extract Transformation:**
+
 - Isolate data transformation logic
 - Make transformations composable
 - Improves testability
 
 **Introduce Pipeline Interface:**
+
 - Define standard input/output contracts
 - Enable stage composition
 - Simplifies testing and debugging
 
 **Replace Inline Processing with Stages:**
+
 - Break monolithic processing into stages
 - Each stage has single responsibility
 - Enables parallelization and monitoring
@@ -207,12 +230,14 @@ rg "\b\d{2,}\b" --type=py --type=js --type=rs
 4. **Repeat** - Move to next refactoring
 
 **If tests fail:**
+
 - Revert immediately (git checkout)
 - Analyze failure - is it a test issue or behavior change?
 - Fix or adjust approach
 
 **Commit message format:**
-```
+
+```text
 refactor: extract calculate_discount from process_order
 
 Improves testability by isolating discount logic.
@@ -222,6 +247,7 @@ No behavior change.
 ### 5. Verify Changes
 
 **Verification checklist:**
+
 - All tests pass (existing + any new tests)
 - No regressions in functionality
 - Performance hasn't degraded (for hot paths)
@@ -230,6 +256,7 @@ No behavior change.
 - Build succeeds
 
 **For large refactorings:**
+
 - Run additional smoke tests
 - Check memory usage (if applicable)
 - Review error handling preservation
@@ -555,6 +582,7 @@ func TestUserWithNewsletter(t *testing.T) {
 ## When to Stop Refactoring
 
 **Stop if:**
+
 - Tests start failing unexpectedly
 - Scope is expanding beyond initial plan
 - Unsure about architectural implications
@@ -562,6 +590,7 @@ func TestUserWithNewsletter(t *testing.T) {
 - Security implications unclear
 
 **In these cases:**
+
 - Commit current progress
 - Document remaining work
 - Escalate to senior-software-engineer or relevant specialist

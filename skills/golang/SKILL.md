@@ -534,7 +534,7 @@ func (r *UserRepository) WithTx(ctx context.Context, fn func(*sqlx.Tx) error) er
 
 ### Code Organization
 
-```
+```text
 myproject/
 ├── cmd/
 │   └── myapp/

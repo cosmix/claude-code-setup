@@ -12,6 +12,7 @@ Internationalization (i18n) is the process of designing software so it can be ad
 ## Quick Reference
 
 **Common Use Cases:**
+
 - Multi-language web applications (React, Vue, Angular)
 - Locale-specific date, number, and currency formatting
 - RTL (right-to-left) layout support for Arabic, Hebrew, Persian, Urdu
@@ -21,6 +22,7 @@ Internationalization (i18n) is the process of designing software so it can be ad
 - Server-side locale detection from headers/cookies
 
 **Popular Libraries:**
+
 - React: i18next, react-intl (FormatJS), react-i18next
 - Vue: vue-i18n
 - Node.js: i18next, node-polyglot, format-message
@@ -40,7 +42,7 @@ Internationalization (i18n) is the process of designing software so it can be ad
 
 **Architecture Pattern:**
 
-```
+```text
 src/
   locales/
     en/

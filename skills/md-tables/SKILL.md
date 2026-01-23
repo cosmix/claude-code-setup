@@ -20,6 +20,7 @@ python fix-md-tables.py document.md -i
 ### Common Patterns
 
 **Status tables:**
+
 ```markdown
 | Stage    | Status    | Branch       |
 | -------- | --------- | ------------ |
@@ -28,6 +29,7 @@ python fix-md-tables.py document.md -i
 ```
 
 **Configuration tables:**
+
 ```markdown
 | Option      | Default | Description           |
 | ----------- | ------- | --------------------- |
@@ -36,6 +38,7 @@ python fix-md-tables.py document.md -i
 ```
 
 **Right-aligned numbers:**
+
 ```markdown
 | Item  | Count | Total |
 | ----- | ----: | ----: |

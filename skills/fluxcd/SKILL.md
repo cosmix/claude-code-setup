@@ -11,6 +11,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 Flux CD is a declarative, GitOps continuous delivery solution for Kubernetes. It automatically ensures that the state of your Kubernetes cluster matches the configuration stored in Git repositories.
 
 **When to use this skill:**
+
 - Implementing GitOps workflows for Kubernetes
 - Automating Helm chart deployments and upgrades
 - Managing Kustomize overlays across environments
@@ -865,16 +866,19 @@ spec:
 ### Image Automation Best Practices
 
 **Environment Strategy:**
+
 - Enable automation in development/staging first
 - Use manual approval for production (PR-based workflow)
 - Test policy rules before deploying
 
 **Tag Policies:**
+
 - Use semver for releases (e.g., `1.0.x`, `>=1.0.0`)
 - Use regex for branch-based tags (e.g., `^develop-.*`)
 - Use numerical for build numbers
 
 **Security:**
+
 - Scan images before deployment (integrate with CI)
 - Use private registries with authentication
 - Enable image signing verification
@@ -1571,24 +1575,29 @@ Flux CD provides a powerful, declarative approach to managing Kubernetes deploym
 ### Key Decision Points
 
 **Choose GitRepository vs HelmRepository:**
+
 - GitRepository: For custom manifests, Kustomize overlays, or Helm charts in Git
 - HelmRepository: For public/private Helm chart repositories
 
 **Choose Kustomization vs HelmRelease:**
+
 - Kustomization: For raw manifests, ConfigMaps, Secrets, Kustomize overlays
 - HelmRelease: For packaged Helm charts with values customization
 
 **Image Automation Strategy:**
+
 - Direct commit: Development/staging environments with rapid iteration
 - PR workflow: Production environments requiring review and approval
 - Disabled: Mission-critical production with manual deployment gates
 
 **Multi-Tenancy Approach:**
+
 - Namespace isolation: Teams share cluster, separate by namespace
 - Cluster isolation: Each team gets dedicated cluster(s)
 - Hybrid: Core teams share, external teams isolated
 
 **Secret Management:**
+
 - SOPS: Git-native, age/pgp encryption, good for small teams
 - External Secrets Operator: Integrate AWS Secrets Manager, Vault, GCP Secret Manager
 - Sealed Secrets: Kubernetes-native, one-way encryption

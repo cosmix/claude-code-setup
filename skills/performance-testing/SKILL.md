@@ -12,6 +12,7 @@ Performance testing validates that applications meet speed, scalability, and sta
 ## When to Use This Skill
 
 Use this skill when you need to:
+
 - Implement load tests, stress tests, spike tests, or soak tests
 - Measure API endpoint performance under concurrent users
 - Optimize database queries and identify slow queries
@@ -20,8 +21,6 @@ Use this skill when you need to:
 - Identify system saturation points and bottlenecks
 - Establish performance budgets and SLOs
 - Conduct capacity planning and scalability analysis
-
-## Instructions
 
 ## Test Types and Patterns
 
@@ -38,6 +37,7 @@ Use this skill when you need to:
 ### k6 Test Patterns
 
 **Pattern: Baseline Load Test**
+
 ```javascript
 export const options = {
   vus: 50,
@@ -49,6 +49,7 @@ export const options = {
 ```
 
 **Pattern: Stress Test (Find Breaking Point)**
+
 ```javascript
 export const options = {
   stages: [
@@ -64,6 +65,7 @@ export const options = {
 ```
 
 **Pattern: Spike Test**
+
 ```javascript
 export const options = {
   stages: [
@@ -77,6 +79,7 @@ export const options = {
 ```
 
 **Pattern: Soak Test (Memory Leaks)**
+
 ```javascript
 export const options = {
   vus: 100,
@@ -1607,21 +1610,21 @@ export default function() {
 
 ### Test Execution Strategy
 
-4. **Test Early and Often**
+1. **Test Early and Often**
    - Include performance tests in CI/CD pipeline
    - Run smoke tests on every commit (quick baseline check)
    - Run full load tests nightly or on pull requests
    - Catch regressions before deployment, not in production
    - Monitor trends, not just pass/fail thresholds
 
-5. **Implement Progressive Load Testing**
+2. **Implement Progressive Load Testing**
    - Start with smoke tests (minimal load, validate functionality)
    - Progress to load tests (expected normal load)
    - Execute stress tests (find breaking points)
    - Run spike tests (validate autoscaling and recovery)
    - Finish with soak tests (detect memory leaks and degradation over time)
 
-6. **Test Critical User Journeys**
+3. **Test Critical User Journeys**
    - Identify top 3-5 most important user flows
    - Prioritize testing revenue-generating paths
    - Include authentication, payment, and checkout flows
@@ -1630,20 +1633,20 @@ export default function() {
 
 ### Analysis and Reporting
 
-7. **Analyze Percentiles, Not Averages**
+1. **Analyze Percentiles, Not Averages**
    - Always report p50, p95, p99 latencies (not just average)
    - Use p95/p99 for SLOs and alerting thresholds
    - Understand that outliers matter for user experience
    - Track maximum latency to identify worst-case scenarios
 
-8. **Monitor in Production**
+2. **Monitor in Production**
    - Performance testing complements, not replaces production monitoring
    - Use APM tools (Datadog, New Relic, etc.) for real user metrics
    - Implement synthetic monitoring for critical paths
    - Alert on performance degradation before users complain
    - Correlate load test results with production behavior
 
-9. **Document and Share Results**
+3. **Document and Share Results**
    - Keep performance test reports in version control
    - Create visual dashboards for trend analysis
    - Share findings with team in regular reviews
@@ -1652,21 +1655,21 @@ export default function() {
 
 ### Optimization and Iteration
 
-10. **Follow Scientific Method**
+1. **Follow Scientific Method**
     - Form hypothesis before optimization ("I think X is slow because Y")
     - Change one variable at a time
     - Measure impact with load tests before and after
     - Document failed attempts (what didn't work and why)
     - Validate optimizations don't break functionality
 
-11. **Set and Enforce Performance Budgets**
+2. **Set and Enforce Performance Budgets**
     - Define acceptable latency targets per endpoint
     - Set throughput requirements (RPS, concurrent users)
     - Establish error rate thresholds
     - Block deployments that violate budgets
     - Review and adjust budgets quarterly based on business needs
 
-12. **Test Database Performance Separately**
+3. **Test Database Performance Separately**
     - Isolate database bottlenecks from application issues
     - Benchmark queries under load (not just in dev)
     - Test connection pool exhaustion scenarios

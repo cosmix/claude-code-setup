@@ -52,6 +52,7 @@ This skill covers setup, configuration, dashboard creation, panel design, queryi
 ## When to Use This Skill
 
 ### Primary Use Cases
+
 - Creating or modifying Grafana dashboards
 - Designing panels and visualizations (graphs, stats, tables, heatmaps, etc.)
 - Writing queries (PromQL, LogQL, TraceQL)
@@ -63,6 +64,7 @@ This skill covers setup, configuration, dashboard creation, panel design, queryi
 - Analyzing application performance, errors, or system behavior
 
 ### Who Uses This Skill
+
 - **senior-infrastructure-engineer** (PRIMARY): Production observability setup, LGTM stack deployment, dashboard architecture
 - **software-engineer**: Application dashboards, service metrics visualization
 - **devops-engineer**: Infrastructure monitoring, deployment dashboards
@@ -149,6 +151,7 @@ Horizontally scalable long-term Prometheus storage
 ### Panel Configuration Best Practices
 
 #### Titles and Descriptions
+
 - **Clear, descriptive titles**: Include units and metric context
 - **Tooltips**: Add description fields for panel documentation
 - **Examples**:
@@ -156,18 +159,21 @@ Horizontally scalable long-term Prometheus storage
   - Bad: "Latency"
 
 #### Legends and Labels
+
 - Show legends only when needed (multiple series)
 - Use `{{label}}` format for dynamic legend names
 - Place legends appropriately (bottom, right, or hidden)
 - Sort by value when showing Top N
 
 #### Axes and Units
+
 - Always label axes with units
 - Use appropriate unit formats (seconds, bytes, percent, requests/sec)
 - Set reasonable min/max ranges to avoid misleading scales
 - Use logarithmic scales for wide value ranges
 
 #### Thresholds and Colors
+
 - Use thresholds for visual cues (green/yellow/red)
 - Standard threshold pattern:
   - Green: Normal operation
@@ -178,6 +184,7 @@ Horizontally scalable long-term Prometheus storage
   - P95 latency: <1s (green), 1-3s (yellow), >3s (red)
 
 #### Links and Drilldowns
+
 - Link panels to related dashboards
 - Use data links for context (logs, traces, related services)
 - Create drill-down paths: Overview -> Service -> Component -> Details
@@ -277,6 +284,7 @@ rate(http_requests_total{namespace="$namespace", app="$app"}[5m])
 #### Advanced Variable Techniques
 
 **Regex filtering**:
+
 ```json
 {
   "name": "pod",
@@ -288,6 +296,7 @@ rate(http_requests_total{namespace="$namespace", app="$app"}[5m])
 ```
 
 **All option with custom value**:
+
 ```json
 {
   "name": "status",
@@ -300,6 +309,7 @@ rate(http_requests_total{namespace="$namespace", app="$app"}[5m])
 ```
 
 **Dependent variables** (variable chain):
+
 1. `$datasource` (datasource type)
 2. `$cluster` (query: depends on datasource)
 3. `$namespace` (query: depends on cluster)
@@ -337,6 +347,7 @@ Annotations display events as vertical markers on time series panels:
 ### Dashboard Performance Optimization
 
 #### Query Optimization
+
 - Limit number of panels (< 15 per dashboard)
 - Use appropriate time ranges (avoid queries over months)
 - Leverage `$__interval` for adaptive sampling
@@ -344,6 +355,7 @@ Annotations display events as vertical markers on time series panels:
 - Use query caching when available
 
 #### Panel Performance
+
 - Set max data points to reasonable values
 - Use instant queries for current-state panels
 - Combine related metrics into single queries when possible
@@ -1190,18 +1202,21 @@ metrics_generator:
 ### Performance Optimization
 
 #### Query Optimization
+
 - Use label filters before line filters
 - Limit time ranges for expensive queries
 - Use `unwrap` instead of parsing when possible
 - Cache query results with query frontend
 
 #### Dashboard Performance
+
 - Limit number of panels (< 15 per dashboard)
 - Use appropriate time intervals
 - Avoid high-cardinality grouping
 - Use `$__interval` for adaptive sampling
 
 #### Storage Optimization
+
 - Configure retention policies
 - Use compaction for Loki and Tempo
 - Implement tiered storage (hot/warm/cold)
@@ -1210,16 +1225,19 @@ metrics_generator:
 ### Security Best Practices
 
 #### Authentication
+
 - Enable auth (`auth_enabled: true` in Loki/Tempo)
 - Use OAuth/LDAP for Grafana
 - Implement multi-tenancy with org isolation
 
 #### Authorization
+
 - Configure RBAC in Grafana
 - Limit datasource access by team
 - Use folder permissions for dashboards
 
 #### Network Security
+
 - TLS for all components
 - Network policies in Kubernetes
 - Rate limiting at ingress

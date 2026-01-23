@@ -166,6 +166,7 @@ export function ProductPage({ product }: { product: Product }) {
 ### When NOT Using Next.js/Remix (This Skill's Focus)
 
 All components are client components by default in SPAs. You have full access to:
+
 - Browser APIs (window, document, localStorage)
 - Event handlers (onClick, onChange, etc.)
 - React hooks (useState, useEffect, etc.)
@@ -174,6 +175,7 @@ All components are client components by default in SPAs. You have full access to
 ### When Using Next.js or Remix (Outside This Skill)
 
 Server Components are the default and cannot use:
+
 - Client-side hooks or state
 - Browser APIs
 - Event handlers
@@ -1548,7 +1550,7 @@ export function ContactForm() {
 
 ### Component Organization
 
-```
+```text
 src/
 ├── components/          # Reusable UI components
 │   ├── Button/

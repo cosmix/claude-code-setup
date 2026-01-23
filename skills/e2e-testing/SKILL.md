@@ -665,7 +665,7 @@ test("order creation", async ({ page, request }) => {
 
 **Test Pyramid Strategy:**
 
-```
+```text
          E2E (5-10%)      ← Smoke tests, critical paths
        Integration (20-30%) ← Component integration
       Unit Tests (60-75%)  ← Business logic, utilities
@@ -749,7 +749,10 @@ export default defineConfig({
 
     // Branded browsers (if needed)
     { name: "edge", use: { ...devices["Desktop Edge"], channel: "msedge" } },
-    { name: "chrome", use: { ...devices["Desktop Chrome"], channel: "chrome" } },
+    {
+      name: "chrome",
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+    },
   ],
 });
 

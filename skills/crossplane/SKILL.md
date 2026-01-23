@@ -1012,7 +1012,7 @@ Configure provider controllers for production scale:
 - Use consistent key names across XRDs
 - Document expected secret keys
 
-### Composition Patterns
+### Composition Guidelines
 
 #### Resource Naming
 

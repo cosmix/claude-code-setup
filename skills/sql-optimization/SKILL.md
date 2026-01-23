@@ -64,12 +64,14 @@ This skill focuses on analyzing and optimizing SQL queries for improved performa
 ### Execution Plan Operators
 
 **Scan Types:**
+
 - **Sequential Scan**: Full table scan (slow for large tables)
 - **Index Scan**: Uses index + table lookups (good for low selectivity)
 - **Index Only Scan**: Uses covering index (fastest)
 - **Bitmap Index Scan**: Multiple index scans combined (good for OR conditions)
 
 **Join Algorithms:**
+
 - **Nested Loop**: Best for small tables or index lookups
 - **Hash Join**: Best for medium-sized tables with equality joins
 - **Merge Join**: Best for large pre-sorted tables
@@ -112,6 +114,7 @@ SHOW random_page_cost;      -- Lower for SSDs (1.1-2.0)
 ## Common Anti-Patterns
 
 ### 1. SELECT * in Application Code
+
 ```sql
 -- BAD: Fetches unnecessary columns
 SELECT * FROM users WHERE id = 1;
@@ -121,6 +124,7 @@ SELECT id, email, name FROM users WHERE id = 1;
 ```
 
 ### 2. Implicit Type Conversion
+
 ```sql
 -- BAD: Can't use index if id is integer
 SELECT * FROM users WHERE id = '123';
@@ -130,6 +134,7 @@ SELECT * FROM users WHERE id = 123;
 ```
 
 ### 3. OR Conditions Without Indexes
+
 ```sql
 -- BAD: May not use indexes efficiently
 SELECT * FROM orders WHERE status = 'pending' OR status = 'processing';
@@ -139,6 +144,7 @@ SELECT * FROM orders WHERE status IN ('pending', 'processing');
 ```
 
 ### 4. Correlated Subqueries
+
 ```sql
 -- BAD: Executes subquery for each row
 SELECT p.name,
@@ -153,6 +159,7 @@ GROUP BY p.id, p.name;
 ```
 
 ### 5. Missing WHERE Clauses
+
 ```sql
 -- BAD: Updates entire table
 UPDATE products SET updated_at = NOW();

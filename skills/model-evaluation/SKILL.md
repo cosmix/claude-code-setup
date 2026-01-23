@@ -307,27 +307,27 @@ Use this skill when you need to:
 
 ### Training and Debugging
 
-8. **Start Simple**: Begin with simple baselines before complex models
-9. **Visualize Learning**: Plot learning curves early and often
-10. **Debug Incrementally**: Change one thing at a time when debugging training issues
-11. **Sanity Check**: Overfit on small batch first to verify model can learn
-12. **Early Stopping**: Use validation-based early stopping to prevent overfitting
-13. **Gradient Monitoring**: Track gradient norms to detect vanishing/exploding gradients
+1. **Start Simple**: Begin with simple baselines before complex models
+2. **Visualize Learning**: Plot learning curves early and often
+3. **Debug Incrementally**: Change one thing at a time when debugging training issues
+4. **Sanity Check**: Overfit on small batch first to verify model can learn
+5. **Early Stopping**: Use validation-based early stopping to prevent overfitting
+6. **Gradient Monitoring**: Track gradient norms to detect vanishing/exploding gradients
 
 ### Evaluation Rigor
 
-14. **Hold-out Test Set**: Never touch test set until final evaluation
-15. **Stratified Splits**: Use stratification for imbalanced datasets
-16. **Statistical Testing**: Use significance tests for model comparisons
-17. **Error Analysis**: Dive deep into errors to understand failure modes
-18. **Temporal Validation**: For time-series, validate on future data only
+1. **Hold-out Test Set**: Never touch test set until final evaluation
+2. **Stratified Splits**: Use stratification for imbalanced datasets
+3. **Statistical Testing**: Use significance tests for model comparisons
+4. **Error Analysis**: Dive deep into errors to understand failure modes
+5. **Temporal Validation**: For time-series, validate on future data only
 
 ### Production and Monitoring
 
-19. **Shadow Mode**: Deploy new models in shadow mode before switching traffic
-20. **Gradual Rollout**: Use canary deployments or gradual percentage rollouts
-21. **Rollback Plan**: Have automated rollback triggers for performance degradation
-22. **Alert Fatigue**: Set meaningful alert thresholds to avoid noise
+1. **Shadow Mode**: Deploy new models in shadow mode before switching traffic
+2. **Gradual Rollout**: Use canary deployments or gradual percentage rollouts
+3. **Rollback Plan**: Have automated rollback triggers for performance degradation
+4. **Alert Fatigue**: Set meaningful alert thresholds to avoid noise
 
 ## Examples
 
