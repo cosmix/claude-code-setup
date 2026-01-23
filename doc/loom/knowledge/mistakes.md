@@ -36,3 +36,11 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 **Root cause:** stage_type: knowledge auto-sets merged=true before acceptance verification.
 
 **Fix:** Run acceptance criteria BEFORE marking knowledge stages complete.
+
+## Dependency stage marked complete without implementation
+
+**What happened:** code-architecture-support stage was marked Completed without adding the Architecture enum to knowledge.rs. Integration-verify had to fix it.
+
+**Why:** Agent didn't verify acceptance criteria passed before completing.
+
+**How to avoid:** Always run acceptance criteria before marking stages complete.
