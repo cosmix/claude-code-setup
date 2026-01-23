@@ -164,9 +164,7 @@ impl DaemonServer {
         if let Some(handle) = log_tail_handle {
             let _ = handle.join();
         }
-        if let Some(handle) = status_broadcast_handle {
-            let _ = handle.join();
-        }
+        let _ = status_broadcast_handle.join();
 
         self.cleanup()?;
         Ok(())
