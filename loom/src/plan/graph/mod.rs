@@ -1,6 +1,7 @@
 //! Execution graph for managing stage dependencies and execution order
 
 mod cycle;
+mod loader;
 mod nodes;
 mod scheduling;
 
@@ -13,6 +14,7 @@ use std::collections::HashMap;
 
 use super::schema::StageDefinition;
 
+pub use loader::build_execution_graph;
 pub use nodes::{NodeStatus, StageNode};
 
 /// Execution graph representing stages and their dependencies
