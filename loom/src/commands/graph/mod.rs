@@ -21,6 +21,7 @@ mod tests;
 use anyhow::{bail, Result};
 use colored::Colorize;
 
+use crate::commands::common::find_work_dir;
 use crate::verify::transitions::list_all_stages;
 
 // Re-export the public API
@@ -37,10 +38,7 @@ pub fn show() -> Result<()> {
     println!("================");
     println!();
 
-    let work_dir = std::env::current_dir()?.join(".work");
-    if !work_dir.exists() {
-        bail!(".work/ directory not found. Run 'loom init' first.");
-    }
+    let work_dir = find_work_dir()?;
 
     let stages = list_all_stages(&work_dir)?;
     let tree_display = build_tree_display(&stages);
@@ -74,10 +72,7 @@ pub fn show() -> Result<()> {
 /// This command opens the stages directory in the configured editor, allowing
 /// direct modification of stage files.
 pub fn edit() -> Result<()> {
-    let work_dir = std::env::current_dir()?.join(".work");
-    if !work_dir.exists() {
-        bail!(".work/ directory not found. Run 'loom init' first.");
-    }
+    let work_dir = find_work_dir()?;
 
     let stages_dir = work_dir.join("stages");
     if !stages_dir.exists() {

@@ -38,19 +38,20 @@ pub fn handle_client_connection(
             }
             Request::SubscribeStatus => {
                 if let Ok(stream_clone) = stream.try_clone() {
-                    match status_subscribers.lock() {
-                        Ok(mut subs) => {
-                            subs.push(stream_clone);
-                            write_message(&mut stream, &Response::Ok)?;
-                        }
-                        Err(_) => {
-                            write_message(
-                                &mut stream,
-                                &Response::Error {
-                                    message: "Failed to acquire subscriber lock".to_string(),
-                                },
-                            )?;
-                        }
+                    // Acquire lock, add subscriber, release lock before I/O
+                    let lock_result = status_subscribers.lock().map(|mut subs| {
+                        subs.push(stream_clone);
+                    });
+                    // Write response AFTER releasing the lock
+                    if lock_result.is_ok() {
+                        write_message(&mut stream, &Response::Ok)?;
+                    } else {
+                        write_message(
+                            &mut stream,
+                            &Response::Error {
+                                message: "Failed to acquire subscriber lock".to_string(),
+                            },
+                        )?;
                     }
                 } else {
                     write_message(
@@ -63,19 +64,20 @@ pub fn handle_client_connection(
             }
             Request::SubscribeLogs => {
                 if let Ok(stream_clone) = stream.try_clone() {
-                    match log_subscribers.lock() {
-                        Ok(mut subs) => {
-                            subs.push(stream_clone);
-                            write_message(&mut stream, &Response::Ok)?;
-                        }
-                        Err(_) => {
-                            write_message(
-                                &mut stream,
-                                &Response::Error {
-                                    message: "Failed to acquire subscriber lock".to_string(),
-                                },
-                            )?;
-                        }
+                    // Acquire lock, add subscriber, release lock before I/O
+                    let lock_result = log_subscribers.lock().map(|mut subs| {
+                        subs.push(stream_clone);
+                    });
+                    // Write response AFTER releasing the lock
+                    if lock_result.is_ok() {
+                        write_message(&mut stream, &Response::Ok)?;
+                    } else {
+                        write_message(
+                            &mut stream,
+                            &Response::Error {
+                                message: "Failed to acquire subscriber lock".to_string(),
+                            },
+                        )?;
                     }
                 } else {
                     write_message(
