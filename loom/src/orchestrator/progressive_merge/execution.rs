@@ -1,10 +1,10 @@
 //! Merge execution logic for progressive merging
 
 use anyhow::{Context, Result};
-use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
+use crate::fs::load_config;
 use crate::git::branch::branch_exists;
 use crate::git::merge::{merge_stage, MergeResult};
 use crate::models::stage::Stage;
@@ -88,25 +88,10 @@ pub fn merge_completed_stage_with_timeout(
 ///
 /// Falls back to "main" if not configured.
 pub fn get_merge_point(work_dir: &Path) -> Result<String> {
-    let config_path = work_dir.join("config.toml");
-
-    if !config_path.exists() {
-        return Ok("main".to_string());
+    match load_config(work_dir)? {
+        Some(config) => Ok(config.base_branch().unwrap_or_else(|| "main".to_string())),
+        None => Ok("main".to_string()),
     }
-
-    let config_content = fs::read_to_string(&config_path).context("Failed to read config.toml")?;
-
-    let config: toml::Value =
-        toml::from_str(&config_content).context("Failed to parse config.toml")?;
-
-    let base_branch = config
-        .get("plan")
-        .and_then(|p| p.get("base_branch"))
-        .and_then(|b| b.as_str())
-        .map(String::from)
-        .unwrap_or_else(|| "main".to_string());
-
-    Ok(base_branch)
 }
 
 #[cfg(test)]

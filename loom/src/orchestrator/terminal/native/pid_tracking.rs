@@ -6,9 +6,13 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
+
+// Re-export is_process_alive from the process module for backwards compatibility
+pub use crate::process::is_process_alive as check_pid_alive;
 
 /// Get the path to the pids directory
 pub fn pids_dir(work_dir: &Path) -> PathBuf {
@@ -79,16 +83,6 @@ pub fn remove_wrapper_script(work_dir: &Path, stage_id: &str) {
 pub fn cleanup_stage_files(work_dir: &Path, stage_id: &str) {
     remove_pid_file(work_dir, stage_id);
     remove_wrapper_script(work_dir, stage_id);
-}
-
-/// Check if a PID is alive using kill -0
-pub fn check_pid_alive(pid: u32) -> bool {
-    Command::new("kill")
-        .arg("-0")
-        .arg(pid.to_string())
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
 }
 
 /// Discover the Claude process PID by scanning /proc (Linux)

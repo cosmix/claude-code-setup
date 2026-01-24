@@ -6,6 +6,8 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+use crate::process::is_process_alive;
+
 use super::super::validation::extract_frontmatter_field;
 
 /// Check if a merge conflict resolution session is already running for this stage
@@ -42,13 +44,7 @@ pub fn find_active_merge_session(stage_id: &str, work_dir: &Path) -> Result<Opti
                     if let Some(pid_str) = extract_frontmatter_field(&content, "pid") {
                         if let Ok(pid) = pid_str.parse::<u32>() {
                             // Check if process is still alive
-                            if std::process::Command::new("kill")
-                                .arg("-0")
-                                .arg(pid.to_string())
-                                .output()
-                                .map(|output| output.status.success())
-                                .unwrap_or(false)
-                            {
+                            if is_process_alive(pid) {
                                 return Ok(Some(session_id));
                             }
                         }

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::fs::memory::{
     format_memory_for_handoff, generate_summary, preserve_for_crash, read_journal, write_summary,
@@ -12,6 +12,7 @@ use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::orchestrator::signals::read_merge_signal;
 use crate::orchestrator::spawner::{generate_crash_report, CrashReport};
+use crate::process::is_process_alive;
 
 use super::config::MonitorConfig;
 use super::context::context_usage_percent;
@@ -47,22 +48,21 @@ impl Handlers {
             if let Ok(pid_content) = std::fs::read_to_string(&pid_file_path) {
                 if let Ok(current_pid) = pid_content.trim().parse::<u32>() {
                     // We have a PID from the tracking file, check if it's alive
-                    let is_alive = check_pid_alive_internal(current_pid)?;
+                    let alive = is_process_alive(current_pid);
 
-                    if !is_alive {
+                    if !alive {
                         // PID file exists but process is dead - clean up the file
                         let _ = std::fs::remove_file(&pid_file_path);
                     }
 
-                    return Ok(Some(is_alive));
+                    return Ok(Some(alive));
                 }
             }
         }
 
         // Fallback to the stored PID from the session
         if let Some(pid) = session.pid {
-            let is_alive = check_pid_alive_internal(pid)?;
-            return Ok(Some(is_alive));
+            return Ok(Some(is_process_alive(pid)));
         }
 
         // No PID - cannot track liveness
@@ -176,15 +176,4 @@ impl Handlers {
             }
         }
     }
-}
-
-/// Internal helper to check if a PID is alive using kill -0
-fn check_pid_alive_internal(pid: u32) -> Result<bool> {
-    let output = std::process::Command::new("kill")
-        .arg("-0")
-        .arg(pid.to_string())
-        .output()
-        .context("Failed to check if process is alive")?;
-
-    Ok(output.status.success())
 }

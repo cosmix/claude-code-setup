@@ -4,8 +4,9 @@
 //! when retrying or verifying stages.
 
 use anyhow::{bail, Context, Result};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use crate::fs::load_config_required;
 use crate::models::stage::Stage;
 use crate::plan::parser::parse_plan;
 
@@ -15,25 +16,11 @@ use crate::plan::parser::parse_plan;
 /// finds the stage definition, and updates stage.acceptance, stage.working_dir,
 /// and stage.setup from the plan.
 pub fn reload_acceptance_from_plan(stage: &mut Stage, work_dir: &Path) -> Result<()> {
-    let config_path = work_dir.join("config.toml");
+    let config = load_config_required(work_dir)?;
 
-    if !config_path.exists() {
-        bail!("No config.toml found in .work/. Cannot reload acceptance criteria.");
-    }
-
-    let config_content =
-        std::fs::read_to_string(&config_path).context("Failed to read config.toml")?;
-
-    let config: toml::Value =
-        toml::from_str(&config_content).context("Failed to parse config.toml")?;
-
-    let source_path = config
-        .get("plan")
-        .and_then(|p| p.get("source_path"))
-        .and_then(|s| s.as_str())
+    let plan_path = config
+        .source_path()
         .ok_or_else(|| anyhow::anyhow!("No 'plan.source_path' found in config.toml"))?;
-
-    let plan_path = PathBuf::from(source_path);
 
     if !plan_path.exists() {
         bail!(
