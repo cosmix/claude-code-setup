@@ -111,7 +111,7 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Implementing working_dir clarifications in sequential order: 1) CLAUDE.md.template with DIRECTORY HIERARCHY section, 2) format.rs with working_dir and execution_path in Target/Acceptance sections, 3) cache.rs Path Boundaries update, 4) tests**
-  - *Rationale:* Tasks overlap files so sequential implementation is required per assignment
+  - _Rationale:_ Tasks overlap files so sequential implementation is required per assignment
 
 ## Acceptance Criteria working_dir Mismatch
 
@@ -120,3 +120,15 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 **Why:** Plan didn't verify working_dir matches where build tools run.
 
 **Fix:** Set working_dir to directory containing Cargo.toml/package.json, or use 'cd loom &&' prefix.
+
+## Promoted from Memory [2026-01-24 15:18]
+
+### Notes
+
+- Integration verification passed: all tests pass (16+28+3+5), clippy clean, build succeeds. DIRECTORY HIERARCHY section properly added to CLAUDE.md.template with three-level model diagram and path resolution formula. Signal format.rs properly includes working_dir display with execution path computation.
+
+## Promoted from Memory [2026-01-24 15:22]
+
+### Notes
+
+- Fixed acceptance criteria path mismatch in plan: with working_dir='loom', paths must be relative to loom/ directory. Changed CLAUDE.md.template to ../CLAUDE.md.template and loom/src/... to src/... This demonstrates the exact issue the DIRECTORY HIERARCHY documentation was created to prevent.
