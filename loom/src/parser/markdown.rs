@@ -1,6 +1,8 @@
 use anyhow::Result;
 use std::collections::HashMap;
 
+use super::frontmatter::extract_yaml_frontmatter;
+
 #[derive(Debug, Clone)]
 pub struct MarkdownDocument {
     pub frontmatter: HashMap<String, String>,
@@ -26,13 +28,27 @@ impl MarkdownDocument {
     }
 
     fn extract_frontmatter(content: &str) -> Result<(HashMap<String, String>, String)> {
-        let mut frontmatter = HashMap::new();
         let lines: Vec<&str> = content.lines().collect();
 
+        // Check if frontmatter exists
         if lines.is_empty() || !lines[0].trim().starts_with("---") {
-            return Ok((frontmatter, content.to_string()));
+            return Ok((HashMap::new(), content.to_string()));
         }
 
+        // Use the canonical frontmatter parser
+        let yaml_value = extract_yaml_frontmatter(content)?;
+
+        // Convert YAML value to HashMap<String, String> for backward compatibility
+        let mut frontmatter = HashMap::new();
+        if let serde_yaml::Value::Mapping(map) = yaml_value {
+            for (key, value) in map {
+                if let (serde_yaml::Value::String(k), serde_yaml::Value::String(v)) = (key, value) {
+                    frontmatter.insert(k, v);
+                }
+            }
+        }
+
+        // Find the end of frontmatter to extract body
         let mut end_idx = 0;
         for (idx, line) in lines.iter().enumerate().skip(1) {
             if line.trim().starts_with("---") {
@@ -41,17 +57,12 @@ impl MarkdownDocument {
             }
         }
 
-        if end_idx == 0 {
-            return Ok((frontmatter, content.to_string()));
-        }
+        let body = if end_idx > 0 {
+            lines[end_idx + 1..].join("\n")
+        } else {
+            content.to_string()
+        };
 
-        for line in &lines[1..end_idx] {
-            if let Some((key, value)) = line.split_once(':') {
-                frontmatter.insert(key.trim().to_string(), value.trim().to_string());
-            }
-        }
-
-        let body = lines[end_idx + 1..].join("\n");
         Ok((frontmatter, body))
     }
 

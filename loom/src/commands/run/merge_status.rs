@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use std::fs;
 
 use crate::fs::work_dir::WorkDir;
+use crate::parser::frontmatter::extract_frontmatter_field;
 
 /// Check if all stages are merged by reading stage files.
 pub fn all_stages_merged(work_dir: &WorkDir) -> Result<bool> {
@@ -34,34 +35,19 @@ pub fn all_stages_merged(work_dir: &WorkDir) -> Result<bool> {
             .with_context(|| format!("Failed to read stage file: {}", path.display()))?;
 
         // Parse YAML frontmatter to check merged status
-        if let Some(frontmatter) = extract_frontmatter(&content) {
-            // Check if merged: true in frontmatter
-            if !frontmatter.contains("merged: true") {
+        match extract_frontmatter_field(&content, "merged") {
+            Ok(Some(value)) if value == "true" => {
+                // Stage is merged, continue checking others
+            }
+            _ => {
+                // Not merged or error parsing
                 return Ok(false);
             }
-        } else {
-            // No frontmatter means not merged
-            return Ok(false);
         }
     }
 
     // Must have at least one stage to be considered "all merged"
     Ok(found_any_stage)
-}
-
-/// Extract YAML frontmatter from markdown content
-pub fn extract_frontmatter(content: &str) -> Option<&str> {
-    let content = content.trim_start();
-    if !content.starts_with("---") {
-        return None;
-    }
-
-    let rest = &content[3..];
-    if let Some(end) = rest.find("---") {
-        Some(&rest[..end])
-    } else {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -85,28 +71,13 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_frontmatter() {
+    fn test_extract_frontmatter_field() {
         let content = "---\nstatus: completed\nmerged: true\n---\n# Content";
-        let fm = extract_frontmatter(content);
-        assert!(fm.is_some());
-        assert!(fm.unwrap().contains("merged: true"));
+        let merged = extract_frontmatter_field(content, "merged");
+        assert_eq!(merged.unwrap(), Some("true".to_string()));
 
         let no_fm = "# Just content";
-        assert!(extract_frontmatter(no_fm).is_none());
-    }
-
-    #[test]
-    fn test_extract_frontmatter_with_leading_whitespace() {
-        let content = "  \n---\nid: test\n---\n# Content";
-        let fm = extract_frontmatter(content);
-        assert!(fm.is_some());
-    }
-
-    #[test]
-    fn test_extract_frontmatter_unclosed() {
-        let content = "---\nid: test\nNo closing delimiter";
-        let fm = extract_frontmatter(content);
-        assert!(fm.is_none());
+        assert!(extract_frontmatter_field(no_fm, "merged").is_err());
     }
 
     #[test]
