@@ -52,3 +52,43 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 **Root cause:** Paths like loom/src/... failed when running from within loom/.
 
 **Fix:** Use paths relative to working_dir: src/file.rs (not loom/src/file.rs), ../TEMPLATE (not TEMPLATE).
+
+## PID Overflow Risk
+
+**Where:** daemon/server/core.rs:71,82 casts `pid as i32`
+
+**Issue:** PIDs on modern systems can exceed i32::MAX, causing wrap-around.
+
+**Fix:** Use i32::try_from(pid)? to validate range before libc::kill().
+
+**Lesson:** Always validate numeric conversions for system call parameters.
+
+## Socket Permission Oversight
+
+**Where:** daemon/server/lifecycle.rs binds Unix socket without setting permissions.
+
+**Issue:** Socket created with default umask - may be readable/writable by other users.
+
+**Risk:** Other users could connect to daemon, send commands, or cause DoS.
+
+**Fix:** Set socket permissions explicitly after bind with chmod 0600 or fchmod.
+
+## State Machine Bypass Patterns
+
+**Where:** commands/stage/complete.rs:43-78 --force-unsafe flag; recovery.rs:278 recovery bypass.
+
+**Issue:** Multiple paths allow bypassing state machine validation.
+
+**Risk:** Can corrupt dependency tracking, allow invalid transitions, break invariants.
+
+**Mitigation:** Log all bypasses, require explicit --assume-merged, warn users clearly.
+
+## Debug Output in Production
+
+**Where:** eprintln! statements with 'Debug:' prefix in complete.rs:127,130, orchestrator.rs:75,77.
+
+**Issue:** Debug output mixed with user-facing messages in production code.
+
+**Impact:** Confuses users, clutters output, inconsistent UX.
+
+**Fix:** Use tracing crate with log levels, or remove debug output before release.
