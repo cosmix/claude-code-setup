@@ -6,7 +6,7 @@ impl SessionStatus {
     /// Check if transitioning from the current status to the new status is valid.
     ///
     /// Valid transitions:
-    /// - `Spawning` -> `Running`
+    /// - `Spawning` -> `Running` | `Crashed` (process can crash during spawn)
     /// - `Running` -> `Completed` | `Paused` | `Crashed` | `ContextExhausted`
     /// - `Paused` -> `Running`
     ///
@@ -27,7 +27,9 @@ impl SessionStatus {
         }
 
         match self {
-            SessionStatus::Spawning => matches!(new_status, SessionStatus::Running),
+            SessionStatus::Spawning => {
+                matches!(new_status, SessionStatus::Running | SessionStatus::Crashed)
+            }
             SessionStatus::Running => matches!(
                 new_status,
                 SessionStatus::Completed
@@ -61,7 +63,7 @@ impl SessionStatus {
     /// Returns the list of valid statuses this status can transition to.
     pub fn valid_transitions(&self) -> Vec<SessionStatus> {
         match self {
-            SessionStatus::Spawning => vec![SessionStatus::Running],
+            SessionStatus::Spawning => vec![SessionStatus::Running, SessionStatus::Crashed],
             SessionStatus::Running => vec![
                 SessionStatus::Completed,
                 SessionStatus::Paused,

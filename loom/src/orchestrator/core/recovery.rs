@@ -138,12 +138,27 @@ impl Recovery for Orchestrator {
                                     stage.id,
                                     stage.retry_count + 1
                                 );
-                                // Save the updated stage
+
+                                // ATOMIC UPDATE PATTERN:
+                                // 1. Save original graph state for potential rollback
+                                // 2. Update graph first (tentatively)
+                                // 3. Save file
+                                // 4. If save fails, rollback graph to original state
+                                let original_graph_status = self
+                                    .graph
+                                    .get_node(&stage.id)
+                                    .map(|n| n.status.clone());
+
+                                // Update graph first
+                                let _ = self.graph.mark_queued(&stage.id);
+
+                                // Now save the file
                                 if let Err(e) = self.save_stage(&stage) {
                                     eprintln!("Warning: Failed to save stage during retry: {e}");
-                                } else {
-                                    // Update graph to reflect the queued status
-                                    let _ = self.graph.mark_queued(&stage.id);
+                                    // Rollback graph to original state
+                                    if let Some(NodeStatus::Blocked) = original_graph_status {
+                                        let _ = self.graph.mark_blocked(&stage.id);
+                                    }
                                 }
                             }
                         } else {
@@ -283,15 +298,50 @@ impl Recovery for Orchestrator {
                             stage.session = None;
                             stage.close_reason = Some("Session crashed/orphaned".to_string());
                             stage.updated_at = chrono::Utc::now();
-                            self.save_stage(&stage)?;
 
-                            // Update graph - first ensure it's not in a terminal state
-                            if let Some(node) = self.graph.get_node(stage_id) {
-                                if node.status != NodeStatus::Completed {
-                                    // Try to mark as ready in graph
-                                    // This will fail if dependencies aren't satisfied, which is OK
-                                    let _ = self.graph.mark_queued(stage_id);
+                            // ATOMIC UPDATE PATTERN:
+                            // 1. Save original graph state for potential rollback
+                            // 2. Update graph first (tentatively)
+                            // 3. Save file
+                            // 4. If save fails, rollback graph to original state
+                            let original_graph_status = self
+                                .graph
+                                .get_node(stage_id)
+                                .map(|n| n.status.clone());
+
+                            // Update graph first - only if not in terminal state
+                            let graph_updated =
+                                if let Some(node) = self.graph.get_node(stage_id) {
+                                    if node.status != NodeStatus::Completed {
+                                        let _ = self.graph.mark_queued(stage_id);
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    false
+                                };
+
+                            // Now save the file
+                            if let Err(e) = self.save_stage(&stage) {
+                                // Rollback graph to original state if we updated it
+                                if graph_updated {
+                                    if let Some(original_status) = original_graph_status {
+                                        match original_status {
+                                            NodeStatus::Executing => {
+                                                let _ = self.graph.mark_executing(stage_id);
+                                            }
+                                            NodeStatus::Blocked => {
+                                                let _ = self.graph.mark_blocked(stage_id);
+                                            }
+                                            NodeStatus::NeedsHandoff => {
+                                                let _ = self.graph.mark_needs_handoff(stage_id);
+                                            }
+                                            _ => {} // Other states unlikely during recovery
+                                        }
+                                    }
                                 }
+                                return Err(e);
                             }
 
                             recovered += 1;
