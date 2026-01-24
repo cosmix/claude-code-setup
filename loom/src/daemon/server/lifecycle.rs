@@ -3,10 +3,11 @@
 use super::super::protocol::{read_message, write_message, Request, Response};
 use super::broadcast::{spawn_log_tailer, spawn_status_broadcaster};
 use super::client::handle_client_connection;
-use super::core::DaemonServer;
+use super::core::{DaemonServer, MAX_CONNECTIONS};
 use super::orchestrator::spawn_orchestrator;
 use anyhow::{Context, Result};
-use std::fs;
+use std::fs::{self, Permissions};
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::atomic::Ordering;
@@ -68,9 +69,11 @@ impl DaemonServer {
     /// # Returns
     /// `Ok(())` on success, error if daemon fails to start
     pub fn start(&self) -> Result<()> {
-        // Check if socket already exists
-        if self.socket_path.exists() {
-            fs::remove_file(&self.socket_path).context("Failed to remove stale socket file")?;
+        // Remove stale socket if it exists (ignore NotFound to avoid TOCTOU race)
+        if let Err(e) = fs::remove_file(&self.socket_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(e).context("Failed to remove stale socket file");
+            }
         }
 
         // Daemonize the process
@@ -101,9 +104,11 @@ impl DaemonServer {
         fs::write(&self.pid_path, format!("{}", std::process::id()))
             .context("Failed to write PID file")?;
 
-        // Check if socket already exists
-        if self.socket_path.exists() {
-            fs::remove_file(&self.socket_path).context("Failed to remove stale socket file")?;
+        // Remove stale socket if it exists (ignore NotFound to avoid TOCTOU race)
+        if let Err(e) = fs::remove_file(&self.socket_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(e).context("Failed to remove stale socket file");
+            }
         }
 
         self.run_server()
@@ -113,6 +118,10 @@ impl DaemonServer {
     pub(super) fn run_server(&self) -> Result<()> {
         let listener =
             UnixListener::bind(&self.socket_path).context("Failed to bind Unix socket")?;
+
+        // Set restrictive permissions (owner read/write only) to prevent unauthorized access
+        fs::set_permissions(&self.socket_path, Permissions::from_mode(0o600))
+            .context("Failed to set socket permissions")?;
 
         // Set socket to non-blocking mode for graceful shutdown
         listener
@@ -131,17 +140,32 @@ impl DaemonServer {
         while !self.shutdown_flag.load(Ordering::Relaxed) {
             match listener.accept() {
                 Ok((stream, _addr)) => {
+                    // Check connection limit before accepting
+                    let current = self.connection_count.load(Ordering::Relaxed);
+                    if current >= MAX_CONNECTIONS {
+                        eprintln!("Connection limit reached ({MAX_CONNECTIONS}), rejecting");
+                        drop(stream); // Close the connection immediately
+                        continue;
+                    }
+
+                    // Increment connection count
+                    self.connection_count.fetch_add(1, Ordering::Relaxed);
+
                     let shutdown_flag = Arc::clone(&self.shutdown_flag);
                     let status_subscribers = Arc::clone(&self.status_subscribers);
                     let log_subscribers = Arc::clone(&self.log_subscribers);
+                    let connection_count = Arc::clone(&self.connection_count);
 
                     thread::spawn(move || {
-                        if let Err(e) = handle_client_connection(
+                        let result = handle_client_connection(
                             stream,
                             shutdown_flag,
                             status_subscribers,
                             log_subscribers,
-                        ) {
+                        );
+                        // Decrement connection count when thread exits
+                        connection_count.fetch_sub(1, Ordering::Relaxed);
+                        if let Err(e) = result {
                             eprintln!("Client handler error: {e}");
                         }
                     });
@@ -172,11 +196,16 @@ impl DaemonServer {
 
     /// Clean up socket and PID files.
     pub(super) fn cleanup(&self) -> Result<()> {
-        if self.socket_path.exists() {
-            fs::remove_file(&self.socket_path).context("Failed to remove socket file")?;
+        // Remove files directly, ignoring NotFound to avoid TOCTOU race
+        if let Err(e) = fs::remove_file(&self.socket_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(e).context("Failed to remove socket file");
+            }
         }
-        if self.pid_path.exists() {
-            fs::remove_file(&self.pid_path).context("Failed to remove PID file")?;
+        if let Err(e) = fs::remove_file(&self.pid_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(e).context("Failed to remove PID file");
+            }
         }
         Ok(())
     }

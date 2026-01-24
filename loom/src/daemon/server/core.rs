@@ -3,8 +3,11 @@
 use super::super::protocol::DaemonConfig;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+
+/// Maximum number of concurrent client connections allowed.
+pub(super) const MAX_CONNECTIONS: usize = 100;
 
 /// Daemon server that listens on a Unix domain socket.
 pub struct DaemonServer {
@@ -14,6 +17,7 @@ pub struct DaemonServer {
     pub(super) work_dir: PathBuf,
     pub(super) config: DaemonConfig,
     pub(super) shutdown_flag: Arc<AtomicBool>,
+    pub(super) connection_count: Arc<AtomicUsize>,
     pub(super) status_subscribers: Arc<Mutex<Vec<UnixStream>>>,
     pub(super) log_subscribers: Arc<Mutex<Vec<UnixStream>>>,
 }
@@ -46,6 +50,7 @@ impl DaemonServer {
             work_dir: work_dir.to_path_buf(),
             config,
             shutdown_flag: Arc::new(AtomicBool::new(false)),
+            connection_count: Arc::new(AtomicUsize::new(0)),
             status_subscribers: Arc::new(Mutex::new(Vec::new())),
             log_subscribers: Arc::new(Mutex::new(Vec::new())),
         }
@@ -68,7 +73,9 @@ impl DaemonServer {
             // Clean up stale PID file if it exists
             if pid_path.exists() {
                 if let Some(pid) = Self::read_pid(work_dir) {
-                    let pid_exists = unsafe { libc::kill(pid as i32, 0) == 0 };
+                    let pid_exists = i32::try_from(pid)
+                        .map(|p| unsafe { libc::kill(p, 0) == 0 })
+                        .unwrap_or(false); // PID too large, assume not running
                     if !pid_exists {
                         let _ = std::fs::remove_file(&pid_path);
                     }
@@ -79,7 +86,9 @@ impl DaemonServer {
 
         if let Some(pid) = Self::read_pid(work_dir) {
             // Check if process exists by sending signal 0
-            let pid_exists = unsafe { libc::kill(pid as i32, 0) == 0 };
+            let pid_exists = i32::try_from(pid)
+                .map(|p| unsafe { libc::kill(p, 0) == 0 })
+                .unwrap_or(false); // PID too large, assume not running
             if !pid_exists {
                 // PID file exists but process is dead, clean up stale files
                 let _ = std::fs::remove_file(&pid_path);
