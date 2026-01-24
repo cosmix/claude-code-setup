@@ -5,6 +5,18 @@
 use std::path::Path;
 use std::process::Command;
 
+/// Escape a string for use in AppleScript double-quoted strings.
+///
+/// In AppleScript, within double quotes:
+/// - Backslashes must be escaped: `\` → `\\`
+/// - Double quotes must be escaped: `"` → `\"`
+///
+/// This prevents injection attacks where malicious stage IDs or commands
+/// could break out of the AppleScript string context.
+fn escape_applescript_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 /// Supported terminal emulators
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalEmulator {
@@ -201,11 +213,15 @@ impl TerminalEmulator {
                 // Note: The wrapper script handles cd to the working directory,
                 // so we just need to run the command. This is more reliable than
                 // trying to cd in AppleScript, which can race with shell startup.
+                //
+                // SECURITY: Escape cmd and title to prevent AppleScript injection
+                let escaped_cmd = escape_applescript_string(cmd);
+                let escaped_title = escape_applescript_string(title);
                 let script = format!(
                     r#"tell application "Terminal"
     activate
-    do script "{cmd}"
-    set custom title of front window to "{title}"
+    do script "{escaped_cmd}"
+    set custom title of front window to "{escaped_title}"
 end tell"#
                 );
                 command.arg("-e").arg(script);
@@ -216,12 +232,15 @@ end tell"#
                 // so we just need to run the command. Using `write text` can race
                 // with shell startup, but since the wrapper script has the cd,
                 // even if there's a delay the directory change will happen.
+                //
+                // SECURITY: Escape cmd to prevent AppleScript injection
+                let escaped_cmd = escape_applescript_string(cmd);
                 let script = format!(
                     r#"tell application "iTerm"
     activate
     create window with default profile
     tell current session of current window
-        write text "{cmd}"
+        write text "{escaped_cmd}"
     end tell
 end tell"#
                 );
@@ -387,5 +406,74 @@ mod tests {
         assert!(script.contains("create window with default profile"));
         // Note: workdir is no longer in the AppleScript - it's handled by the wrapper script
         assert!(script.contains("echo hello"));
+    }
+
+    #[test]
+    fn test_escape_applescript_string() {
+        use super::escape_applescript_string;
+
+        // Test basic escaping
+        assert_eq!(escape_applescript_string("hello"), "hello");
+
+        // Test quote escaping
+        assert_eq!(escape_applescript_string(r#"say "hi""#), r#"say \"hi\""#);
+
+        // Test backslash escaping
+        assert_eq!(escape_applescript_string(r#"path\to\file"#), r#"path\\to\\file"#);
+
+        // Test combined escaping
+        assert_eq!(
+            escape_applescript_string(r#"echo "test\path""#),
+            r#"echo \"test\\path\""#
+        );
+
+        // Test potential injection attempt
+        let malicious = r#""; do shell script "rm -rf /" --"#;
+        let escaped = escape_applescript_string(malicious);
+        // The quotes should be escaped, preventing breakout
+        assert!(escaped.contains(r#"\""#));
+        assert!(!escaped.contains(r#"" do"#)); // No unescaped quote followed by space
+    }
+
+    #[test]
+    fn test_terminal_app_escapes_special_chars() {
+        let emulator = TerminalEmulator::TerminalApp;
+        let workdir = Path::new("/tmp");
+
+        // Test with command containing quotes
+        let cmd = emulator.build_command("Test", workdir, r#"echo "hello""#);
+        let args: Vec<_> = cmd.get_args().collect();
+        let script = args[1].to_str().unwrap();
+
+        // The quotes in the command should be escaped
+        assert!(script.contains(r#"echo \"hello\""#));
+    }
+
+    #[test]
+    fn test_terminal_app_escapes_title() {
+        let emulator = TerminalEmulator::TerminalApp;
+        let workdir = Path::new("/tmp");
+
+        // Test with title containing quotes (potential injection)
+        let cmd = emulator.build_command(r#"Stage "test""#, workdir, "echo hi");
+        let args: Vec<_> = cmd.get_args().collect();
+        let script = args[1].to_str().unwrap();
+
+        // The quotes in the title should be escaped
+        assert!(script.contains(r#"Stage \"test\""#));
+    }
+
+    #[test]
+    fn test_iterm2_escapes_special_chars() {
+        let emulator = TerminalEmulator::ITerm2;
+        let workdir = Path::new("/tmp");
+
+        // Test with command containing backslashes and quotes
+        let cmd = emulator.build_command("Test", workdir, r#"echo "path\to\file""#);
+        let args: Vec<_> = cmd.get_args().collect();
+        let script = args[1].to_str().unwrap();
+
+        // Both quotes and backslashes should be escaped
+        assert!(script.contains(r#"echo \"path\\to\\file\""#));
     }
 }

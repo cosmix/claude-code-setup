@@ -9,6 +9,7 @@ use crate::verify::serialize_stage_to_markdown;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
+use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -30,6 +31,21 @@ fn get_current_branch() -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+/// Configuration file structure for type-safe TOML serialization.
+/// Using serde ensures proper escaping of all string fields.
+#[derive(Serialize)]
+struct Config {
+    plan: PlanConfig,
+}
+
+#[derive(Serialize)]
+struct PlanConfig {
+    source_path: String,
+    plan_id: String,
+    plan_name: String,
+    base_branch: String,
+}
+
 /// Initialize with a plan file
 /// Returns the number of stages created
 pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usize> {
@@ -37,8 +53,13 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
         anyhow::bail!("Plan file does not exist: {}", plan_path.display());
     }
 
-    let parsed_plan = parse_plan(plan_path)
-        .with_context(|| format!("Failed to parse plan file: {}", plan_path.display()))?;
+    // Canonicalize the plan path to resolve symlinks and relative paths
+    let canonical_path = plan_path
+        .canonicalize()
+        .with_context(|| format!("Failed to canonicalize plan path: {}", plan_path.display()))?;
+
+    let parsed_plan = parse_plan(&canonical_path)
+        .with_context(|| format!("Failed to parse plan file: {}", canonical_path.display()))?;
 
     println!(
         "  {} Plan parsed: {}",
@@ -54,16 +75,21 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
 
     let base_branch = get_current_branch().context("Failed to get current git branch")?;
 
-    // Escape special characters for TOML string values
-    let escaped_name = parsed_plan.name.replace('\\', "\\\\").replace('"', "\\\"");
+    // Build config using serde serialization for proper TOML escaping
+    // This prevents injection attacks via malicious plan names/paths
+    let config = Config {
+        plan: PlanConfig {
+            source_path: canonical_path.display().to_string(),
+            plan_id: parsed_plan.id.clone(),
+            plan_name: parsed_plan.name.clone(),
+            base_branch,
+        },
+    };
 
     let config_content = format!(
-        "# loom Configuration\n# Generated from plan: {}\n\n[plan]\nsource_path = \"{}\"\nplan_id = \"{}\"\nplan_name = \"{}\"\nbase_branch = \"{}\"\n",
-        plan_path.display(),
-        plan_path.display(),
-        parsed_plan.id,
-        escaped_name,
-        base_branch
+        "# loom Configuration\n# Generated from plan: {}\n\n{}",
+        canonical_path.display(),
+        toml::to_string_pretty(&config).context("Failed to serialize config to TOML")?
     );
 
     let config_path = work_dir.root().join("config.toml");

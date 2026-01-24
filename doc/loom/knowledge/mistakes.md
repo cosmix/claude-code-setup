@@ -179,4 +179,18 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 - **Used bytes().take_while() for counting ASCII backticks in YAML parser**
   - *Rationale:* When mixing string operations, stay in byte land consistently. find() returns byte positions, so use bytes().count() instead of chars().count() for ASCII characters like backticks to keep all positions in bytes.
 
+## Promoted from Memory [2026-01-24 19:24]
+
+### Notes
+
+- Fixed recovery signal parsing (H11): Now properly parses crash_report_path, last_heartbeat, and recovery_actions from recovery signal files. Added helper functions parse_timestamp, parse_last_heartbeat, and parse_recovery_actions.
+- Fixed signal format validation (H12): Added validation for expected section headers, logs warnings for missing required sections and unexpected sections. Clear error messages for missing stage_id.
+- Fixed AppleScript injection (H33): Added escape_applescript_string function that escapes backslashes and quotes. Applied to both Terminal.app and iTerm2 script generation.
+- Bug encountered: extract_field initially searched for 'Field:' but markdown format uses '**Field**:', causing parse failures. Fixed by updating function to try bold pattern first, then plain pattern.
+
+### Decisions
+
+- **Used toml crate serialization for config.toml generation instead of string formatting**
+  - *Rationale:* Prevents TOML injection attacks via malicious plan names/paths. toml::to_string_pretty properly escapes all string values.
+
 
