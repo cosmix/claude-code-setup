@@ -69,25 +69,24 @@ impl StageExecutor for Orchestrator {
             return Ok(());
         }
 
-        // CRITICAL: Mark as executing IMMEDIATELY to prevent duplicate spawns
-        // This must happen before any potentially slow operations (worktree creation, terminal spawning)
-        // to close the race condition window where another poll cycle could spawn the same stage again.
-
-        // Transition through Queued if currently WaitingForDeps
+        // Transition through Queued if currently WaitingForDeps to reduce race window
         if stage.status == StageStatus::WaitingForDeps {
             stage.try_mark_queued()?;
+            self.save_stage(&stage)?;
         }
-        stage.try_mark_executing()?;
-        self.save_stage(&stage)?;
 
-        self.graph
-            .mark_executing(stage_id)
-            .context("Failed to mark stage as executing in graph")?;
-
-        // Knowledge stages run in main repo without a worktree
+        // Knowledge stages run in main repo without a worktree - mark executing immediately
         if stage.stage_type == StageType::Knowledge {
+            stage.try_mark_executing()?;
+            self.save_stage(&stage)?;
+            self.graph
+                .mark_executing(stage_id)
+                .context("Failed to mark stage as executing in graph")?;
             return self.start_knowledge_stage(stage);
         }
+
+        // For worktree stages: attempt worktree creation BEFORE marking as Executing
+        // This ensures we don't leave stages in Executing state if worktree creation fails
 
         // Resolve the base branch for worktree creation
         let resolved = match git::resolve_base_branch(
@@ -102,11 +101,11 @@ impl StageExecutor for Orchestrator {
                 let err_msg = e.to_string();
 
                 // Check for merge conflict - mark stage as Blocked
+                // Stage is in Queued state here, can transition directly to Blocked
                 if err_msg.contains("Merge conflict") {
                     eprintln!("Stage '{stage_id}' blocked due to merge conflict: {err_msg}");
-                    let mut blocked_stage = self.load_stage(stage_id)?;
-                    if blocked_stage.try_mark_blocked().is_ok() {
-                        self.save_stage(&blocked_stage)?;
+                    if stage.try_mark_blocked().is_ok() {
+                        self.save_stage(&stage)?;
                     }
                     return Ok(());
                 }
@@ -137,18 +136,26 @@ impl StageExecutor for Orchestrator {
                 eprintln!("Stage '{stage_id}' blocked due to worktree error: {err_msg}");
 
                 // Mark stage as blocked with failure info
-                let mut blocked_stage = self.load_stage(stage_id)?;
-                if blocked_stage.try_mark_blocked().is_ok() {
-                    blocked_stage.failure_info = Some(FailureInfo {
+                // Stage is in Queued state here, can transition directly to Blocked
+                if stage.try_mark_blocked().is_ok() {
+                    stage.failure_info = Some(FailureInfo {
                         failure_type: FailureType::InfrastructureError,
                         detected_at: Utc::now(),
                         evidence: vec![err_msg],
                     });
-                    self.save_stage(&blocked_stage)?;
+                    self.save_stage(&stage)?;
                 }
                 return Ok(());
             }
         };
+
+        // Worktree created successfully - NOW mark as Executing
+        // This ensures we only reach Executing state after infrastructure is ready
+        stage.try_mark_executing()?;
+        self.save_stage(&stage)?;
+        self.graph
+            .mark_executing(stage_id)
+            .context("Failed to mark stage as executing in graph")?;
 
         let session = Session::new();
 

@@ -116,20 +116,6 @@ pub fn complete(
     let acceptance_dir: Option<PathBuf> =
         resolve_acceptance_dir(working_dir.as_deref(), stage.working_dir.as_deref());
 
-    // Debug logging for path resolution
-    if let Some(ref worktree_root) = working_dir {
-        eprintln!(
-            "Debug: Path resolution - worktree_root={}, working_dir={:?}",
-            worktree_root.display(),
-            stage.working_dir
-        );
-        if let Some(ref resolved) = acceptance_dir {
-            eprintln!("Debug: Resolved acceptance_dir: {}", resolved.display());
-        }
-    } else {
-        eprintln!("Debug: No worktree root found, acceptance_dir will be None");
-    }
-
     // Track whether acceptance criteria passed (None = skipped via --no-verify)
     let acceptance_result: Option<bool> = if no_verify {
         // --no-verify means we skip criteria entirely (deliberate skip)
