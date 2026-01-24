@@ -104,17 +104,6 @@ pub fn display_path(path: &Path, work_dir: &Path) -> String {
         })
 }
 
-/// Truncate a string safely by character count, not byte count.
-/// This ensures we don't break UTF-8 encoding by cutting mid-character.
-pub fn truncate(s: &str, max_chars: usize) -> String {
-    if s.chars().count() <= max_chars {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max_chars.saturating_sub(3)).collect();
-        format!("{truncated}...")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -176,37 +165,5 @@ mod tests {
         let path = PathBuf::from("/etc/passwd");
         let result = display_path(&path, &work_dir);
         assert_eq!(result, "passwd");
-    }
-
-    #[test]
-    fn test_truncate_ascii() {
-        assert_eq!(truncate("hello", 10), "hello");
-        assert_eq!(truncate("hello world", 8), "hello...");
-    }
-
-    #[test]
-    fn test_truncate_utf8() {
-        // Test with emoji (multi-byte UTF-8 characters)
-        let emoji_str = "Hello 🦀 world";
-        let result = truncate(emoji_str, 10);
-        // Should truncate by character count, not byte count
-        assert_eq!(result, "Hello 🦀...");
-
-        // Verify the result is valid UTF-8
-        assert!(result.is_char_boundary(result.len()));
-    }
-
-    #[test]
-    fn test_truncate_exact_length() {
-        let s = "12345";
-        assert_eq!(truncate(s, 5), "12345");
-        assert_eq!(truncate(s, 6), "12345");
-    }
-
-    #[test]
-    fn test_truncate_very_short() {
-        // When max_chars is less than 3, we should still get "..."
-        assert_eq!(truncate("hello", 3), "...");
-        assert_eq!(truncate("hello", 2), "...");
     }
 }
