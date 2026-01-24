@@ -221,11 +221,11 @@ fn test_cleanup_stage_files_with_archive() {
 }
 
 #[test]
-fn test_find_stage_file_by_id_with_prefix() {
+fn test_find_stage_file_with_prefix() {
     let temp_dir = setup_work_dir();
     create_stage_file(temp_dir.path(), "my-stage");
 
-    let result = find_stage_file_by_id(&temp_dir.path().join("stages"), "my-stage");
+    let result = find_stage_file(&temp_dir.path().join("stages"), "my-stage");
     assert!(result.is_ok());
     let path = result.unwrap();
     assert!(path.is_some());
@@ -233,10 +233,10 @@ fn test_find_stage_file_by_id_with_prefix() {
 }
 
 #[test]
-fn test_find_stage_file_by_id_not_found() {
+fn test_find_stage_file_not_found() {
     let temp_dir = setup_work_dir();
 
-    let result = find_stage_file_by_id(&temp_dir.path().join("stages"), "nonexistent");
+    let result = find_stage_file(&temp_dir.path().join("stages"), "nonexistent");
     assert!(result.is_ok());
     assert!(result.unwrap().is_none());
 }

@@ -5,6 +5,7 @@ use std::fs;
 use std::path::Path;
 
 use super::sessions::find_sessions_for_stage;
+use crate::fs::stage_files::find_stage_file;
 
 /// Archive a stage file by moving it to the archive directory
 pub(crate) fn archive_stage_file(stage_id: &str, work_dir: &Path) -> Result<()> {
@@ -12,7 +13,7 @@ pub(crate) fn archive_stage_file(stage_id: &str, work_dir: &Path) -> Result<()> 
     let archive_dir = work_dir.join("archive");
 
     // Find the stage file
-    let stage_file = find_stage_file_by_id(&stages_dir, stage_id)?;
+    let stage_file = find_stage_file(&stages_dir, stage_id)?;
     let Some(stage_file) = stage_file else {
         return Ok(()); // No file to archive
     };
@@ -28,46 +29,6 @@ pub(crate) fn archive_stage_file(stage_id: &str, work_dir: &Path) -> Result<()> 
     Ok(())
 }
 
-/// Find a stage file by stage ID (handles depth prefix)
-pub fn find_stage_file_by_id(
-    stages_dir: &Path,
-    stage_id: &str,
-) -> Result<Option<std::path::PathBuf>> {
-    if !stages_dir.exists() {
-        return Ok(None);
-    }
-
-    let entries = fs::read_dir(stages_dir)
-        .with_context(|| format!("Failed to read stages directory: {}", stages_dir.display()))?;
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) != Some("md") {
-            continue;
-        }
-
-        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-            // Check for exact match (no prefix)
-            if stem == stage_id {
-                return Ok(Some(path));
-            }
-
-            // Check for prefixed match: XX-{stage_id}
-            if let Some(suffix) = stem.strip_prefix(|c: char| c.is_ascii_digit()) {
-                if let Some(suffix) = suffix.strip_prefix(|c: char| c.is_ascii_digit()) {
-                    if let Some(id) = suffix.strip_prefix('-') {
-                        if id == stage_id {
-                            return Ok(Some(path));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(None)
-}
-
 /// Check if any files exist for a stage that would need cleanup
 pub fn stage_has_files(stage_id: &str, work_dir: &Path) -> bool {
     // Check for sessions
@@ -79,7 +40,7 @@ pub fn stage_has_files(stage_id: &str, work_dir: &Path) -> bool {
 
     // Check for stage file
     let stages_dir = work_dir.join("stages");
-    if let Ok(Some(_)) = find_stage_file_by_id(&stages_dir, stage_id) {
+    if let Ok(Some(_)) = find_stage_file(&stages_dir, stage_id) {
         return true;
     }
 
