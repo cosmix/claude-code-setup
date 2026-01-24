@@ -419,7 +419,10 @@ mod tests {
         assert_eq!(escape_applescript_string(r#"say "hi""#), r#"say \"hi\""#);
 
         // Test backslash escaping
-        assert_eq!(escape_applescript_string(r#"path\to\file"#), r#"path\\to\\file"#);
+        assert_eq!(
+            escape_applescript_string(r#"path\to\file"#),
+            r#"path\\to\\file"#
+        );
 
         // Test combined escaping
         assert_eq!(

@@ -93,8 +93,7 @@ fn parse_last_heartbeat(content: &str) -> Option<LastHeartbeatInfo> {
     }
 
     // Find the section and extract fields
-    let timestamp = extract_field(content, "Timestamp")
-        .and_then(|s| parse_timestamp(s.trim()));
+    let timestamp = extract_field(content, "Timestamp").and_then(|s| parse_timestamp(s.trim()));
 
     // If no timestamp, we don't have valid heartbeat info
     let timestamp = timestamp?;
@@ -192,7 +191,10 @@ mod tests {
         let ts = parse_timestamp("2025-01-24 15:30:45 UTC");
         assert!(ts.is_some());
         let ts = ts.unwrap();
-        assert_eq!(ts.format("%Y-%m-%d %H:%M:%S").to_string(), "2025-01-24 15:30:45");
+        assert_eq!(
+            ts.format("%Y-%m-%d %H:%M:%S").to_string(),
+            "2025-01-24 15:30:45"
+        );
     }
 
     #[test]
@@ -211,7 +213,10 @@ mod tests {
         assert_eq!(actions.len(), 3);
         assert_eq!(actions[0], "Review the crash report for error details");
         assert_eq!(actions[1], "Continue work from the last known state");
-        assert_eq!(actions[2], "If the issue persists, check for environmental problems");
+        assert_eq!(
+            actions[2],
+            "If the issue persists, check for environmental problems"
+        );
     }
 
     #[test]

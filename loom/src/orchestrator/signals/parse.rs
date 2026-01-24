@@ -69,10 +69,7 @@ fn validate_signal_format(content: &str, session_id: &str) {
 /// Validate a field line matches expected format
 fn validate_field_format(line: &str, section: &str, session_id: &str) {
     // Check Target section field format
-    if section == "Target"
-        && line.starts_with("- ")
-        && !line.starts_with("- **")
-    {
+    if section == "Target" && line.starts_with("- ") && !line.starts_with("- **") {
         warn!(
             session_id = %session_id,
             line = %line,
