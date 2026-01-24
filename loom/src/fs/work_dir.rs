@@ -4,6 +4,78 @@ use std::path::{Path, PathBuf};
 
 use crate::fs::knowledge::KnowledgeDir;
 
+/// Parsed config.toml structure
+#[derive(Debug, Clone)]
+pub struct Config {
+    inner: toml::Value,
+}
+
+impl Config {
+    /// Get a string value from the plan section (e.g., "source_path", "base_branch", "plan_id")
+    pub fn get_plan_str(&self, key: &str) -> Option<&str> {
+        self.inner
+            .get("plan")
+            .and_then(|p| p.get(key))
+            .and_then(|v| v.as_str())
+    }
+
+    /// Get the plan source path
+    pub fn source_path(&self) -> Option<PathBuf> {
+        self.get_plan_str("source_path").map(PathBuf::from)
+    }
+
+    /// Get the base branch for merging
+    pub fn base_branch(&self) -> Option<String> {
+        self.get_plan_str("base_branch").map(String::from)
+    }
+
+    /// Get the plan ID
+    pub fn plan_id(&self) -> Option<&str> {
+        self.get_plan_str("plan_id")
+    }
+
+    /// Get mutable access to the underlying TOML value for updates
+    pub fn as_toml_mut(&mut self) -> &mut toml::Value {
+        &mut self.inner
+    }
+
+    /// Serialize the config back to TOML string
+    pub fn to_toml_string(&self) -> Result<String> {
+        toml::to_string_pretty(&self.inner).context("Failed to serialize config")
+    }
+}
+
+/// Load and parse config.toml from a work directory
+///
+/// # Arguments
+/// * `work_dir` - Path to the .work directory (not the config file itself)
+///
+/// # Returns
+/// * `Ok(Some(Config))` - Config loaded and parsed successfully
+/// * `Ok(None)` - Config file doesn't exist
+/// * `Err(_)` - Failed to read or parse config
+pub fn load_config(work_dir: &Path) -> Result<Option<Config>> {
+    let config_path = work_dir.join("config.toml");
+
+    if !config_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&config_path).context("Failed to read config.toml")?;
+
+    let inner: toml::Value = toml::from_str(&content).context("Failed to parse config.toml")?;
+
+    Ok(Some(Config { inner }))
+}
+
+/// Load config.toml, returning an error if it doesn't exist
+///
+/// Use this when config.toml is required (e.g., during execution).
+pub fn load_config_required(work_dir: &Path) -> Result<Config> {
+    load_config(work_dir)?
+        .ok_or_else(|| anyhow::anyhow!("No active plan. Run 'loom init <plan-path>' first."))
+}
+
 pub struct WorkDir {
     root: PathBuf,
 }
@@ -162,6 +234,39 @@ Do not manually edit these files unless you know what you're doing.
 
     pub fn task_state_dir(&self) -> PathBuf {
         self.root.join("task-state")
+    }
+
+    /// Get the config.toml path
+    pub fn config_path(&self) -> PathBuf {
+        self.root.join("config.toml")
+    }
+
+    /// Ensure a subdirectory exists, creating it if needed
+    ///
+    /// # Arguments
+    /// * `name` - The subdirectory name relative to .work/
+    ///
+    /// # Returns
+    /// The full path to the directory
+    pub fn ensure_dir(&self, name: &str) -> Result<PathBuf> {
+        let dir = self.root.join(name);
+        fs::create_dir_all(&dir).with_context(|| format!("Failed to create {name} directory"))?;
+        Ok(dir)
+    }
+
+    /// Load and parse config.toml
+    ///
+    /// # Returns
+    /// * `Ok(Some(Config))` - Config loaded and parsed successfully
+    /// * `Ok(None)` - Config file doesn't exist
+    /// * `Err(_)` - Failed to read or parse config
+    pub fn load_config(&self) -> Result<Option<Config>> {
+        load_config(&self.root)
+    }
+
+    /// Load config.toml, returning an error if it doesn't exist
+    pub fn load_config_required(&self) -> Result<Config> {
+        load_config_required(&self.root)
     }
 
     pub fn root(&self) -> &Path {

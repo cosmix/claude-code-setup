@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::fs::load_config;
 use crate::orchestrator::terminal::BackendType;
 use crate::orchestrator::{Orchestrator, OrchestratorConfig};
 use crate::plan::graph::ExecutionGraph;
@@ -18,24 +19,10 @@ use crate::plan::schema::StageDefinition;
 
 /// Parse base_branch from config.toml
 fn parse_base_branch_from_config(work_dir: &Path) -> Result<Option<String>> {
-    let config_path = work_dir.join("config.toml");
-
-    if !config_path.exists() {
-        return Ok(None);
+    match load_config(work_dir)? {
+        Some(config) => Ok(config.base_branch()),
+        None => Ok(None),
     }
-
-    let config_content = fs::read_to_string(&config_path).context("Failed to read config.toml")?;
-
-    let config: toml::Value =
-        toml::from_str(&config_content).context("Failed to parse config.toml")?;
-
-    let base_branch = config
-        .get("plan")
-        .and_then(|p| p.get("base_branch"))
-        .and_then(|b| b.as_str())
-        .map(String::from);
-
-    Ok(base_branch)
 }
 
 /// Spawn the orchestrator thread to execute stages.
@@ -165,34 +152,21 @@ pub(super) fn build_execution_graph(work_dir: &Path) -> Result<ExecutionGraph> {
     }
 
     // Fall back to reading from plan file
-    let config_path = work_dir.join("config.toml");
-
-    if !config_path.exists() {
-        anyhow::bail!("No active plan. Run 'loom init <plan-path>' first.");
-    }
-
-    let config_content = fs::read_to_string(&config_path).context("Failed to read config.toml")?;
-
-    let config: toml::Value =
-        toml::from_str(&config_content).context("Failed to parse config.toml")?;
+    let config = crate::fs::load_config_required(work_dir)?;
 
     let source_path = config
-        .get("plan")
-        .and_then(|p| p.get("source_path"))
-        .and_then(|s| s.as_str())
+        .source_path()
         .ok_or_else(|| anyhow::anyhow!("No 'plan.source_path' found in config.toml"))?;
 
-    let path = PathBuf::from(source_path);
-
-    if !path.exists() {
+    if !source_path.exists() {
         anyhow::bail!(
             "Plan file not found: {}\nThe plan may have been moved or deleted.",
-            path.display()
+            source_path.display()
         );
     }
 
-    let parsed_plan =
-        parse_plan(&path).with_context(|| format!("Failed to parse plan: {}", path.display()))?;
+    let parsed_plan = parse_plan(&source_path)
+        .with_context(|| format!("Failed to parse plan: {}", source_path.display()))?;
 
     ExecutionGraph::build(parsed_plan.stages).context("Failed to build execution graph")
 }

@@ -14,25 +14,10 @@ use super::plan_lifecycle;
 
 /// Parse base_branch from config.toml
 fn parse_base_branch_from_config(work_dir: &WorkDir) -> Result<Option<String>> {
-    let config_path = work_dir.root().join("config.toml");
-
-    if !config_path.exists() {
-        return Ok(None);
+    match work_dir.load_config()? {
+        Some(config) => Ok(config.base_branch()),
+        None => Ok(None),
     }
-
-    let config_content =
-        std::fs::read_to_string(&config_path).context("Failed to read config.toml")?;
-
-    let config: toml::Value =
-        toml::from_str(&config_content).context("Failed to parse config.toml")?;
-
-    let base_branch = config
-        .get("plan")
-        .and_then(|p| p.get("base_branch"))
-        .and_then(|b| b.as_str())
-        .map(String::from);
-
-    Ok(base_branch)
 }
 
 /// Execute plan stages in foreground (for --foreground flag)
