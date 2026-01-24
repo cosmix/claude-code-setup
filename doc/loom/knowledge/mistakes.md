@@ -141,3 +141,16 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
   - *Rationale:* The acceptance criteria pattern requires uppercase. Original template had lowercase which failed the pattern match.
 
 
+
+## Promoted from Memory [2026-01-24 17:56]
+
+### Decisions
+
+- **Session state machine: Added Spawning -> Crashed transition**
+  - *Rationale:* H6: handle spawn failures gracefully
+- **Reset command: Clear all timing and retry fields**
+  - *Rationale:* H10: leaving stale timing data
+- **Atomic update: graph first, file second, rollback on failure**
+  - *Rationale:* H5: prevent inconsistent state
+
+

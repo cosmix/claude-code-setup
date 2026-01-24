@@ -39,8 +39,20 @@ pub fn reset(stage_id: String, hard: bool, _kill_session: bool) -> Result<()> {
         stage.status
     );
     stage.status = StageStatus::WaitingForDeps;
+
+    // Clear completion state
     stage.completed_at = None;
     stage.close_reason = None;
+
+    // Clear timing fields
+    stage.started_at = None;
+    stage.duration_secs = None;
+
+    // Clear retry state
+    stage.retry_count = 0;
+    stage.last_failure_at = None;
+    stage.failure_info = None;
+
     stage.updated_at = chrono::Utc::now();
 
     // Hard reset also clears session assignment
