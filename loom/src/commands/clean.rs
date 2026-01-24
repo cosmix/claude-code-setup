@@ -5,7 +5,10 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+
+use crate::git::cleanup::{
+    cleanup_all_base_branches, cleanup_multiple_stages, prune_worktrees, CleanupConfig,
+};
 
 /// Statistics for cleanup operations
 #[derive(Default)]
@@ -136,22 +139,9 @@ fn clean_worktrees(repo_root: &Path) -> Result<(usize, usize)> {
     let worktrees_dir = repo_root.join(".worktrees");
 
     // First, always prune stale git worktrees
-    let prune_output = Command::new("git")
-        .args(["worktree", "prune"])
-        .current_dir(repo_root)
-        .output();
-
-    match prune_output {
-        Ok(result) if result.status.success() => {
+    match prune_worktrees(repo_root) {
+        Ok(()) => {
             println!("  {} Stale worktrees pruned", "✓".green().bold());
-        }
-        Ok(result) => {
-            let stderr = String::from_utf8_lossy(&result.stderr);
-            println!(
-                "  {} Worktree prune: {}",
-                "⚠".yellow().bold(),
-                stderr.trim().dimmed()
-            );
         }
         Err(e) => {
             println!(
@@ -167,105 +157,76 @@ fn clean_worktrees(repo_root: &Path) -> Result<(usize, usize)> {
         return Ok((0, 0));
     }
 
-    // Collect worktree entries and their branches
-    let mut removed_count = 0;
-    let mut branch_names: Vec<String> = Vec::new();
-
+    // Collect all stage IDs from .worktrees/ directory
+    let mut stage_ids = Vec::new();
     if let Ok(entries) = fs::read_dir(&worktrees_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
                 let stage_id = entry.file_name().to_string_lossy().to_string();
-
-                // Try git worktree remove first (handles git metadata cleanup)
-                let remove_result = Command::new("git")
-                    .args(["worktree", "remove", "--force"])
-                    .arg(&path)
-                    .current_dir(repo_root)
-                    .output();
-
-                match remove_result {
-                    Ok(result) if result.status.success() => {
-                        println!(
-                            "  {} Removed worktree: {}",
-                            "✓".green().bold(),
-                            stage_id.dimmed()
-                        );
-                        removed_count += 1;
-                    }
-                    Ok(_) | Err(_) => {
-                        // If git worktree remove fails, try manual removal
-                        if let Err(e) = fs::remove_dir_all(&path) {
-                            println!(
-                                "  {} Failed to remove {}: {}",
-                                "✗".red().bold(),
-                                path.display(),
-                                e.to_string().dimmed()
-                            );
-                        } else {
-                            println!(
-                                "  {} Removed worktree: {}",
-                                "✓".green().bold(),
-                                stage_id.dimmed()
-                            );
-                            removed_count += 1;
-                        }
-                    }
-                }
-
-                // Track the branch for deletion
-                branch_names.push(format!("loom/{stage_id}"));
+                stage_ids.push(stage_id);
             }
         }
     }
 
-    // Delete loom branches
-    let mut branches_deleted = 0;
-    if !branch_names.is_empty() {
-        for branch_name in &branch_names {
-            let delete_result = Command::new("git")
-                .args(["branch", "-D", branch_name])
-                .current_dir(repo_root)
-                .output();
+    // Use shared cleanup utilities for batch cleanup
+    let config = CleanupConfig::forced();
+    let stage_id_refs: Vec<&str> = stage_ids.iter().map(|s| s.as_str()).collect();
+    let results = cleanup_multiple_stages(&stage_id_refs, repo_root, &config);
 
-            match delete_result {
-                Ok(result) if result.status.success() => {
-                    println!(
-                        "  {} Deleted branch: {}",
-                        "✓".green().bold(),
-                        branch_name.dimmed()
-                    );
-                    branches_deleted += 1;
-                }
-                Ok(result) => {
-                    let stderr = String::from_utf8_lossy(&result.stderr);
-                    // Don't warn if branch doesn't exist
-                    if !stderr.contains("not found") {
-                        println!(
-                            "  {} Branch '{}': {}",
-                            "⚠".yellow().bold(),
-                            branch_name,
-                            stderr.trim().dimmed()
-                        );
-                    }
-                }
-                Err(e) => {
-                    println!(
-                        "  {} Branch '{}': {}",
-                        "⚠".yellow().bold(),
-                        branch_name,
-                        e.to_string().dimmed()
-                    );
-                }
-            }
+    // Count successes and print results
+    let mut worktrees_removed = 0;
+    let mut branches_removed = 0;
+
+    for (stage_id, result) in results {
+        if result.worktree_removed {
+            println!(
+                "  {} Removed worktree: {}",
+                "✓".green().bold(),
+                stage_id.dimmed()
+            );
+            worktrees_removed += 1;
+        }
+
+        if result.branch_deleted {
+            println!(
+                "  {} Deleted branch: {}",
+                "✓".green().bold(),
+                format!("loom/{stage_id}").dimmed()
+            );
+            branches_removed += 1;
+        }
+
+        // Print warnings if any
+        for warning in &result.warnings {
+            println!(
+                "  {} {}: {}",
+                "⚠".yellow().bold(),
+                stage_id,
+                warning.dimmed()
+            );
         }
     }
 
-    // Final prune after removing worktrees
-    let _ = Command::new("git")
-        .args(["worktree", "prune"])
-        .current_dir(repo_root)
-        .output();
+    // Clean up base branches as well
+    match cleanup_all_base_branches(repo_root) {
+        Ok(deleted) => {
+            for branch in deleted {
+                println!(
+                    "  {} Deleted base branch: {}",
+                    "✓".green().bold(),
+                    branch.dimmed()
+                );
+            }
+        }
+        Err(e) => {
+            println!(
+                "  {} Failed to clean base branches: {}",
+                "⚠".yellow().bold(),
+                e.to_string().dimmed()
+            );
+        }
+    }
 
     // Remove the .worktrees directory itself if it still exists
     if worktrees_dir.exists() {
@@ -282,7 +243,7 @@ fn clean_worktrees(repo_root: &Path) -> Result<(usize, usize)> {
         );
     }
 
-    Ok((removed_count, branches_deleted))
+    Ok((worktrees_removed, branches_removed))
 }
 
 /// Kill all loom sessions
@@ -326,6 +287,7 @@ fn clean_state_directory(repo_root: &Path) -> Result<bool> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::process::Command;
     use tempfile::TempDir;
 
     #[test]
