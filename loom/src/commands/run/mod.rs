@@ -24,6 +24,9 @@ use crate::git::{get_uncommitted_changes_summary, has_uncommitted_changes};
 // Re-export the main entry point for foreground mode
 pub use foreground::execute;
 
+// Re-export plan lifecycle functions for daemon use
+pub use plan_lifecycle::mark_plan_done_if_all_merged;
+
 /// Execute orchestrator in background (daemon mode)
 /// Usage: loom run [--manual] [--max-parallel <n>] [--watch] [--no-merge]
 pub fn execute_background(

@@ -10,7 +10,9 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::commands::run::mark_plan_done_if_all_merged;
 use crate::fs::load_config;
+use crate::fs::work_dir::WorkDir;
 use crate::orchestrator::terminal::BackendType;
 use crate::orchestrator::{Orchestrator, OrchestratorConfig};
 use crate::plan::graph::ExecutionGraph;
@@ -113,6 +115,13 @@ fn run_orchestrator(
             }
             if result.is_success() {
                 println!("All stages completed successfully");
+
+                // Mark plan as done if all stages are merged
+                if let Ok(work_dir_obj) = WorkDir::new(work_dir) {
+                    if let Err(e) = mark_plan_done_if_all_merged(&work_dir_obj) {
+                        eprintln!("Warning: Failed to mark plan as done: {e}");
+                    }
+                }
             }
 
             // Write completion marker file to signal broadcaster
