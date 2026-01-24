@@ -9,7 +9,7 @@ mod merge_complete;
 mod output;
 mod progressive_complete;
 mod recover;
-mod session;
+pub(crate) mod session;
 mod skip_retry;
 mod state;
 mod verify;
