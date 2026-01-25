@@ -256,3 +256,15 @@ Stage marked complete without verifying acceptance criteria passed.
 ### Decisions
 
 - **Removed work_dir.load() calls from knowledge commands**
+
+## Phantom Merges - Stages Marked Complete Without Code
+
+**What happened:** Stages marked Completed with merged=true but code missing from target branch. Dependent stages start against incomplete code.
+
+**Root cause 1:** try_auto_merge() sets merged=true immediately after git reports success, without verifying commit is in target history.
+
+**Root cause 2:** Agents use target/debug/loom instead of loom from PATH, or edit .work/ files directly to set merged=true.
+
+**Prevention:**
+- Add verify_merge_succeeded() to verify git ancestry before setting merged=true
+- Add explicit warnings in CLAUDE.md.template and signal generation

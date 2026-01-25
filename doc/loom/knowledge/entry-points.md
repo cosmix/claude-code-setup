@@ -302,3 +302,16 @@ loom verify <stage-id> [--suggest]
 loom map [--deep] [--focus <area>] [--overwrite]
   Entry: loom/src/commands/map.rs  
   Analyzes codebase structure, writes to knowledge files
+
+## Merge Verification Entry Points
+
+- loom/src/orchestrator/core/merge_handler.rs - Auto-merge orchestration
+- loom/src/commands/status/merge_status.rs - Merge state checking  
+- loom/src/git/merge.rs - Git merge operations
+- loom/src/git/branch.rs - is_ancestor_of() for ancestry checks
+
+## Signal Generation Entry Points
+
+- loom/src/orchestrator/signals/cache.rs - Stable prefix generation (agent rules)
+- loom/src/orchestrator/signals/format.rs - Full signal formatting
+- loom/src/orchestrator/signals/generate.rs - Signal file creation
