@@ -104,6 +104,9 @@ pub fn unified_stage_to_stage(us: &UnifiedStage) -> Stage {
         merge_conflict: false,
         verification_status: Default::default(),
         context_budget: None,
+        truths: vec![],
+        artifacts: vec![],
+        wiring: vec![],
     }
 }
 

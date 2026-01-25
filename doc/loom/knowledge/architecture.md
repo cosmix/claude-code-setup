@@ -311,3 +311,38 @@ ContextHealth (monitor/context.rs:10-17): Green (<50%), Yellow (50-64%), Red (65
 RecoveryType (events.rs:98-108): Crash (PID dead), Hung (no heartbeat), ContextRefresh (graceful), Manual (user triggered).
 
 Verification flow: acceptance criteria → stage complete → progressive merge.
+
+## Goal-Backward Verification System
+
+Module at loom/src/verify/goal_backward/:
+
+- mod.rs - Main orchestration (run_goal_backward_verification)
+- result.rs - GoalBackwardResult, VerificationGap, GapType enums
+- truths.rs - Verify observable behaviors via shell commands
+- artifacts.rs - Verify files exist with real implementation
+- wiring.rs - Verify critical connections via grep patterns
+
+Flow: StageDefinition (truths/artifacts/wiring) → run_goal_backward_verification() → GoalBackwardResult
+
+Storage: .work/verifications/<stage-id>.json via loom/src/fs/verifications.rs
+
+## Codebase Mapping System
+
+Module at loom/src/map/:
+
+- mod.rs - Exports analyze_codebase and AnalysisResult
+- analyzer.rs - Orchestrates all detectors, produces AnalysisResult
+- detectors.rs - Project type, dependencies, entry points, structure, conventions, concerns
+
+Writes to: architecture.md, stack.md, conventions.md, concerns.md
+
+## Context Budget Enforcement
+
+Stages define context_budget (1-100%, default 65%, max 75%).
+When exceeded, BudgetExceeded event triggers auto-handoff.
+
+Key files:
+
+- loom/src/orchestrator/monitor/events.rs:88-94 - BudgetExceeded event
+- loom/src/orchestrator/monitor/detection.rs:242-261 - Budget detection
+- loom/src/orchestrator/core/event_handler.rs:242-294 - Handler

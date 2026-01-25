@@ -116,6 +116,9 @@ mod tests {
             merge_conflict: false,
             verification_status: Default::default(),
             context_budget: None,
+            truths: Vec::new(),
+            artifacts: Vec::new(),
+            wiring: Vec::new(),
         }
     }
 

@@ -230,5 +230,8 @@ pub(crate) fn create_stage_from_definition(stage_def: &StageDefinition, plan_id:
         merge_conflict: false,
         verification_status: Default::default(),
         context_budget: stage_def.context_budget,
+        truths: stage_def.truths.clone(),
+        artifacts: stage_def.artifacts.clone(),
+        wiring: stage_def.wiring.clone(),
     }
 }

@@ -894,3 +894,23 @@ Whitelist: alphanumeric + dash/underscore - validation.rs:55-81
 MAX_ID_LENGTH: 128 chars
 Reserved names blocked (., .., CON, PRN, etc.)
 safe_filename() strips traversal - validation.rs:179-185
+
+## Goal-Backward Verification Pattern
+
+Problem: Tests passing ≠ Feature working. Code compiles but never wired up.
+
+Solution: Three verification layers in stage definitions:
+
+1. truths - Shell commands that return 0 if behavior works
+2. artifacts - Files must exist with real implementation
+3. wiring - Grep patterns verify connections
+
+Example YAML usage:
+  truths:
+    - 'curl -f <http://localhost/health>'
+  artifacts:
+    - 'src/auth/*.rs'
+  wiring:
+    - source: src/main.rs
+      pattern: 'use auth::'
+      description: Auth module imported

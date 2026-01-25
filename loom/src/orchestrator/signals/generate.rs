@@ -70,9 +70,10 @@ pub fn generate_signal_with_skills(
     }
 
     // Populate context budget from stage (or use default)
-    embedded_context.context_budget = stage.context_budget.map(|b| b as f32).or(Some(
-        crate::models::constants::CONTEXT_CRITICAL_THRESHOLD * 100.0,
-    ));
+    embedded_context.context_budget = stage
+        .context_budget
+        .map(|b| b as f32)
+        .or(Some(crate::models::constants::DEFAULT_CONTEXT_BUDGET));
 
     // Populate current context usage from session
     let usage_pct = if session.context_limit > 0 {
@@ -312,9 +313,10 @@ pub fn generate_signal_with_metrics(
         build_embedded_context_with_session(work_dir, handoff_file, &stage.id, Some(&session.id));
 
     // Populate context budget from stage (or use default)
-    embedded_context.context_budget = stage.context_budget.map(|b| b as f32).or(Some(
-        crate::models::constants::CONTEXT_CRITICAL_THRESHOLD * 100.0,
-    ));
+    embedded_context.context_budget = stage
+        .context_budget
+        .map(|b| b as f32)
+        .or(Some(crate::models::constants::DEFAULT_CONTEXT_BUDGET));
 
     // Populate current context usage from session
     let usage_pct = if session.context_limit > 0 {

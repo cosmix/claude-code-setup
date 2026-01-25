@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::models::failure::FailureInfo;
+use crate::plan::schema::WiringCheck;
 
 /// Type of stage for specialized handling.
 ///
@@ -145,6 +146,15 @@ pub struct Stage {
     /// Stage-specific context budget (percentage)
     #[serde(default)]
     pub context_budget: Option<u32>,
+    /// Observable behaviors that must work (shell commands return 0)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub truths: Vec<String>,
+    /// Files that must exist with real implementation (not stubs)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artifacts: Vec<String>,
+    /// Critical connections between components
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wiring: Vec<WiringCheck>,
 }
 
 /// Status of a stage in the execution lifecycle.

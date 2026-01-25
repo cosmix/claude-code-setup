@@ -25,6 +25,12 @@ pub struct StageFrontmatter {
     pub files: Vec<String>,
     #[serde(default)]
     pub working_dir: Option<String>,
+    #[serde(default)]
+    pub truths: Vec<String>,
+    #[serde(default)]
+    pub artifacts: Vec<String>,
+    #[serde(default)]
+    pub wiring: Vec<crate::plan::schema::WiringCheck>,
 }
 
 impl StageFrontmatter {
@@ -42,9 +48,9 @@ impl StageFrontmatter {
             auto_merge: None,
             working_dir: self.working_dir.unwrap_or_else(|| ".".to_string()),
             stage_type: crate::plan::schema::StageType::default(),
-            truths: Vec::new(),
-            artifacts: Vec::new(),
-            wiring: Vec::new(),
+            truths: self.truths,
+            artifacts: self.artifacts,
+            wiring: self.wiring,
             context_budget: None,
         }
     }

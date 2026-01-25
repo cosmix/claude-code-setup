@@ -529,3 +529,20 @@ Three valid formats (can combine):
 - test_detect_terminal_finds_something allows failure in minimal envs
 - Window operation tests check graceful handling of missing wmctrl/xdotool
 - Use tempfile::TempDir for PID file tests
+
+## Knowledge File Types
+
+Seven knowledge files (two new):
+
+- architecture.md - Component relationships, data flow
+- entry-points.md - CLI commands, key files
+- patterns.md - Architectural patterns
+- conventions.md - Coding standards, naming
+- mistakes.md - Lessons learned
+- stack.md (NEW) - Dependencies, frameworks
+- concerns.md (NEW) - Technical debt
+
+Aliases for CLI:
+
+- stack: deps, dependencies, tech, tooling
+- concerns: debt, issues, warnings

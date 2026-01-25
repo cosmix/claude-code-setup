@@ -292,3 +292,13 @@ Socket at `.work/orchestrator.sock` with 4-byte length-prefixed JSON:
 4. **Context Thresholds** - 65% red threshold triggers handoff BEFORE Claude Code's ~75% compaction
 5. **Exponential Backoff** - Retry transient failures (crash/timeout) with 30s-300s backoff
 6. **Window-Based Kill** - Prefer wmctrl/xdotool over PID for reliable terminal closure
+
+## New CLI Commands
+
+loom verify <stage-id> [--suggest]
+  Entry: loom/src/commands/verify.rs
+  Runs goal-backward verification (truths, artifacts, wiring)
+  
+loom map [--deep] [--focus <area>] [--overwrite]
+  Entry: loom/src/commands/map.rs  
+  Analyzes codebase structure, writes to knowledge files

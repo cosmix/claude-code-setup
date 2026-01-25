@@ -130,6 +130,9 @@ fn test_serialize_stage_to_markdown_minimal() {
         merged: false,
         merge_conflict: false,
         verification_status: Default::default(),
+        truths: Vec::new(),
+        artifacts: Vec::new(),
+        wiring: Vec::new(),
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -179,6 +182,9 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         merged: false,
         merge_conflict: false,
         verification_status: Default::default(),
+        truths: Vec::new(),
+        artifacts: Vec::new(),
+        wiring: Vec::new(),
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();

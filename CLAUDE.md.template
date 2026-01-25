@@ -195,6 +195,25 @@ loom:
         - "src/**/*.rs"
       working_dir: "." # REQUIRED: "." for worktree root, or subdirectory like "loom"
 
+      # OPTIONAL: Goal-backward verification (run with: loom verify <stage-id>)
+      # These verify working implementation, not just passing tests
+      truths:
+        - "curl -f http://localhost:8080/api/health"  # Observable behaviors
+        - "./target/debug/myapp --version"             # Commands that should work
+      artifacts:
+        - "src/api/*.rs"                               # Files with real implementation
+        - "tests/integration/*.rs"                     # Required test files
+      wiring:
+        - source: "src/main.rs"
+          pattern: "use api::routes"
+          description: "API routes are imported in main"
+        - source: "src/main.rs"
+          pattern: "mount_routes"
+          description: "Routes are actually mounted"
+
+      # OPTIONAL: Context budget (default: 65%, max: 75%)
+      context_budget: 50  # Percentage 1-100
+
     # REQUIRED LAST STAGE - integration-verify MUST be final
     - id: integration-verify
       name: "Integration Verification"
@@ -268,6 +287,51 @@ description: |
 
 Stage definitions become agent signals: `description` → tasks, `acceptance` → criteria, `files` → scope.
 
+#### Goal-Backward Verification
+
+Beyond traditional acceptance criteria (build/test commands), stages can include goal-backward verification fields that check for WORKING IMPLEMENTATION:
+
+**truths:** Observable behaviors that prove the feature works
+  - Commands that should execute successfully
+  - API endpoints that should be reachable
+  - Expected outputs from running the feature
+
+**artifacts:** Files that must exist with real implementation (not stubs)
+  - Glob patterns for source files
+  - Test files that should exist
+  - Configuration files
+
+**wiring:** Code patterns that prove integration points are connected
+  - Imports/uses in main files
+  - Function calls that mount/register features
+  - Event handler registrations
+
+Run verification with: `loom verify <stage-id> [--suggest]`
+
+The `--suggest` flag provides fix suggestions for failures.
+
+**Example:**
+
+```yaml
+truths:
+  - "curl -f http://localhost:8080/health"  # API is live
+  - "./myapp --version"                      # CLI command works
+
+artifacts:
+  - "src/auth/*.rs"                          # Auth module exists
+  - "tests/auth_*.rs"                        # Tests exist
+
+wiring:
+  - source: "src/main.rs"
+    pattern: "use auth::middleware"
+    description: "Auth middleware imported"
+  - source: "src/main.rs"
+    pattern: "app.use(auth_middleware)"
+    description: "Middleware is actually applied"
+```
+
+This catches the common failure mode: "Tests pass but feature isn't wired up."
+
 #### Stage Completion Checklist
 
 Complete ALL items before marking stage complete:
@@ -293,6 +357,9 @@ Complete ALL items before marking stage complete:
 □ Input validation present at boundaries
 □ No hardcoded secrets or credentials
 □ No obvious OWASP vulnerabilities
+
+**VERIFICATION (OPTIONAL):**
+□ loom verify <stage-id> --suggest (run goal-backward verification)
 
 **COMMIT:**
 □ git add <specific-files> (NOT git add . or git add -A)
@@ -637,13 +704,15 @@ DO NOT use echo/cat/heredoc to write to knowledge files.
 
 **Knowledge Files:**
 
-| File              | Purpose                                                            |
-| ----------------- | ------------------------------------------------------------------ |
-| `architecture.md` | High-level component relationships, data flow, module dependencies |
-| `entry-points.md` | Key files to read first (CLI, API, UI entry points)                |
-| `patterns.md`     | Architectural patterns and best practices discovered               |
-| `conventions.md`  | Coding standards, naming schemes, file organization                |
-| `mistakes.md`     | Lessons learned from errors - what to avoid                        |
+| File              | Purpose                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `architecture.md` | High-level component relationships, data flow, module dependencies                           |
+| `entry-points.md` | Key files to read first (CLI, API, UI entry points)                                          |
+| `patterns.md`     | Architectural patterns and best practices discovered                                         |
+| `conventions.md`  | Coding standards, naming schemes, file organization                                          |
+| `mistakes.md`     | Lessons learned from errors - what to avoid                                                  |
+| `stack.md`        | Dependencies, frameworks, and tooling (aliases: deps, dependencies, tech)                    |
+| `concerns.md`     | Technical debt, warnings, and issues to address (aliases: debt, issues)                      |
 
 **For long content, break into multiple invocations (~20-30 lines each):**
 
@@ -782,15 +851,34 @@ Also: `Blocked`, `NeedsHandoff`, `WaitingForInput`
 
 ### Context Thresholds
 
-| Usage  | Action          |
-| ------ | --------------- |
-| <60%   | Normal          |
-| 60-74% | Prepare handoff |
-| ≥75%   | STOP. Handoff.  |
+Default context budget is 65% (can be overridden per-stage with `context_budget` field in plan YAML). Hard maximum is 75%.
+
+| Usage                    | Action          |
+| ------------------------ | --------------- |
+| <60%                     | Normal          |
+| 60% to budget threshold  | Warning shown   |
+| At budget threshold      | BudgetExceeded  |
+| 60-74% (if no budget)    | Prepare handoff |
+| ≥75%                     | STOP. Handoff.  |
+
+When context usage reaches the budget threshold, orchestrator triggers auto-handoff. Stages can set custom budgets via `context_budget: 50` (percentage 1-100) in plan YAML.
 
 ### Daemon Commands
 
 `loom run` (start) | `loom status` (dashboard) | `loom stop` (shutdown)
+
+### Additional CLI Commands
+
+| Command                                       | Description                                                                                  |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `loom verify <stage-id> [--suggest]`          | Run goal-backward verification (truths, artifacts, wiring checks). Use --suggest for fixes. |
+| `loom map [--deep] [--focus <area>] [--overwrite]` | Analyze codebase structure and write to knowledge files. --deep for detailed analysis.      |
+| `loom knowledge init`                         | Initialize knowledge directory                                                               |
+| `loom knowledge show`                         | Show all knowledge                                                                           |
+| `loom knowledge update <file> <content>`      | Append to knowledge file                                                                     |
+| `loom memory note/decision/question <text>`   | Record session insights                                                                      |
+| `loom memory list`                            | List session memory entries                                                                  |
+| `loom memory promote <type> <target>`         | Promote memory to knowledge                                                                  |
 
 ---
 

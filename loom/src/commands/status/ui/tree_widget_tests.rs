@@ -42,6 +42,9 @@ fn make_stage(id: &str, deps: Vec<&str>, status: StageStatus) -> Stage {
         merge_conflict: false,
         verification_status: Default::default(),
         context_budget: None,
+        truths: Vec::new(),
+        artifacts: Vec::new(),
+        wiring: Vec::new(),
     }
 }
 
