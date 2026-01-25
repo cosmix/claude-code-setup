@@ -71,6 +71,7 @@ mod tests {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         }];
 
         ExecutionGraph::build(stages).unwrap()

@@ -47,6 +47,7 @@ fn setup_work_dir_with_plan(temp_dir: &TempDir) -> (PathBuf, WorkDir) {
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);

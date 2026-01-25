@@ -66,6 +66,7 @@ fn test_validate_metadata_with_empty_acceptance() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -103,6 +104,7 @@ fn test_validate_metadata_with_valid_acceptance() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -132,6 +134,7 @@ fn test_validate_metadata_multiple_invalid_acceptance() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };

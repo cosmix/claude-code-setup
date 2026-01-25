@@ -45,6 +45,7 @@ impl StageFrontmatter {
             truths: Vec::new(),
             artifacts: Vec::new(),
             wiring: Vec::new(),
+            context_budget: None,
         }
     }
 }

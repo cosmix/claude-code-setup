@@ -34,6 +34,7 @@ pub(crate) fn create_valid_stage(id: &str, name: &str) -> StageDefinition {
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }
 }
 

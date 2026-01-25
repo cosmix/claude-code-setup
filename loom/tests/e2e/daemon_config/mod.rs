@@ -36,5 +36,6 @@ pub fn create_stage_def(id: &str, name: &str, deps: Vec<String>) -> StageDefinit
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }
 }

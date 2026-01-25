@@ -19,6 +19,7 @@ fn make_stage(id: &str, deps: Vec<&str>, group: Option<&str>) -> StageDefinition
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }
 }
 

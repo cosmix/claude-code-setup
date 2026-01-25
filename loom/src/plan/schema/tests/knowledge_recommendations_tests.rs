@@ -21,6 +21,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -37,6 +38,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         },
     ];
 
@@ -63,6 +65,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -79,6 +82,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         },
     ];
 
@@ -103,6 +107,7 @@ fn test_knowledge_recommendations_has_knowledge_name() {
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -126,6 +131,7 @@ fn test_knowledge_recommendations_case_insensitive() {
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -151,6 +157,7 @@ fn test_knowledge_recommendations_no_root_stages() {
         truths: vec![],
         artifacts: vec![],
         wiring: vec![],
+        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);

@@ -30,6 +30,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -46,6 +47,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
             ],
         },

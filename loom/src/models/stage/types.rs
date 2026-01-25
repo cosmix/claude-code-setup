@@ -142,6 +142,9 @@ pub struct Stage {
     /// Goal-backward verification status
     #[serde(default)]
     pub verification_status: VerificationStatus,
+    /// Stage-specific context budget (percentage)
+    #[serde(default)]
+    pub context_budget: Option<u32>,
 }
 
 /// Status of a stage in the execution lifecycle.

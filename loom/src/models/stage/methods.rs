@@ -45,6 +45,7 @@ impl Stage {
             merged: false,
             merge_conflict: false,
             verification_status: Default::default(),
+            context_budget: None,
         }
     }
 

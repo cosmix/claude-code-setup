@@ -65,6 +65,10 @@ pub struct StageDefinition {
     /// Critical connections between components
     #[serde(default)]
     pub wiring: Vec<WiringCheck>,
+    /// Context budget as percentage (1-100). Default is 65%.
+    /// When context usage exceeds this, auto-handoff is triggered.
+    #[serde(default)]
+    pub context_budget: Option<u32>,
 }
 
 /// Wiring check to verify component connections

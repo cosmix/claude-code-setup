@@ -54,6 +54,7 @@ pub(crate) fn create_test_stage(id: &str, status: StageStatus) -> Stage {
         merged: false,
         merge_conflict: false,
         verification_status: Default::default(),
+        context_budget: None,
     }
 }
 

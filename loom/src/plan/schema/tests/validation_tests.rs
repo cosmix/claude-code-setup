@@ -63,6 +63,7 @@ fn test_validate_empty_stage_id() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -96,6 +97,7 @@ fn test_validate_empty_stage_name() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -129,6 +131,7 @@ fn test_validate_unknown_dependency() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -163,6 +166,7 @@ fn test_validate_self_dependency() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -197,6 +201,7 @@ fn test_validate_multiple_errors() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -213,6 +218,7 @@ fn test_validate_multiple_errors() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
             ],
         },
@@ -282,6 +288,7 @@ fn test_complex_dependency_chain() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -298,6 +305,7 @@ fn test_complex_dependency_chain() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-3".to_string(),
@@ -314,6 +322,7 @@ fn test_complex_dependency_chain() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
             ],
         },
@@ -344,6 +353,7 @@ fn test_validate_duplicate_stage_ids() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-1".to_string(), // Duplicate ID
@@ -360,6 +370,7 @@ fn test_validate_duplicate_stage_ids() {
                     truths: vec![],
                     artifacts: vec![],
                     wiring: vec![],
+                    context_budget: None,
                 },
             ],
         },
@@ -394,6 +405,7 @@ fn test_validate_working_dir_path_traversal() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -425,6 +437,7 @@ fn test_validate_working_dir_absolute_path() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -458,6 +471,7 @@ fn test_validate_working_dir_valid_subdirectory() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };

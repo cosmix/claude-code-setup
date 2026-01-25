@@ -24,6 +24,7 @@ fn test_validate_stage_id_path_traversal() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -57,6 +58,7 @@ fn test_validate_stage_id_with_slashes() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -90,6 +92,7 @@ fn test_validate_stage_id_with_dots() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -123,6 +126,7 @@ fn test_validate_stage_id_reserved_name_dotdot() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -152,6 +156,7 @@ fn test_validate_stage_id_reserved_name_con() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -183,6 +188,7 @@ fn test_validate_dependency_id_path_traversal() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -217,6 +223,7 @@ fn test_validate_stage_id_too_long() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };
@@ -248,6 +255,7 @@ fn test_validate_stage_id_with_spaces() {
                 truths: vec![],
                 artifacts: vec![],
                 wiring: vec![],
+                context_budget: None,
             }],
         },
     };

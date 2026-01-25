@@ -103,6 +103,7 @@ pub fn build_test_graph(stages: Vec<(&str, Vec<&str>)>) -> ExecutionGraph {
             truths: vec![],
             artifacts: vec![],
             wiring: vec![],
+            context_budget: None,
         })
         .collect();
 
