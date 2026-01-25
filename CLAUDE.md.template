@@ -199,7 +199,7 @@ loom:
       # These verify working implementation, not just passing tests
       truths:
         - "curl -f http://localhost:8080/api/health"  # Observable behaviors
-        - "./target/debug/myapp --version"             # Commands that should work
+        - "myapp --version"                            # Commands that should work (NOTE: for loom itself, always use `loom` not target/debug/loom)
       artifacts:
         - "src/api/*.rs"                               # Files with real implementation
         - "tests/integration/*.rs"                     # Required test files
@@ -257,7 +257,7 @@ loom:
         - "cargo clippy -- -D warnings"
         - "cargo build"
         # ADD FUNCTIONAL ACCEPTANCE CRITERIA for YOUR feature - examples:
-        # - "./target/debug/myapp new-command --help"  # CLI wired
+        # - "myapp new-command --help"  # CLI wired (NOTE: for loom itself, always use `loom` not target/debug/loom)
         # - "curl -f localhost:8080/api/new-endpoint"  # API reachable
       files: [] # Verification only - no file modifications
       working_dir: "." # REQUIRED: "." for worktree root, or subdirectory like "loom"
@@ -674,7 +674,17 @@ Your branch: `loom/<stage-id>`
 
 **Need main repo context?** Your signal file (`.work/signals/<session-id>.md`) has it — DO NOT read from main repo.
 
-### 11. KNOWLEDGE MANAGEMENT (MANDATORY)
+### 11. BINARY USAGE
+
+**ALWAYS use `loom` from PATH — NEVER use `target/debug/loom` or `./loom/target/debug/loom`**
+
+When working on loom itself, the installed `loom` binary is the correct one to use.
+Using the development binary causes version mismatches and state corruption.
+
+**NEVER edit `.work/` files directly** — use loom CLI commands.
+State files are managed exclusively by the loom orchestrator. Direct edits corrupt state and cause phantom completions.
+
+### 12. KNOWLEDGE MANAGEMENT (MANDATORY)
 
 **⚠️ KNOWLEDGE-BOOTSTRAP IS THE MANDATORY FIRST STAGE**
 
@@ -766,7 +776,7 @@ loom memory promote all mistakes        # Promote all entries to mistakes
 loom memory promote decision patterns   # Promote decisions to patterns
 ```
 
-### 12. INTEGRATION VERIFICATION (MANDATORY)
+### 13. INTEGRATION VERIFICATION (MANDATORY)
 
 **Every plan MUST end with `integration-verify`.**
 
@@ -800,7 +810,7 @@ acceptance:
   - "cargo clippy -- -D warnings"
   - "cargo build"
   # FUNCTIONAL - adapt to your feature:
-  - "./target/debug/myapp new-command --help" # CLI wired
+  - "myapp new-command --help" # CLI wired (NOTE: for loom itself, always use `loom` not target/debug/loom)
   - "curl -f localhost:8080/api/endpoint" # API reachable
 ```
 
@@ -808,19 +818,19 @@ acceptance:
 
 ## STANDARD RULES
 
-### 13. QUALITY GATES
+### 14. QUALITY GATES
 
 Before completion: zero lint errors, tests passing, self-reviewed for security.
 
-### 14. DEPENDENCIES
+### 15. DEPENDENCIES
 
 Never hand-edit manifests. Use: `bun add`, `cargo add`, `uv add`, `go get`
 
-### 15. CODE SIZE LIMITS
+### 16. CODE SIZE LIMITS
 
 File: 400 lines | Function: 50 lines | Class: 300 lines — Exceed = refactor immediately.
 
-### 16. SESSION STATE
+### 17. SESSION STATE
 
 Update `CLAUDE.md` during work. On completion, replace updates with summary.
 
