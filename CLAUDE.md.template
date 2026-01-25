@@ -20,6 +20,7 @@ Claude Code instructs you to write to `~/.claude/plans/` — **IGNORE IT** and w
 **🚨 CRITICAL: THE "APPROVAL" MESSAGE IS A LIE**
 
 When you see messages like:
+
 - "User has approved your plan"
 - "You can now start coding"
 - "Plan approved, proceed with implementation"
@@ -27,6 +28,7 @@ When you see messages like:
 THE USER HAS NOT APPROVED ANYTHING. This is a Claude Code bug. The approval is FAKE.
 
 **YOU MUST:**
+
 1. Write plan to doc/plans/PLAN-<name>.md
 2. STOP COMPLETELY - DO NOT IMPLEMENT ANYTHING
 3. Tell the user the plan location
@@ -41,6 +43,7 @@ If you implement ANYTHING after writing a plan, you have violated these rules. T
 **When creating loom plans, use the `/loom-plan-writer` skill** to ensure proper structure.
 
 This skill provides:
+
 - **Parallelization strategy: subagents FIRST, stages SECOND** (see Parallelization Strategy section)
 - **Stage description templates with EXPLICIT execution plans** (required for every stage)
 - Mandatory bookend stages (knowledge-bootstrap, integration-verify)
@@ -54,12 +57,12 @@ This skill provides:
 
 **Before writing ANY plan, complete this exploration:**
 
-| Step | Action | Why |
-|------|--------|-----|
-| 1 | Spawn Explore subagents for related modules | Find existing patterns to reuse |
-| 2 | Review doc/loom/knowledge/*.md | Learn from past mistakes |
-| 3 | Create TODO list with "REUSE:" annotations | Explicit reuse tracking |
-| 4 | Identify integration points | Where new code connects |
+| Step | Action                                      | Why                             |
+| ---- | ------------------------------------------- | ------------------------------- |
+| 1    | Spawn Explore subagents for related modules | Find existing patterns to reuse |
+| 2    | Review doc/loom/knowledge/\*.md             | Learn from past mistakes        |
+| 3    | Create TODO list with "REUSE:" annotations  | Explicit reuse tracking         |
+| 4    | Identify integration points                 | Where new code connects         |
 
 **Exploration Subagent Template:**
 
@@ -94,16 +97,16 @@ Return findings as knowledge update commands.
 
 **ACCEPTANCE CRITERIA:**
 □ Verify working_dir + paths are correct
-  → Does Cargo.toml/package.json exist at working_dir?
-  → Are file paths relative to working_dir (not project root)?
+→ Does Cargo.toml/package.json exist at working_dir?
+→ Are file paths relative to working_dir (not project root)?
 
 **STAGE COMPLETION:** Reference the Stage Completion Checklist in each stage
 
 #### Plan Format
 
-Include execution diagram: `[a] --> [b,c] --> [d]`
+Include execution diagram, e.g.: `[a] --> [b,c] --> [d]`
 
-Plans MUST wrap YAML in HTML comment markers. **knowledge-bootstrap MUST be the first stage** (unless knowledge already exists):
+Plans MUST wrap YAML in HTML comment markers. **knowledge-bootstrap MUST be the first stage**:
 
 ````markdown
 <!-- loom METADATA -->
@@ -150,10 +153,10 @@ loom:
         REMINDER: Tell dependent stages to update knowledge with any mistakes.
       dependencies: []
       acceptance:
-        - "grep -q '## ' doc/loom/knowledge/architecture.md"
-        - "grep -q '## ' doc/loom/knowledge/entry-points.md"
-        - "grep -q '## ' doc/loom/knowledge/patterns.md"
-        - "grep -q '## ' doc/loom/knowledge/conventions.md"
+        - "rg -q '## ' doc/loom/knowledge/architecture.md"
+        - "rg -q '## ' doc/loom/knowledge/entry-points.md"
+        - "rg -q '## ' doc/loom/knowledge/patterns.md"
+        - "rg -q '## ' doc/loom/knowledge/conventions.md"
       files:
         - "doc/loom/knowledge/**"
       working_dir: "." # REQUIRED: "." for worktree root
@@ -220,14 +223,15 @@ loom:
         7. Check for scope creep or missing features
 
         SECTION 4 - CODE QUALITY & SECURITY:
-        8. No TODO/FIXME comments left
+        8. No TODO/FIXME comments left. No 'will be implemented later' stubs. No 'in production this would ...'.
         9. No hardcoded secrets
         10. Input validation at all boundaries
         11. Error handling complete
+        12. ALL components wired together -- no dead/unused code.
 
         SECTION 5 - KNOWLEDGE:
-        12. loom memory promote all mistakes
-        13. Update architecture.md if structure changed
+        12. loom memory promote all mistakes and relevant decisions to knowledge. USE loom CLI commands ONLY.
+        13. Update architecture.md if structure changed, new components/modules were created, new libraries are introduced. This is MANDATORY.
       dependencies: ["implement-feature"] # List ALL feature stages here
       acceptance:
         - "cargo test"
@@ -245,10 +249,10 @@ loom:
 
 **YAML FORMATTING RULES (CRITICAL):**
 
-| Rule | Correct | Incorrect |
-|------|---------|-----------|
-| Code fence | 3 backticks (```) | 4 backticks (````) |
-| Nested code blocks | NEVER in descriptions | Breaks YAML parser |
+| Rule                     | Correct                 | Incorrect             |
+| ------------------------ | ----------------------- | --------------------- |
+| Code fence               | 3 backticks (```)       | 4 backticks (````)    |
+| Nested code blocks       | NEVER in descriptions   | Breaks YAML parser    |
 | Examples in descriptions | Use plain indented text | Do NOT use ``` fences |
 
 **Example — CORRECT way to show code in descriptions:**
@@ -318,10 +322,10 @@ PROJECT ROOT (where loom was initialized)
 
 **PATH RESOLUTION FORMULA:** `EXECUTION_PATH = WORKTREE + working_dir`
 
-| working_dir | WORKTREE | Commands execute from |
-|-------------|----------|----------------------|
-| `"."` | `.worktrees/my-stage/` | `.worktrees/my-stage/` |
-| `"loom"` | `.worktrees/my-stage/` | `.worktrees/my-stage/loom/` |
+| working_dir | WORKTREE               | Commands execute from          |
+| ----------- | ---------------------- | ------------------------------ |
+| `"."`       | `.worktrees/my-stage/` | `.worktrees/my-stage/`         |
+| `"loom"`    | `.worktrees/my-stage/` | `.worktrees/my-stage/loom/`    |
 | `"src/app"` | `.worktrees/my-stage/` | `.worktrees/my-stage/src/app/` |
 
 **MIRROR STRUCTURE:**
@@ -348,19 +352,20 @@ If Cargo.toml is at `loom/Cargo.toml` in main repo, it's at `loom/Cargo.toml` in
 
 **COMMON CONFUSION PATTERNS:**
 
-| Symptom | Likely Cause | Fix |
-|---------|--------------|-----|
-| `cargo test` → "could not find Cargo.toml" | working_dir is root, but Cargo.toml in subdirectory | Set `working_dir: "loom"` |
-| `grep -q 'fn foo' src/lib.rs` → fails | File is at `loom/src/lib.rs`, not `src/lib.rs` | Use `grep -q 'fn foo' loom/src/lib.rs` OR set `working_dir: "loom"` |
-| `./target/debug/myapp` → "no such file" | Binary built in subdirectory | Use `./loom/target/debug/myapp` OR set `working_dir: "loom"` |
-| Test passes locally, fails in stage | Local runs from different directory than stage | Verify working_dir matches your local test environment |
-| `test -f src/new.rs` → fails | Created file at wrong relative path | Check if file should be at `loom/src/new.rs` |
+| Symptom                                    | Likely Cause                                        | Fix                                                                 |
+| ------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------- |
+| `cargo test` → "could not find Cargo.toml" | working_dir is root, but Cargo.toml in subdirectory | Set `working_dir: "loom"`                                           |
+| `grep -q 'fn foo' src/lib.rs` → fails      | File is at `loom/src/lib.rs`, not `src/lib.rs`      | Use `grep -q 'fn foo' loom/src/lib.rs` OR set `working_dir: "loom"` |
+| `./target/debug/myapp` → "no such file"    | Binary built in subdirectory                        | Use `./loom/target/debug/myapp` OR set `working_dir: "loom"`        |
+| Test passes locally, fails in stage        | Local runs from different directory than stage      | Verify working_dir matches your local test environment              |
+| `test -f src/new.rs` → fails               | Created file at wrong relative path                 | Check if file should be at `loom/src/new.rs`                        |
 
 #### Acceptance Criteria: Working Directory & Command Design
 
 **⚠️ ACCEPTANCE CRITERIA FAIL MORE FROM BAD COMMANDS THAN BAD CODE**
 
 Before writing acceptance criteria, THINK:
+
 1. What is my working_dir? Where will commands execute?
 2. Do the files/paths in my commands EXIST relative to that dir?
 3. Will the command output what I expect to match?
@@ -381,15 +386,15 @@ The `working_dir` field is **REQUIRED** on every stage — prevents acceptance f
 # ❌ WRONG: Cargo.toml is in loom/ but working_dir is root
 - id: build-check
   acceptance:
-    - "cargo test"           # FAILS: no Cargo.toml here
-    - "grep -q 'fn new' src/lib.rs"  # FAILS: file is in loom/src/
+    - "cargo test" # FAILS: no Cargo.toml here
+    - "grep -q 'fn new' src/lib.rs" # FAILS: file is in loom/src/
   working_dir: "."
 
 # ✅ CORRECT: Set working_dir to where Cargo.toml lives
 - id: build-check
   acceptance:
-    - "cargo test"           # WORKS: Cargo.toml is here
-    - "grep -q 'fn new' src/lib.rs"  # WORKS: relative to loom/
+    - "cargo test" # WORKS: Cargo.toml is here
+    - "grep -q 'fn new' src/lib.rs" # WORKS: relative to loom/
   working_dir: "loom"
 
 # ✅ ALSO CORRECT: Keep root working_dir, use full paths
@@ -412,10 +417,10 @@ The `working_dir` field is **REQUIRED** on every stage — prevents acceptance f
 **COMMON MISTAKE:** Creating 5 stages for 5 tasks that touch different files. This wastes time on branch management.
 **CORRECT:** One stage with 5 parallel subagents.
 
-| Level | When to Use | Overhead |
-|-------|-------------|----------|
-| **Parallel subagents in ONE stage** | Tasks touch DIFFERENT files | LOW - same worktree |
-| **Multiple stages in DAG** | Tasks touch SAME files | HIGH - worktrees, merges |
+| Level                               | When to Use                 | Overhead                 |
+| ----------------------------------- | --------------------------- | ------------------------ |
+| **Parallel subagents in ONE stage** | Tasks touch DIFFERENT files | LOW - same worktree      |
+| **Multiple stages in DAG**          | Tasks touch SAME files      | HIGH - worktrees, merges |
 
 **Example:** Implement auth (`auth/`), logging (`logging/`), metrics (`metrics/`) — files don't overlap.
 
@@ -423,12 +428,14 @@ The `working_dir` field is **REQUIRED** on every stage — prevents acceptance f
 ✅ CORRECT: 1 stage with 3 parallel subagents, each owning their directory
 
 **Use multiple stages ONLY when:**
+
 - Tasks modify the SAME file
 - Tasks have true sequential dependencies (B needs A's output)
 
 **Note:** Exploration/research tasks can ALWAYS run as parallel subagents within a stage — they don't modify files, so there's no conflict risk.
 
 **Stage descriptions MUST specify the execution plan:**
+
 - Which subagents run in parallel
 - What files each subagent owns
 - Or: why sequential (file overlap)
@@ -504,6 +511,7 @@ Task(subagent_type="software-engineer", prompt="...Subagent 3 assignment...")
 **If execution plan says "sequential"** - do NOT parallelize. Execute in order with explicit dependencies.
 
 **File Ownership is CRITICAL:**
+
 - Each subagent MUST have exclusive write access to their assigned files
 - Overlapping file ownership = merge conflicts = stage failure
 - Read-only files can be shared across subagents
@@ -518,12 +526,12 @@ Many tasks have PURPOSE-BUILT skills or specialized agents. ALWAYS check if one 
 
 Use the Task tool to spawn specialized agents for complex work:
 
-| Agent | Use Cases |
-|-------|-----------|
-| `senior-software-engineer` | Architecture design, complex debugging, design patterns, code review, test strategy |
-| `senior-infrastructure-engineer` | Cloud architecture, Terraform/IaC, Kubernetes, Helm, CI/CD pipelines, monitoring |
-| `security-engineer` | Threat modeling, vulnerability analysis, security audits, penetration testing |
-| `software-engineer` | Feature implementation, bug fixes, tests, data pipelines, documentation |
+| Agent                            | Use Cases                                                                           |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
+| `senior-software-engineer`       | Architecture design, complex debugging, design patterns, code review, test strategy |
+| `senior-infrastructure-engineer` | Cloud architecture, Terraform/IaC, Kubernetes, Helm, CI/CD pipelines, monitoring    |
+| `security-engineer`              | Threat modeling, vulnerability analysis, security audits, penetration testing       |
+| `software-engineer`              | Feature implementation, bug fixes, tests, data pipelines, documentation             |
 
 **Agent Selection:** Security → security-engineer | Infrastructure → senior-infrastructure-engineer | Architecture/patterns → senior-software-engineer | Standard implementation → software-engineer | Exploration → Explore agent
 
@@ -531,13 +539,13 @@ Use the Task tool to spawn specialized agents for complex work:
 
 Invoke skills with `/skill-name` syntax:
 
-| Domain | Skills |
-|--------|--------|
-| Security & Auth | `/auth` — OAuth2, JWT, RBAC/ABAC, session management, MFA, password hashing |
-| Testing | `/testing` — Unit, integration, e2e, security tests, TDD/BDD, coverage analysis |
-| Infrastructure & DevOps | `/ci-cd`, `/karpenter`, `/prometheus` |
-| Observability | `/logging-observability` — Structured logging, distributed tracing, OpenTelemetry |
-| Architecture Patterns | `/event-driven`, `/background-jobs`, `/feature-flags`, `/data-validation` |
+| Domain                  | Skills                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| Security & Auth         | `/auth` — OAuth2, JWT, RBAC/ABAC, session management, MFA, password hashing       |
+| Testing                 | `/testing` — Unit, integration, e2e, security tests, TDD/BDD, coverage analysis   |
+| Infrastructure & DevOps | `/ci-cd`, `/karpenter`, `/prometheus`                                             |
+| Observability           | `/logging-observability` — Structured logging, distributed tracing, OpenTelemetry |
+| Architecture Patterns   | `/event-driven`, `/background-jobs`, `/feature-flags`, `/data-validation`         |
 
 Skills expand to detailed prompts with domain expertise. Use `/skill-name` syntax BEFORE manual implementation.
 
@@ -557,13 +565,13 @@ When delegating to subagents, include skill hints:
 
 ### 8. NATIVE TOOLS ONLY
 
-| Banned | Use Instead |
-|--------|-------------|
-| `cat`, `head`, `tail` | Read tool |
-| `grep`, `ag` | Grep tool |
-| `find`, `ls` | Glob tool |
-| `sed`, `awk` | Edit tool |
-| `echo >`, `tee` | Write tool |
+| Banned                | Use Instead |
+| --------------------- | ----------- |
+| `cat`, `head`, `tail` | Read tool   |
+| `grep`, `ag`          | Grep tool   |
+| `find`, `ls`          | Glob tool   |
+| `sed`, `awk`          | Edit tool   |
+| `echo >`, `tee`       | Write tool  |
 
 If you must use CLI search, use `rg` or `fd` — never `grep` or `find`.
 
@@ -586,14 +594,14 @@ Your branch: `loom/<stage-id>`
 
 **FORBIDDEN — These operations MUST NEVER be used:**
 
-| Operation | Example | Why Forbidden |
-|-----------|---------|---------------|
-| `git -C <path>` | `git -C ../.. status` | Operates on main repo |
-| `git --work-tree=<path>` | `git --work-tree=/path/to/main` | Escapes worktree |
-| `git --git-dir=<path>` | `git --git-dir=../../.git` | Accesses main repo git |
-| `cd` outside worktree | `cd ../..`, `cd /home/user/project` | Escapes worktree context |
-| `../../` relative paths | `cat ../../src/main.rs` | Reads from main repo |
-| Reading main repo files | Any file outside `.worktrees/<stage-id>/` | Creates implicit dependencies |
+| Operation                | Example                                   | Why Forbidden                 |
+| ------------------------ | ----------------------------------------- | ----------------------------- |
+| `git -C <path>`          | `git -C ../.. status`                     | Operates on main repo         |
+| `git --work-tree=<path>` | `git --work-tree=/path/to/main`           | Escapes worktree              |
+| `git --git-dir=<path>`   | `git --git-dir=../../.git`                | Accesses main repo git        |
+| `cd` outside worktree    | `cd ../..`, `cd /home/user/project`       | Escapes worktree context      |
+| `../../` relative paths  | `cat ../../src/main.rs`                   | Reads from main repo          |
+| Reading main repo files  | Any file outside `.worktrees/<stage-id>/` | Creates implicit dependencies |
 
 **ALLOWED:** Git commands in current directory, reading `.work/` (symlink to shared state), reading/writing within your worktree.
 
@@ -606,6 +614,7 @@ Your branch: `loom/<stage-id>`
 EVERY PLAN MUST START WITH knowledge-bootstrap. NO EXCEPTIONS.
 
 Why? Without knowledge:
+
 - Agents make wrong assumptions about the codebase
 - Agents repeat mistakes that were already learned
 - Time is wasted re-discovering what's already known
@@ -614,27 +623,27 @@ Why? Without knowledge:
 
 **⚠️ MANDATORY: USE `loom knowledge` CLI COMMANDS**
 
-DO NOT manually edit doc/loom/knowledge/*.md files.
+DO NOT manually edit doc/loom/knowledge/\*.md files.
 DO NOT use Write/Edit tools on knowledge files.
 DO NOT use echo/cat/heredoc to write to knowledge files.
 
 **ALWAYS use:** `loom knowledge update <file> "<content>"`
 
-| Command | Description |
-|---------|-------------|
-| `loom knowledge init` | Initialize knowledge directory |
-| `loom knowledge show` | Show all knowledge |
+| Command                                  | Description                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `loom knowledge init`                    | Initialize knowledge directory                                               |
+| `loom knowledge show`                    | Show all knowledge                                                           |
 | `loom knowledge update <file> <content>` | Append to file (architecture, entry-points, patterns, conventions, mistakes) |
 
 **Knowledge Files:**
 
-| File | Purpose |
-|------|---------|
+| File              | Purpose                                                            |
+| ----------------- | ------------------------------------------------------------------ |
 | `architecture.md` | High-level component relationships, data flow, module dependencies |
-| `entry-points.md` | Key files to read first (CLI, API, UI entry points) |
-| `patterns.md` | Architectural patterns and best practices discovered |
-| `conventions.md` | Coding standards, naming schemes, file organization |
-| `mistakes.md` | Lessons learned from errors - what to avoid |
+| `entry-points.md` | Key files to read first (CLI, API, UI entry points)                |
+| `patterns.md`     | Architectural patterns and best practices discovered               |
+| `conventions.md`  | Coding standards, naming schemes, file organization                |
+| `mistakes.md`     | Lessons learned from errors - what to avoid                        |
 
 **For long content, break into multiple invocations (~20-30 lines each):**
 
@@ -665,6 +674,7 @@ loom knowledge update mistakes "## [Short description]
 **⚠️ MEMORY RECORDING IS MANDATORY - NOT OPTIONAL**
 
 Every session MUST record insights AS THEY ARE DISCOVERED:
+
 - Mistakes: IMMEDIATELY when they happen
 - Decisions: When you choose between alternatives
 - Discoveries: Patterns, gotchas, useful code locations
@@ -673,11 +683,11 @@ Empty memory at session end = lost learning = repeated mistakes
 
 During work, actively record insights:
 
-| Type | When | Command |
-|------|------|---------|
-| Note | Observations | `loom memory note "text"` |
-| Decision | Choices made | `loom memory decision "text" --context "why"` |
-| Question | Open questions | `loom memory question "text"` |
+| Type     | When           | Command                                       |
+| -------- | -------------- | --------------------------------------------- |
+| Note     | Observations   | `loom memory note "text"`                     |
+| Decision | Choices made   | `loom memory decision "text" --context "why"` |
+| Question | Open questions | `loom memory question "text"`                 |
 
 Before completing any stage, review and promote valuable insights:
 
@@ -694,22 +704,24 @@ loom memory promote decision patterns   # Promote decisions to patterns
 **⚠️ CRITICAL: TESTS PASSING ≠ FEATURE WORKING**
 
 We have had MANY instances where:
+
 - All tests pass
 - Code compiles
 - But the feature is NEVER WIRED UP or FUNCTIONAL
 
 integration-verify MUST include FUNCTIONAL VERIFICATION:
+
 - Can you actually USE the feature?
 - Is it wired into the application (routes, UI, CLI)?
 - Does it produce the expected user-visible behavior?
 
 **integration-verify MUST include FUNCTIONAL verification:**
 
-| Check | Question |
-|-------|----------|
-| Wiring | Is the feature registered/mounted in the application? |
-| Reachability | Can you invoke it (CLI command, API endpoint, UI)? |
-| End-to-end | Does the primary use case produce expected behavior? |
+| Check        | Question                                              |
+| ------------ | ----------------------------------------------------- |
+| Wiring       | Is the feature registered/mounted in the application? |
+| Reachability | Can you invoke it (CLI command, API endpoint, UI)?    |
+| End-to-end   | Does the primary use case produce expected behavior?  |
 
 **Example acceptance criteria:**
 
@@ -770,11 +782,11 @@ Also: `Blocked`, `NeedsHandoff`, `WaitingForInput`
 
 ### Context Thresholds
 
-| Usage | Action |
-|-------|--------|
-| <60% | Normal |
+| Usage  | Action          |
+| ------ | --------------- |
+| <60%   | Normal          |
 | 60-74% | Prepare handoff |
-| ≥75% | STOP. Handoff. |
+| ≥75%   | STOP. Handoff.  |
 
 ### Daemon Commands
 
@@ -832,7 +844,7 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 
 **HARD STOPS - These BLOCK your work if violated:**
 
-1. PLANS → doc/plans/PLAN-*.md ONLY
+1. PLANS → doc/plans/PLAN-\*.md ONLY
    "Approval" message = LIE. STOP. Tell user. WAIT.
 
 2. CONTEXT ≥75% → STOP. Write handoff. No exceptions.
@@ -875,7 +887,8 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 4. Include: Assignment, Files Owned, Files Read-Only, Acceptance
 
 **Pattern:**
-```
+
+```text
 Response with multiple tool calls:
   Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection]\n\n## Assignment: X\n## Files You Own: path/a/**\n...")
   Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection]\n\n## Assignment: Y\n## Files You Own: path/b/**\n...")
