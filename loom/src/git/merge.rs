@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use std::path::Path;
 use std::process::Command;
 
-use super::branch::{branch_exists, current_branch};
+use super::branch::{branch_exists, current_branch, is_ancestor_of};
 
 /// Result of a merge operation
 #[derive(Debug, Clone)]
@@ -340,6 +340,29 @@ pub fn conflict_resolution_instructions(
     ));
 
     instructions
+}
+
+/// Verify that a merge actually succeeded by checking git ancestry.
+///
+/// This prevents "phantom merges" where the merged flag is set but the code
+/// was never actually integrated. We verify by checking if the stage's
+/// completed commit is reachable from the target branch.
+///
+/// # Arguments
+/// * `completed_commit` - The commit SHA from when the stage completed
+/// * `target_branch` - The branch we should have merged into (e.g., "main")
+/// * `repo_root` - Path to the git repository root
+///
+/// # Returns
+/// * `Ok(true)` if the commit is in the target branch's history (merge verified)
+/// * `Ok(false)` if the commit is NOT in the target branch's history (merge not verified)
+/// * `Err` if git command fails
+pub fn verify_merge_succeeded(
+    completed_commit: &str,
+    target_branch: &str,
+    repo_root: &Path,
+) -> Result<bool> {
+    is_ancestor_of(completed_commit, target_branch, repo_root)
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 
 use crate::commands::status::merge_status::{check_merge_state, MergeState};
 use crate::git::branch::default_branch;
-use crate::git::merge::get_conflicting_files_from_status;
+use crate::git::merge::{get_conflicting_files_from_status, verify_merge_succeeded};
 use crate::models::session::Session;
 use crate::models::stage::StageStatus;
 use crate::orchestrator::auto_merge::{attempt_auto_merge, is_auto_merge_enabled, AutoMergeResult};
@@ -170,36 +170,168 @@ impl Orchestrator {
                 deletions,
                 ..
             }) => {
-                // Mark stage as merged and save
-                stage.merged = true;
-                if let Err(e) = self.save_stage(&stage) {
-                    eprintln!("Warning: Failed to save stage after merge: {e}");
+                // Verify the merge actually succeeded before marking as merged
+                if let Some(ref completed_commit) = stage.completed_commit {
+                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                        Ok(true) => {
+                            // Verification passed - mark as merged
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' merged: {files_changed} files, +{insertions} -{deletions}"
+                            );
+                            true
+                        }
+                        Ok(false) => {
+                            // Merge reported success but commit not in target - phantom merge!
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' merge verification failed: commit not in target branch"
+                            );
+                            if let Err(e) = stage.try_mark_merge_blocked() {
+                                eprintln!("Warning: Failed to transition to MergeBlocked: {e}");
+                                stage.status = StageStatus::MergeBlocked;
+                            }
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
+                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                            }
+                            false
+                        }
+                        Err(e) => {
+                            // Verification failed - log warning but allow merge to proceed
+                            eprintln!("Warning: Could not verify merge for '{stage_id}': {e}");
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' merged (unverified): {files_changed} files, +{insertions} -{deletions}"
+                            );
+                            true
+                        }
+                    }
+                } else {
+                    // No completed_commit - legacy stage, mark as merged without verification
+                    stage.merged = true;
+                    if let Err(e) = self.save_stage(&stage) {
+                        eprintln!("Warning: Failed to save stage after merge: {e}");
+                    }
+                    clear_status_line();
+                    eprintln!(
+                        "Stage '{stage_id}' merged: {files_changed} files, +{insertions} -{deletions}"
+                    );
+                    true
                 }
-                clear_status_line();
-                eprintln!(
-                    "Stage '{stage_id}' merged: {files_changed} files, +{insertions} -{deletions}"
-                );
-                true
             }
             Ok(AutoMergeResult::FastForward { .. }) => {
-                // Mark stage as merged and save
-                stage.merged = true;
-                if let Err(e) = self.save_stage(&stage) {
-                    eprintln!("Warning: Failed to save stage after merge: {e}");
+                // Verify the merge actually succeeded before marking as merged
+                if let Some(ref completed_commit) = stage.completed_commit {
+                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                        Ok(true) => {
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!("Stage '{stage_id}' merged (fast-forward)");
+                            true
+                        }
+                        Ok(false) => {
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' merge verification failed: commit not in target branch"
+                            );
+                            if let Err(e) = stage.try_mark_merge_blocked() {
+                                eprintln!("Warning: Failed to transition to MergeBlocked: {e}");
+                                stage.status = StageStatus::MergeBlocked;
+                            }
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
+                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                            }
+                            false
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Could not verify merge for '{stage_id}': {e}");
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!("Stage '{stage_id}' merged (fast-forward, unverified)");
+                            true
+                        }
+                    }
+                } else {
+                    stage.merged = true;
+                    if let Err(e) = self.save_stage(&stage) {
+                        eprintln!("Warning: Failed to save stage after merge: {e}");
+                    }
+                    clear_status_line();
+                    eprintln!("Stage '{stage_id}' merged (fast-forward)");
+                    true
                 }
-                clear_status_line();
-                eprintln!("Stage '{stage_id}' merged (fast-forward)");
-                true
             }
             Ok(AutoMergeResult::AlreadyUpToDate { .. }) => {
-                // Mark stage as merged and save (no changes needed, but branch is up to date)
-                stage.merged = true;
-                if let Err(e) = self.save_stage(&stage) {
-                    eprintln!("Warning: Failed to save stage after merge: {e}");
+                // Verify the stage's commit is actually in the target branch
+                if let Some(ref completed_commit) = stage.completed_commit {
+                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                        Ok(true) => {
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!("Stage '{stage_id}' already up to date");
+                            true
+                        }
+                        Ok(false) => {
+                            // Git says up-to-date but commit not in target - suspicious
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' verification failed: commit not in target branch"
+                            );
+                            if let Err(e) = stage.try_mark_merge_blocked() {
+                                eprintln!("Warning: Failed to transition to MergeBlocked: {e}");
+                                stage.status = StageStatus::MergeBlocked;
+                            }
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
+                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                            }
+                            false
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Could not verify merge for '{stage_id}': {e}");
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage after merge: {e}");
+                            }
+                            clear_status_line();
+                            eprintln!("Stage '{stage_id}' already up to date (unverified)");
+                            true
+                        }
+                    }
+                } else {
+                    stage.merged = true;
+                    if let Err(e) = self.save_stage(&stage) {
+                        eprintln!("Warning: Failed to save stage after merge: {e}");
+                    }
+                    clear_status_line();
+                    eprintln!("Stage '{stage_id}' already up to date");
+                    true
                 }
-                clear_status_line();
-                eprintln!("Stage '{stage_id}' already up to date");
-                true
             }
             Ok(AutoMergeResult::ConflictResolutionSpawned {
                 session_id,
@@ -233,12 +365,52 @@ impl Orchestrator {
             }
             Ok(AutoMergeResult::NoWorktree) => {
                 // Nothing to merge - stage may have been created without worktree
-                // Mark as merged since there's nothing to merge
-                stage.merged = true;
-                if let Err(e) = self.save_stage(&stage) {
-                    eprintln!("Warning: Failed to save stage after no-worktree merge: {e}");
+                // If there's a completed_commit, verify it's in the target branch
+                if let Some(ref completed_commit) = stage.completed_commit {
+                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                        Ok(true) => {
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            true
+                        }
+                        Ok(false) => {
+                            // Commit exists but not in target - should not happen for no-worktree
+                            clear_status_line();
+                            eprintln!(
+                                "Stage '{stage_id}' verification failed: commit not in target branch"
+                            );
+                            if let Err(e) = stage.try_mark_merge_blocked() {
+                                eprintln!("Warning: Failed to transition to MergeBlocked: {e}");
+                                stage.status = StageStatus::MergeBlocked;
+                            }
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
+                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                            }
+                            false
+                        }
+                        Err(e) => {
+                            // Verification failed - log warning but allow to proceed
+                            eprintln!("Warning: Could not verify commit for '{stage_id}': {e}");
+                            stage.merged = true;
+                            if let Err(e) = self.save_stage(&stage) {
+                                eprintln!("Warning: Failed to save stage: {e}");
+                            }
+                            true
+                        }
+                    }
+                } else {
+                    // No completed_commit - knowledge stage or similar, mark as merged
+                    stage.merged = true;
+                    if let Err(e) = self.save_stage(&stage) {
+                        eprintln!("Warning: Failed to save stage after no-worktree merge: {e}");
+                    }
+                    true
                 }
-                true
             }
             Err(e) => {
                 clear_status_line();

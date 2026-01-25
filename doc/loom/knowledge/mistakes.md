@@ -256,3 +256,20 @@ Stage marked complete without verifying acceptance criteria passed.
 ### Decisions
 
 - **Removed work_dir.load() calls from knowledge commands**
+
+## Promoted from Memory [2026-01-25 23:39]
+
+### Notes
+
+- Implemented three-layer merge verification: 1) verify_merge_succeeded() in git/merge.rs, 2) verification calls before merged=true in merge_handler.rs, 3) git ancestry as primary source in merge_status.rs
+
+### Decisions
+
+- **Added verify_merge_succeeded() using is_ancestor_of() to verify commit ancestry**
+  - *Rationale:* Simple wrapper provides semantic clarity and centralized verification logic
+- **Verify git ancestry before setting merged=true in all AutoMergeResult cases**
+  - *Rationale:* Prevents phantom merges by treating git ancestry as source of truth
+- **Removed check_merge_state short-circuit that trusted merged flag**
+  - *Rationale:* Git ancestry is now primary source of truth; merged flag only used as fallback when git check fails
+
+
