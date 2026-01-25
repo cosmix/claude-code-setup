@@ -2,8 +2,8 @@
 
 use super::super::cache::generate_stable_prefix;
 use super::super::format::format_signal_content;
-use super::{create_test_session, create_test_stage, create_test_worktree};
 use super::super::types::EmbeddedContext;
+use super::{create_test_session, create_test_stage, create_test_worktree};
 
 #[test]
 fn test_signal_contains_working_dir() {

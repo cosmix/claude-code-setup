@@ -275,4 +275,3 @@ pub(super) fn format_task_progression(task_state: &crate::checkpoints::TaskState
 
     content
 }
-

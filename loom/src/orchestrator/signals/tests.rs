@@ -12,10 +12,10 @@ use super::generate::{extract_plan_overview, generate_signal};
 use super::types::{DependencyStatus, EmbeddedContext, SignalUpdates};
 
 // Submodules with additional tests
-#[path = "tests_merge.rs"]
-mod tests_merge;
 #[path = "tests_cache.rs"]
 mod tests_cache;
+#[path = "tests_merge.rs"]
+mod tests_merge;
 #[path = "tests_working_dir.rs"]
 mod tests_working_dir;
 

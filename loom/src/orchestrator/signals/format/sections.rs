@@ -275,7 +275,10 @@ pub(super) fn format_dynamic_section(
 
 /// RECITATION section: At end for maximum attention (Manus pattern)
 /// Contains immediate tasks, task progression, and session memory
-pub(super) fn format_recitation_section(stage: &Stage, embedded_context: &EmbeddedContext) -> String {
+pub(super) fn format_recitation_section(
+    stage: &Stage,
+    embedded_context: &EmbeddedContext,
+) -> String {
     let mut content = String::new();
 
     // Context Budget Warning (high attention position - before tasks)

@@ -5,8 +5,8 @@ use std::fs;
 use tempfile::TempDir;
 
 // Submodules
-mod tests_stage;
 mod tests_other;
+mod tests_stage;
 
 pub fn setup_test_workspace() -> TempDir {
     let temp_dir = TempDir::new().unwrap();

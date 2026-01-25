@@ -4,10 +4,10 @@ use std::fs;
 use tempfile::TempDir;
 
 use super::super::cache::{compute_hash, generate_stable_prefix, SignalMetrics};
-use super::super::format::{format_signal_with_metrics, format_signal_content};
+use super::super::format::{format_signal_content, format_signal_with_metrics};
 use super::super::generate::generate_signal_with_metrics;
-use super::{create_test_session, create_test_stage, create_test_worktree};
 use super::super::types::EmbeddedContext;
+use super::{create_test_session, create_test_stage, create_test_worktree};
 
 #[test]
 fn test_compute_hash_is_deterministic() {

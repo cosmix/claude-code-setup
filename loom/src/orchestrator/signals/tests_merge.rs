@@ -3,12 +3,12 @@
 use std::fs;
 use tempfile::TempDir;
 
-use super::{create_test_session, create_test_stage, create_test_worktree};
 use super::super::generate::generate_signal;
 use super::super::merge::{
     format_merge_signal_content, generate_merge_signal, parse_merge_signal_content,
     read_merge_signal,
 };
+use super::{create_test_session, create_test_stage, create_test_worktree};
 
 #[test]
 fn test_generate_merge_signal_basic() {
