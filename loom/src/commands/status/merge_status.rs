@@ -40,7 +40,11 @@ impl std::fmt::Display for MergeState {
 /// Check the merge state of a stage.
 ///
 /// Determines whether a stage's work has been merged to the merge point
-/// by examining the stage's metadata and git ancestry.
+/// by examining git ancestry (primary) and falling back to metadata.
+///
+/// IMPORTANT: This function always verifies via git ancestry when possible,
+/// rather than trusting the `merged` flag. This prevents "phantom merges"
+/// where the flag was set but code never landed.
 ///
 /// # Arguments
 /// * `stage` - The stage to check
@@ -55,35 +59,43 @@ pub fn check_merge_state(stage: &Stage, merge_point: &str, repo_root: &Path) -> 
         return Ok(MergeState::Conflict);
     }
 
-    // Check if already marked as merged
+    // If we have a completed_commit, always verify via git ancestry
+    // This is the primary source of truth, not the merged flag
+    if let Some(ref completed_commit) = stage.completed_commit {
+        // Check if the completed commit is an ancestor of the merge point
+        match is_ancestor_of(completed_commit, merge_point, repo_root) {
+            Ok(true) => return Ok(MergeState::Merged),
+            Ok(false) => {
+                // Commit exists but not in target - check if branch still exists
+                let branch_name = branch_name_for_stage(&stage.id);
+                if !branch_exists(&branch_name, repo_root)? {
+                    // Branch gone but commit not merged - suspicious state
+                    return Ok(MergeState::BranchMissing);
+                }
+                // Branch exists, commit not merged yet
+                return Ok(MergeState::Pending);
+            }
+            Err(_) => {
+                // Git command failed - fall back to metadata
+                if stage.merged {
+                    return Ok(MergeState::Merged);
+                }
+                return Ok(MergeState::Unknown);
+            }
+        }
+    }
+
+    // No completed_commit - cannot verify via git ancestry
+    // Fall back to metadata flags only
     if stage.merged {
+        // Marked as merged but no commit to verify - trust the flag
+        // (likely a knowledge stage or legacy stage)
         return Ok(MergeState::Merged);
     }
 
-    // Need completed_commit to check ancestry
-    let Some(ref completed_commit) = stage.completed_commit else {
-        return Ok(MergeState::Unknown);
-    };
-
-    // Check if the stage branch still exists
-    let branch_name = branch_name_for_stage(&stage.id);
-    let branch_exists = branch_exists(&branch_name, repo_root)?;
-
-    if !branch_exists {
-        // Branch is gone but stage not marked as merged - suspicious
-        return Ok(MergeState::BranchMissing);
-    }
-
-    // Check if the completed commit is an ancestor of the merge point
-    // If it is, the work has been merged
-    match is_ancestor_of(completed_commit, merge_point, repo_root) {
-        Ok(true) => Ok(MergeState::Merged),
-        Ok(false) => Ok(MergeState::Pending),
-        Err(_) => {
-            // If we can't check ancestry (e.g., invalid refs), treat as unknown
-            Ok(MergeState::Unknown)
-        }
-    }
+    // No completed_commit, not marked merged - we have no way to verify
+    // Return Unknown rather than checking branch (which we can't verify anyway)
+    Ok(MergeState::Unknown)
 }
 
 /// Summary report of merge status across multiple stages.

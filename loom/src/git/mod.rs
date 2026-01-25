@@ -20,7 +20,7 @@ pub use worktree::{
 
 pub use merge::{
     abort_merge, checkout_branch, conflict_resolution_instructions, get_conflicting_files,
-    merge_stage, MergeResult,
+    merge_stage, verify_merge_succeeded, MergeResult,
 };
 
 pub use branch::{
