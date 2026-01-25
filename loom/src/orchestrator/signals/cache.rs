@@ -138,6 +138,14 @@ pub fn generate_stable_prefix() -> String {
         .push_str("- **ALWAYS use `git add <specific-files>`** - stage only files you modified\n");
     content.push_str("- **NEVER use `git add -A` or `git add .`** - these include `.work` which must NOT be committed\n");
     content.push_str("- `.work` is a symlink to shared orchestration state - never stage it\n\n");
+    content.push_str("**Binary Usage (CRITICAL when working on loom):**\n");
+    content.push_str("- **ALWAYS use `loom`** - the installed binary from PATH\n");
+    content.push_str("- **NEVER use `target/debug/loom`** or `./loom/target/debug/loom`\n");
+    content.push_str("- Development binaries cause version mismatches and state corruption\n\n");
+    content.push_str("**State Files (CRITICAL):**\n");
+    content.push_str("- **NEVER edit `.work/` files directly** - always use loom CLI\n");
+    content.push_str("- State is managed by the orchestrator, not by agents\n");
+    content.push_str("- Direct edits corrupt state and cause phantom completions\n\n");
 
     content
 }
@@ -213,6 +221,14 @@ pub fn generate_knowledge_stable_prefix() -> String {
     content.push_str("- **Create handoff** if context exceeds 75%\n");
     content
         .push_str("- **Run `loom stage complete <stage-id>`** when done (from the repo root)\n\n");
+    content.push_str("**Binary Usage (CRITICAL when working on loom):**\n");
+    content.push_str("- **ALWAYS use `loom`** - the installed binary from PATH\n");
+    content.push_str("- **NEVER use `target/debug/loom`** or `./loom/target/debug/loom`\n");
+    content.push_str("- Development binaries cause version mismatches and state corruption\n\n");
+    content.push_str("**State Files (CRITICAL):**\n");
+    content.push_str("- **NEVER edit `.work/` files directly** - always use loom CLI\n");
+    content.push_str("- State is managed by the orchestrator, not by agents\n");
+    content.push_str("- Direct edits corrupt state and cause phantom completions\n\n");
 
     // Knowledge-specific instructions
     content.push_str("**Knowledge Commands:**\n\n");
