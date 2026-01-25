@@ -228,5 +228,6 @@ pub(crate) fn create_stage_from_definition(stage_def: &StageDefinition, plan_id:
         completed_commit: None,
         merged: false,
         merge_conflict: false,
+        context_budget: stage_def.context_budget,
     }
 }

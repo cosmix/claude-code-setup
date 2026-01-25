@@ -279,6 +279,7 @@ mod tests {
             completed_commit: None,
             merged: false,
             merge_conflict: false,
+            context_budget: None,
         };
 
         // No reason - should be Manual

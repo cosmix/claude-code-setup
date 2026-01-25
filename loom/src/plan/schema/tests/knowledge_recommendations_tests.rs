@@ -18,7 +18,6 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -32,7 +31,6 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
         },
     ];
 
@@ -56,7 +54,6 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -70,7 +67,6 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
         },
     ];
 
@@ -92,7 +88,6 @@ fn test_knowledge_recommendations_has_knowledge_name() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -113,7 +108,6 @@ fn test_knowledge_recommendations_case_insensitive() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -136,7 +130,6 @@ fn test_knowledge_recommendations_no_root_stages() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
     }];
 
     let warnings = check_knowledge_recommendations(&stages);

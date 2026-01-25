@@ -46,7 +46,7 @@ fn test_create_stage_from_definition_no_dependencies() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
+                context_budget: None,
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-001");
@@ -73,7 +73,7 @@ fn test_create_stage_from_definition_with_dependencies() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
+                context_budget: None,
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-002");
@@ -97,6 +97,7 @@ fn test_serialize_stage_to_markdown_minimal() {
         setup: vec![],
         files: vec![],
         stage_type: ModelStageType::default(),
+                context_budget: None,
         plan_id: None,
         worktree: None,
         session: None,
@@ -122,7 +123,6 @@ fn test_serialize_stage_to_markdown_minimal() {
         completed_commit: None,
         merged: false,
         merge_conflict: false,
-            context_budget: None,
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -145,6 +145,7 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         setup: vec![],
         files: vec!["file1.rs".to_string(), "file2.rs".to_string()],
         stage_type: ModelStageType::default(),
+                context_budget: None,
         plan_id: Some("plan-123".to_string()),
         worktree: None,
         session: None,
@@ -170,7 +171,6 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         completed_commit: None,
         merged: false,
         merge_conflict: false,
-            context_budget: None,
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -219,7 +219,7 @@ fn test_initialize_with_plan_creates_config() {
         auto_merge: None,
         working_dir: ".".to_string(),
         stage_type: StageType::default(),
-        context_budget: None,
+                context_budget: None,
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);
@@ -256,7 +256,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
+                context_budget: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -270,7 +270,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             auto_merge: None,
             working_dir: ".".to_string(),
             stage_type: StageType::default(),
-            context_budget: None,
+                context_budget: None,
         },
     ];
 

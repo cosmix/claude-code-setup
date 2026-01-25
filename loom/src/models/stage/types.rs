@@ -110,6 +110,9 @@ pub struct Stage {
     /// Whether stage has unresolved merge conflicts
     #[serde(default)]
     pub merge_conflict: bool,
+    /// Stage-specific context budget (percentage)
+    #[serde(default)]
+    pub context_budget: Option<u32>,
 }
 
 /// Status of a stage in the execution lifecycle.
