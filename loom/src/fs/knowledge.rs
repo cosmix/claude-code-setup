@@ -45,9 +45,7 @@ impl KnowledgeFile {
             KnowledgeFile::Conventions => "Coding conventions discovered in the codebase",
             KnowledgeFile::Mistakes => "Mistakes made and lessons learned - what to avoid",
             KnowledgeFile::Stack => "Dependencies, frameworks, and tooling used in the project",
-            KnowledgeFile::Concerns => {
-                "Technical debt, warnings, and issues to address"
-            }
+            KnowledgeFile::Concerns => "Technical debt, warnings, and issues to address",
         }
     }
 

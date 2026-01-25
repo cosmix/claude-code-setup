@@ -64,7 +64,7 @@ pub fn analyze_dependencies(root: &Path) -> Result<String> {
                     if let Some(name) = line.split('=').next() {
                         let name = name.trim();
                         if !name.is_empty() {
-                            deps.push(format!("- {}", name));
+                            deps.push(format!("- {name}"));
                         }
                     }
                 }
@@ -120,7 +120,7 @@ pub fn find_entry_points(root: &Path, focus: Option<&str>) -> Result<String> {
                     continue;
                 }
             }
-            entries.push(format!("- `{}` - {}", pattern, desc));
+            entries.push(format!("- `{pattern}` - {desc}"));
         }
     }
 
@@ -144,7 +144,7 @@ pub fn analyze_structure(root: &Path, deep: bool) -> Result<String> {
 }
 
 fn analyze_dir_recursive(
-    base: &Path,
+    _base: &Path,
     current: &Path,
     depth: usize,
     max_depth: usize,
@@ -182,16 +182,17 @@ fn analyze_dir_recursive(
         let path = entry.path();
 
         if path.is_dir() {
-            output.push(format!("{}{}/", indent, name));
-            analyze_dir_recursive(base, &path, depth + 1, max_depth, output)?;
+            output.push(format!("{indent}{name}/"));
+            analyze_dir_recursive(_base, &path, depth + 1, max_depth, output)?;
         } else if depth == 0 {
             // Only show root-level files
-            output.push(format!("{}{}", indent, name));
+            output.push(format!("{indent}{name}"));
         }
     }
 
     if entries.len() > 15 {
-        output.push(format!("{}... ({} more)", indent, entries.len() - 15));
+        let remaining = entries.len() - 15;
+        output.push(format!("{indent}... ({remaining} more)"));
     }
 
     Ok(())
@@ -215,7 +216,7 @@ pub fn detect_conventions(root: &Path) -> Result<String> {
 
     for (file, desc) in configs {
         if root.join(file).exists() {
-            conventions.push(format!("- {}", desc));
+            conventions.push(format!("- {desc}"));
         }
     }
 
@@ -229,7 +230,7 @@ pub fn detect_conventions(root: &Path) -> Result<String> {
 
     for (pattern, desc) in test_patterns {
         if root.join(pattern).exists() {
-            conventions.push(format!("- {}", desc));
+            conventions.push(format!("- {desc}"));
             break; // Only report one test location
         }
     }
@@ -250,26 +251,17 @@ pub fn find_concerns(root: &Path) -> Result<String> {
     let fixme_count = count_pattern_in_source(root, "FIXME")?;
 
     if todo_count > 0 {
-        concerns.push(format!(
-            "- **{} TODO comments** found in source files",
-            todo_count
-        ));
+        concerns.push(format!("- **{todo_count} TODO comments** found in source files"));
     }
     if fixme_count > 0 {
-        concerns.push(format!(
-            "- **{} FIXME comments** found in source files",
-            fixme_count
-        ));
+        concerns.push(format!("- **{fixme_count} FIXME comments** found in source files"));
     }
 
     // Check for common security concerns
     let security_files = [".env", ".env.local", "secrets.json", "credentials.json"];
     for file in security_files {
         if root.join(file).exists() {
-            concerns.push(format!(
-                "- **Warning**: `{}` file present (ensure not committed)",
-                file
-            ));
+            concerns.push(format!("- **Warning**: `{file}` file present (ensure not committed)"));
         }
     }
 

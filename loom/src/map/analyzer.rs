@@ -27,7 +27,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
     if !project_info.is_empty() {
         result
             .stack
-            .push_str(&format!("## Project Type\n\n{}\n\n", project_info));
+            .push_str(&format!("## Project Type\n\n{project_info}\n\n"));
     }
 
     // Analyze dependencies
@@ -35,7 +35,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
     if !deps.is_empty() {
         result
             .stack
-            .push_str(&format!("## Key Dependencies\n\n{}\n\n", deps));
+            .push_str(&format!("## Key Dependencies\n\n{deps}\n\n"));
     }
 
     // Find entry points
@@ -43,7 +43,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
     if !entries.is_empty() {
         result
             .architecture
-            .push_str(&format!("## Entry Points\n\n{}\n\n", entries));
+            .push_str(&format!("## Entry Points\n\n{entries}\n\n"));
     }
 
     // Analyze directory structure
@@ -51,7 +51,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
     if !structure.is_empty() {
         result
             .architecture
-            .push_str(&format!("## Directory Structure\n\n{}\n\n", structure));
+            .push_str(&format!("## Directory Structure\n\n{structure}\n\n"));
     }
 
     // Detect coding conventions
@@ -59,7 +59,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
     if !conventions.is_empty() {
         result
             .conventions
-            .push_str(&format!("## Detected Conventions\n\n{}\n\n", conventions));
+            .push_str(&format!("## Detected Conventions\n\n{conventions}\n\n"));
     }
 
     // Find potential concerns (tech debt, issues)
@@ -68,7 +68,7 @@ pub fn analyze_codebase(root: &Path, deep: bool, focus: Option<&str>) -> Result<
         if !concerns.is_empty() {
             result
                 .concerns
-                .push_str(&format!("## Potential Concerns\n\n{}\n\n", concerns));
+                .push_str(&format!("## Potential Concerns\n\n{concerns}\n\n"));
         }
     }
 
