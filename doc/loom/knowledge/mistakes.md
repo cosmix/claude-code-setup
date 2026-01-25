@@ -138,9 +138,7 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Fixed case sensitivity in Stage Completion Checklist - changed 'before commit' to 'BEFORE COMMIT'**
-  - *Rationale:* The acceptance criteria pattern requires uppercase. Original template had lowercase which failed the pattern match.
-
-
+  - _Rationale:_ The acceptance criteria pattern requires uppercase. Original template had lowercase which failed the pattern match.
 
 ## Promoted from Memory [2026-01-24 17:32]
 
@@ -153,31 +151,29 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Knowledge update has 500 char limit - break content into multiple smaller updates (~20-30 lines each)**
-  - *Rationale:* Discovered during knowledge bootstrap when longer updates failed
+  - _Rationale:_ Discovered during knowledge bootstrap when longer updates failed
 
 ## Promoted from Memory [2026-01-24 17:56]
 
 ### Decisions
 
 - **Session state machine: Added Spawning -> Crashed transition**
-  - *Rationale:* H6: handle spawn failures gracefully
+  - _Rationale:_ H6: handle spawn failures gracefully
 - **Reset command: Clear all timing and retry fields**
-  - *Rationale:* H10: leaving stale timing data
+  - _Rationale:_ H10: leaving stale timing data
 - **Atomic update: graph first, file second, rollback on failure**
-  - *Rationale:* H5: prevent inconsistent state
-
-
+  - _Rationale:_ H5: prevent inconsistent state
 
 ## Promoted from Memory [2026-01-24 19:22]
 
 ### Decisions
 
 - **Used chars().take().collect::<String>() pattern for UTF-8 safe string truncation**
-  - *Rationale:* Byte-level slicing like &s[..n] can panic on multi-byte UTF-8 characters (emoji are 4 bytes, CJK are 3 bytes). Using chars().count() and chars().take(n) ensures we truncate at character boundaries, not byte boundaries.
+  - _Rationale:_ Byte-level slicing like &s[..n] can panic on multi-byte UTF-8 characters (emoji are 4 bytes, CJK are 3 bytes). Using chars().count() and chars().take(n) ensures we truncate at character boundaries, not byte boundaries.
 - **Fixed file lock issue by writing directly to locked file handle**
-  - *Rationale:* fs::write() opens a NEW file handle which doesn't respect locks held by other handles. Instead, use file.set_len(0), file.seek(Start(0)), file.write_all() to write to the same locked handle.
+  - _Rationale:_ fs::write() opens a NEW file handle which doesn't respect locks held by other handles. Instead, use file.set_len(0), file.seek(Start(0)), file.write_all() to write to the same locked handle.
 - **Used bytes().take_while() for counting ASCII backticks in YAML parser**
-  - *Rationale:* When mixing string operations, stay in byte land consistently. find() returns byte positions, so use bytes().count() instead of chars().count() for ASCII characters like backticks to keep all positions in bytes.
+  - _Rationale:_ When mixing string operations, stay in byte land consistently. find() returns byte positions, so use bytes().count() instead of chars().count() for ASCII characters like backticks to keep all positions in bytes.
 
 ## Promoted from Memory [2026-01-24 19:24]
 
@@ -191,9 +187,7 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Used toml crate serialization for config.toml generation instead of string formatting**
-  - *Rationale:* Prevents TOML injection attacks via malicious plan names/paths. toml::to_string_pretty properly escapes all string values.
-
-
+  - _Rationale:_ Prevents TOML injection attacks via malicious plan names/paths. toml::to_string_pretty properly escapes all string values.
 
 ## Promoted from Memory [2026-01-24 19:38]
 
@@ -206,16 +200,13 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Acceptance criterion for banned git commands passes**
-  - *Rationale:* Matches in code are documentation warnings against the practice, not actual usage
-
-
+  - _Rationale:_ Matches in code are documentation warnings against the practice, not actual usage
 
 ## Promoted from Memory [2026-01-25 13:03]
 
 ### Notes
 
 - extract_stage_from_worktree_path has no external callers - only used in its own tests. Simple deletion without needing to update imports elsewhere.
-
 
 ## Promoted from Memory [2026-01-25 13:05]
 
@@ -226,4 +217,4 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
 ### Decisions
 
 - **Keep config_ops::get_plan_source_path for WorkDir interface, implement by calling new fs::get_source_path internally**
-  - *Rationale:* plan_lifecycle.rs uses WorkDir interface extensively, changing all callers would be more disruptive
+  - _Rationale:_ plan_lifecycle.rs uses WorkDir interface extensively, changing all callers would be more disruptive

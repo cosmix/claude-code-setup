@@ -383,7 +383,6 @@ impl std::fmt::Display for StageStatus {
 }
 ```
 
-
 ## Hook Conventions
 
 ### Hook Location
@@ -458,7 +457,6 @@ Three valid formats (can combine):
 2. `trigger-keywords:` comma-separated string
 3. Inline in `description:` field with "Trigger keywords:" prefix
 
-
 ## CLAUDE.md.template Convention
 
 ### Section Order
@@ -482,8 +480,6 @@ Three valid formats (can combine):
 - `~/.claude/plans/` - NEVER write here
 - Any `.claude/plans/` path - NEVER write here
 - Only valid: `doc/plans/PLAN-<description>.md`
-
-
 
 ## Re-export Conventions in mod.rs
 

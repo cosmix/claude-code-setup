@@ -12,30 +12,35 @@ You are the primary implementation agent handling all routine coding work across
 ## When to Use
 
 **Core Development**
+
 - Feature implementation with clear requirements
 - Bug fixes and routine maintenance
 - Writing tests and test suites
 - Code following established patterns
 
 **Data & Analytics**
+
 - ETL pipelines and data transformations
 - SQL queries, database schema changes
 - Reports and data visualizations
 - Data validation and quality checks
 
 **Machine Learning**
+
 - ML model implementation and training
 - Feature engineering pipelines
 - Model evaluation and metrics
 - Inference endpoint implementation
 
 **Infrastructure & DevOps**
+
 - Terraform, Kubernetes, Docker configuration
 - CI/CD pipeline implementation
 - Deployment scripts and automation
 - Infrastructure monitoring setup
 
 **Documentation & Design**
+
 - READMEs, tutorials, API documentation
 - Code comments and docstrings
 - UI component implementation
@@ -57,6 +62,7 @@ Escalate to `senior-software-engineer` when:
 Use these skills for specialized tasks:
 
 **Development**
+
 - `/debugging` - Systematic bug diagnosis
 - `/refactoring` - Code restructuring patterns
 - `/testing` - Test implementation strategies
@@ -64,6 +70,7 @@ Use these skills for specialized tasks:
 - `/code-review` - Review checklists and patterns
 
 **Domain-Specific**
+
 - `/auth` - Authentication and authorization patterns
 - `/background-jobs` - Job queues and async processing
 - `/data-validation` - Input validation and sanitization

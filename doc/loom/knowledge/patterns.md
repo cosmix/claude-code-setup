@@ -644,8 +644,6 @@ How daemon collects stage status:
 - Check if branch manually merged via `is_branch_merged()`
 - Return: Active, Conflict, Merging, Merged, or None
 
-
-
 ## Skill Trigger Pattern
 
 Skills activated via three mechanisms in SKILL.md frontmatter:
@@ -655,7 +653,6 @@ Skills activated via three mechanisms in SKILL.md frontmatter:
 3. **Inline in description** - Keywords embedded in description text
 
 **Loading:** Claude Code matches user intent against skill triggers
-
 
 ## Install Distribution Pattern
 
@@ -676,7 +673,6 @@ Skills activated via three mechanisms in SKILL.md frontmatter:
 1. Download binary, skills.zip, agents.zip from releases
 2. Extract skills to ~/.claude/skills/
 3. Update ~/.claude/CLAUDE.md from CLAUDE.md.template
-
 
 ## Memory/Knowledge Consolidation
 
@@ -758,7 +754,6 @@ Step 2: Re-export public items via `pub use submod::{Item1, Item2};`
 - The tests.rs file contains `#[cfg(test)] mod tests { ... }`
 - Only compiled during test builds
 
-
 ## Shell Completion Architecture
 
 Two-tier system: static + dynamic completions.
@@ -809,10 +804,6 @@ File scanning: Standard fs::read_dir() with extension filtering (.md only).
 - Four stage categories: executing, pending, completed, blocked
 - LiveStatus.unified_stages() merges and deduplicates
 
-
-
-
-
 ## Memory Enforcement (Defense in Depth)
 
 Memory recording enforced through multiple touchpoints:
@@ -842,6 +833,7 @@ Loom uses a three-level directory model for stage execution:
 EXECUTION_PATH = worktree_root + working_dir
 
 Resolution logic (acceptance_runner.rs:16-45):
+
 1. working_dir = "." → Use worktree root directly
 2. working_dir = "loom" → Join: .worktrees/<stage>/loom/
 3. Subdirectory missing → Fall back to worktree root with warning
@@ -867,6 +859,7 @@ Context patterns: .context(), .with_context(|| format!())
 Validation: bail!() for explicit errors
 
 Key examples:
+
 - orchestrator.rs:96 - context on backend creation
 - git/merge.rs:59-64 - with_context with format!
 - git/worktree/operations.rs:46 - bail! for validation
@@ -874,6 +867,7 @@ Key examples:
 ## Graceful Error Degradation
 
 Non-critical path patterns:
+
 - orchestrator.rs:120-142 - Skill loading with warning fallback
 - orchestrator.rs:221-241 - if let Ok() for stage loading
 - process/mod.rs:30-36 - unwrap_or(false) for liveness

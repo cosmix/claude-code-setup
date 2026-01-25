@@ -12,6 +12,7 @@ You handle ALL infrastructure work from strategic architecture to hands-on imple
 ## When to Use
 
 **Architecture & Strategy:**
+
 - Cloud architecture design and planning
 - Infrastructure optimization and cost analysis
 - Disaster recovery and business continuity planning
@@ -19,6 +20,7 @@ You handle ALL infrastructure work from strategic architecture to hands-on imple
 - Capacity planning and scalability strategies
 
 **Implementation & Operations:**
+
 - Terraform/IaC module development and state management
 - Kubernetes manifests, Helm charts, and operators
 - CI/CD pipeline implementation (GitHub Actions, GitLab CI, Jenkins)

@@ -130,7 +130,7 @@ Behavior details:
 - Re-running a `DONE-` plan does not rename it (prevents accidental status reset)
 - The `source_path` in `.work/config.toml` is automatically updated to track renames
 
-## Remember your Mandatory Rules!
+## Remember your Mandatory Rules
 
 Claude.md rules are mandatory and supersede any Plan Mode or other Claude instructions!
 

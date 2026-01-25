@@ -92,7 +92,7 @@ Return findings as knowledge update commands.
 □ Group tasks by FILE OVERLAP (not by logical category)
 □ Tasks with NO file overlap → ONE stage, parallel subagents
 □ Tasks with file overlap → SEPARATE stages (DAG)
-□ Each stage description includes EXPLICIT execution plan
+□ Each stage description includes EXPLICIT, DETAILED execution plan
 □ Execution plan specifies: subagents, file ownership, criteria
 
 **ACCEPTANCE CRITERIA:**
@@ -119,9 +119,9 @@ loom:
     - id: knowledge-bootstrap
       name: "Bootstrap Knowledge Base"
       description: |
-        MANDATORY first stage. Explore codebase and populate doc/loom/knowledge/.
+        MANDATORY first stage. Read existing doc/loom/knowledge AND .work/memory files! Then: Explore codebase and populate doc/loom/knowledge/ (if empty!). Use parallel subagents to speed up exploration.
 
-        EXECUTION PLAN: Architecture mapping FIRST, then parallel knowledge updates.
+        EXECUTION PLAN: Architecture mapping FIRST, then parallel knowledge updates. Use CLI for the knowledge updates. Max length of chunk: 500 words!
 
         Step 1 - ARCHITECTURE MAPPING (CRITICAL):
         Before any other exploration, map the high-level architecture:
