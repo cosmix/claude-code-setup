@@ -54,6 +54,10 @@ pub struct StageDefinition {
     /// Type of stage for specialized handling (e.g., knowledge vs standard)
     #[serde(default)]
     pub stage_type: StageType,
+    /// Context budget as percentage (1-100). Default is 65%.
+    /// When context usage exceeds this, auto-handoff is triggered.
+    #[serde(default)]
+    pub context_budget: Option<u32>,
 }
 
 /// Validation error with context

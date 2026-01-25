@@ -27,6 +27,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     auto_merge: None,
                     working_dir: ".".to_string(),
                     stage_type: StageType::default(),
+                    context_budget: None,
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -40,6 +41,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     auto_merge: None,
                     working_dir: ".".to_string(),
                     stage_type: StageType::default(),
+                    context_budget: None,
                 },
             ],
         },
