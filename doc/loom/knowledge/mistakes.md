@@ -209,3 +209,16 @@ Used loom/src/... when working_dir=loom. Should use src/... (relative to working
   - *Rationale:* Matches in code are documentation warnings against the practice, not actual usage
 
 
+
+## Promoted from Memory [2026-01-25 13:05]
+
+### Notes
+
+- Consolidated get_merge_point and get_source_path into fs/mod.rs, updated progressive_merge to re-export from crate::fs, kept config_ops wrapper for WorkDir interface
+
+### Decisions
+
+- **Keep config_ops::get_plan_source_path for WorkDir interface, implement by calling new fs::get_source_path internally**
+  - *Rationale:* plan_lifecycle.rs uses WorkDir interface extensively, changing all callers would be more disruptive
+
+

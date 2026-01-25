@@ -10,7 +10,8 @@
 pub mod execution;
 pub mod lock;
 
-pub use execution::{get_merge_point, merge_completed_stage, merge_completed_stage_with_timeout};
+pub use crate::fs::get_merge_point;
+pub use execution::{merge_completed_stage, merge_completed_stage_with_timeout};
 pub use lock::MergeLock;
 
 /// Result of a progressive merge attempt
