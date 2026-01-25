@@ -12,7 +12,6 @@ use colored::Colorize;
 /// Show the knowledge summary or a specific knowledge file
 pub fn show(file: Option<String>) -> Result<()> {
     let work_dir = WorkDir::new(".")?;
-    work_dir.load()?;
 
     let main_project_root = work_dir
         .main_project_root()
@@ -51,7 +50,6 @@ pub fn show(file: Option<String>) -> Result<()> {
 /// Update (append to) a knowledge file
 pub fn update(file: String, content: String) -> Result<()> {
     let work_dir = WorkDir::new(".")?;
-    work_dir.load()?;
 
     let main_project_root = work_dir
         .main_project_root()
@@ -79,7 +77,6 @@ pub fn update(file: String, content: String) -> Result<()> {
 /// Initialize the knowledge directory with default files
 pub fn init() -> Result<()> {
     let work_dir = WorkDir::new(".")?;
-    work_dir.load()?;
 
     let main_project_root = work_dir
         .main_project_root()
@@ -110,7 +107,6 @@ pub fn init() -> Result<()> {
 /// List all knowledge files
 pub fn list() -> Result<()> {
     let work_dir = WorkDir::new(".")?;
-    work_dir.load()?;
 
     let main_project_root = work_dir
         .main_project_root()
@@ -195,17 +191,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let test_dir = temp_dir.path().to_path_buf();
 
-        // Create minimal .work directory structure
-        let work_dir_path = test_dir.join(".work");
-        fs::create_dir_all(&work_dir_path).expect("Failed to create .work dir");
-
-        // Create required subdirectories
-        for subdir in &[
-            "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
-            "crashes",
-        ] {
-            fs::create_dir(work_dir_path.join(subdir)).expect("Failed to create subdir");
-        }
+        // NO .work directory needed - knowledge commands work without it
+        // This test proves the fix: knowledge commands should work in any git repo
 
         (temp_dir, test_dir)
     }
