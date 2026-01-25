@@ -21,6 +21,7 @@ fn test_validate_stage_id_path_traversal() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -51,6 +52,7 @@ fn test_validate_stage_id_with_slashes() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -81,6 +83,7 @@ fn test_validate_stage_id_with_dots() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -111,6 +114,7 @@ fn test_validate_stage_id_reserved_name_dotdot() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -137,6 +141,7 @@ fn test_validate_stage_id_reserved_name_con() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -165,6 +170,7 @@ fn test_validate_dependency_id_path_traversal() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -196,6 +202,7 @@ fn test_validate_stage_id_too_long() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -224,6 +231,7 @@ fn test_validate_stage_id_with_spaces() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };

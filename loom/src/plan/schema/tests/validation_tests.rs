@@ -60,6 +60,7 @@ fn test_validate_empty_stage_id() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -90,6 +91,7 @@ fn test_validate_empty_stage_name() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -120,6 +122,7 @@ fn test_validate_unknown_dependency() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -151,6 +154,7 @@ fn test_validate_self_dependency() {
                 auto_merge: None,
                 working_dir: ".".to_string(),
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -365,6 +369,7 @@ fn test_validate_working_dir_path_traversal() {
                 auto_merge: None,
                 working_dir: "../etc".to_string(), // Path traversal
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -393,6 +398,7 @@ fn test_validate_working_dir_absolute_path() {
                 auto_merge: None,
                 working_dir: "/etc/passwd".to_string(), // Absolute path
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
@@ -423,6 +429,7 @@ fn test_validate_working_dir_valid_subdirectory() {
                 auto_merge: None,
                 working_dir: "loom".to_string(), // Valid subdirectory
                 stage_type: StageType::default(),
+                context_budget: None,
             }],
         },
     };
