@@ -4,8 +4,8 @@ use anyhow::Result;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::verify::criteria::run_single_criterion_with_timeout;
 use super::result::{GapType, VerificationGap};
+use crate::verify::criteria::run_single_criterion_with_timeout;
 
 /// Default timeout for truth commands (30 seconds)
 const TRUTH_TIMEOUT: Duration = Duration::from_secs(30);
@@ -23,18 +23,28 @@ pub fn verify_truths(truths: &[String], working_dir: &Path) -> Result<Vec<Verifi
             } else {
                 format!(
                     "Truth failed (exit {}): {}",
-                    result.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "?".to_string()),
+                    result
+                        .exit_code
+                        .map(|c| c.to_string())
+                        .unwrap_or_else(|| "?".to_string()),
                     truth
                 )
             };
 
             let suggestion = if !result.stderr.is_empty() {
-                format!("Check error output: {}", result.stderr.lines().next().unwrap_or(""))
+                format!(
+                    "Check error output: {}",
+                    result.stderr.lines().next().unwrap_or("")
+                )
             } else {
                 "Verify the command works manually".to_string()
             };
 
-            gaps.push(VerificationGap::new(GapType::TruthFailed, description, suggestion));
+            gaps.push(VerificationGap::new(
+                GapType::TruthFailed,
+                description,
+                suggestion,
+            ));
         }
     }
 

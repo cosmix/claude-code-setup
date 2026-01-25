@@ -160,7 +160,11 @@ pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
         for (idx, truth) in stage.truths.iter().enumerate() {
             if truth.len() > 500 {
                 errors.push(ValidationError {
-                    message: format!("Truth #{} too long ({} chars, max 500)", idx + 1, truth.len()),
+                    message: format!(
+                        "Truth #{} too long ({} chars, max 500)",
+                        idx + 1,
+                        truth.len()
+                    ),
                     stage_id: Some(stage.id.clone()),
                 });
             }

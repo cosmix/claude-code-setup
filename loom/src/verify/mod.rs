@@ -12,6 +12,9 @@ pub use criteria::{
     DEFAULT_COMMAND_TIMEOUT,
 };
 pub use gates::{human_gate, GateConfig, GateDecision};
+pub use goal_backward::{
+    run_goal_backward_verification, GapType, GoalBackwardResult, VerificationGap,
+};
 pub use task_verification::{
     run_single_verification, run_task_verifications, summarize_verifications,
     DEFAULT_VERIFICATION_TIMEOUT,
@@ -19,7 +22,4 @@ pub use task_verification::{
 pub use transitions::{
     list_all_stages, load_stage, save_stage, serialize_stage_to_markdown, transition_stage,
     trigger_dependents,
-};
-pub use goal_backward::{
-    run_goal_backward_verification, GapType, GoalBackwardResult, VerificationGap,
 };

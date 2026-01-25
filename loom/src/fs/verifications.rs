@@ -51,12 +51,11 @@ pub fn store_verification(
     work_dir: &Path,
 ) -> Result<()> {
     let verifications_dir = work_dir.join("verifications");
-    fs::create_dir_all(&verifications_dir)
-        .context("Failed to create verifications directory")?;
+    fs::create_dir_all(&verifications_dir).context("Failed to create verifications directory")?;
 
     let path = verifications_dir.join(format!("{stage_id}.json"));
-    let json = serde_json::to_string_pretty(record)
-        .context("Failed to serialize verification record")?;
+    let json =
+        serde_json::to_string_pretty(record).context("Failed to serialize verification record")?;
     fs::write(&path, json)
         .with_context(|| format!("Failed to write verification record: {}", path.display()))?;
 
@@ -65,7 +64,9 @@ pub fn store_verification(
 
 /// Load a verification result
 pub fn load_verification(stage_id: &str, work_dir: &Path) -> Result<Option<VerificationRecord>> {
-    let path = work_dir.join("verifications").join(format!("{stage_id}.json"));
+    let path = work_dir
+        .join("verifications")
+        .join(format!("{stage_id}.json"));
 
     if !path.exists() {
         return Ok(None);
@@ -106,7 +107,9 @@ pub fn list_verifications(work_dir: &Path) -> Result<Vec<VerificationRecord>> {
 
 /// Delete a verification record
 pub fn delete_verification(stage_id: &str, work_dir: &Path) -> Result<()> {
-    let path = work_dir.join("verifications").join(format!("{stage_id}.json"));
+    let path = work_dir
+        .join("verifications")
+        .join(format!("{stage_id}.json"));
     if path.exists() {
         fs::remove_file(&path)
             .with_context(|| format!("Failed to delete verification record: {}", path.display()))?;

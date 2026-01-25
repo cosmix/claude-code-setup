@@ -30,7 +30,11 @@ pub struct VerificationGap {
 
 impl VerificationGap {
     /// Create a new verification gap
-    pub fn new(gap_type: GapType, description: impl Into<String>, suggestion: impl Into<String>) -> Self {
+    pub fn new(
+        gap_type: GapType,
+        description: impl Into<String>,
+        suggestion: impl Into<String>,
+    ) -> Self {
         Self {
             gap_type,
             description: description.into(),

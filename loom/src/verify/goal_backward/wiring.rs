@@ -5,8 +5,8 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
-use crate::plan::schema::WiringCheck;
 use super::result::{GapType, VerificationGap};
+use crate::plan::schema::WiringCheck;
 
 /// Verify all wiring checks find their patterns
 pub fn verify_wiring(wiring: &[WiringCheck], working_dir: &Path) -> Result<Vec<VerificationGap>> {
@@ -19,7 +19,10 @@ pub fn verify_wiring(wiring: &[WiringCheck], working_dir: &Path) -> Result<Vec<V
         if !source_path.exists() {
             gaps.push(VerificationGap::new(
                 GapType::WiringBroken,
-                format!("Wiring source file missing: {} ({})", check.source, check.description),
+                format!(
+                    "Wiring source file missing: {} ({})",
+                    check.source, check.description
+                ),
                 format!("Create file: {}", check.source),
             ));
             continue;
@@ -54,7 +57,10 @@ pub fn verify_wiring(wiring: &[WiringCheck], working_dir: &Path) -> Result<Vec<V
         if !regex.is_match(&content) {
             gaps.push(VerificationGap::new(
                 GapType::WiringBroken,
-                format!("Wiring not found: {} (pattern '{}' in {})", check.description, check.pattern, check.source),
+                format!(
+                    "Wiring not found: {} (pattern '{}' in {})",
+                    check.description, check.pattern, check.source
+                ),
                 format!("Add code matching '{}' to {}", check.pattern, check.source),
             ));
         }

@@ -81,7 +81,11 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
             } else {
                 "✗"
             };
-            let goal_ok = if goal_result.is_passed() { "✓" } else { "✗" };
+            let goal_ok = if goal_result.is_passed() {
+                "✓"
+            } else {
+                "✗"
+            };
             println!(
                 "{} Acceptance: {} | Goal-backward: {}",
                 "Summary:".bold(),
@@ -105,7 +109,12 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
 fn resolve_acceptance_dir_for_stage(stage: &Stage, work_dir: &WorkDir) -> Result<Option<PathBuf>> {
     // Check if stage has a worktree
     if let Some(worktree) = &stage.worktree {
-        let worktree_path = work_dir.root().parent().unwrap().join(".worktrees").join(worktree);
+        let worktree_path = work_dir
+            .root()
+            .parent()
+            .unwrap()
+            .join(".worktrees")
+            .join(worktree);
         if worktree_path.exists() {
             // Apply working_dir if set
             if let Some(wd) = &stage.working_dir {
@@ -134,7 +143,11 @@ fn resolve_acceptance_dir_for_stage(stage: &Stage, work_dir: &WorkDir) -> Result
 /// Print acceptance criteria results
 fn print_acceptance_result(result: &crate::verify::criteria::AcceptanceResult) {
     for r in result.results() {
-        let status = if r.success { "✓".green() } else { "✗".red() };
+        let status = if r.success {
+            "✓".green()
+        } else {
+            "✗".red()
+        };
         println!("  {} {}", status, r.command);
     }
 }
