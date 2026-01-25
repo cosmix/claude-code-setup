@@ -240,6 +240,7 @@ Criteria used 'loom/src/...' but working_dir='loom'. Fix paths to use 'src/...' 
 ## codebase-mapping marked complete without code (2026-01-25)
 
 Stage marked Completed but code never written:
+
 - No loom map command
 - No Stack/Concerns knowledge types
 - No map module in src/

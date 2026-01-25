@@ -251,17 +251,23 @@ pub fn find_concerns(root: &Path) -> Result<String> {
     let fixme_count = count_pattern_in_source(root, "FIXME")?;
 
     if todo_count > 0 {
-        concerns.push(format!("- **{todo_count} TODO comments** found in source files"));
+        concerns.push(format!(
+            "- **{todo_count} TODO comments** found in source files"
+        ));
     }
     if fixme_count > 0 {
-        concerns.push(format!("- **{fixme_count} FIXME comments** found in source files"));
+        concerns.push(format!(
+            "- **{fixme_count} FIXME comments** found in source files"
+        ));
     }
 
     // Check for common security concerns
     let security_files = [".env", ".env.local", "secrets.json", "credentials.json"];
     for file in security_files {
         if root.join(file).exists() {
-            concerns.push(format!("- **Warning**: `{file}` file present (ensure not committed)"));
+            concerns.push(format!(
+                "- **Warning**: `{file}` file present (ensure not committed)"
+            ));
         }
     }
 
