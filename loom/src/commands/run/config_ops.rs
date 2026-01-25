@@ -10,11 +10,11 @@ use std::path::{Path, PathBuf};
 use crate::fs::work_dir::WorkDir;
 
 /// Get the plan source path from config.toml
+///
+/// This is a convenience wrapper around `crate::fs::get_source_path` that accepts
+/// a `WorkDir` reference instead of a raw path.
 pub fn get_plan_source_path(work_dir: &WorkDir) -> Result<Option<PathBuf>> {
-    match work_dir.load_config()? {
-        Some(config) => Ok(config.source_path()),
-        None => Ok(None),
-    }
+    crate::fs::get_source_path(work_dir.root())
 }
 
 /// Update the plan source path in config.toml

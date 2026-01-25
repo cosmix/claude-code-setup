@@ -4,7 +4,6 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use std::time::Duration;
 
-use crate::fs::load_config;
 use crate::git::branch::branch_exists;
 use crate::git::merge::{merge_stage, MergeResult};
 use crate::models::stage::Stage;
@@ -84,19 +83,11 @@ pub fn merge_completed_stage_with_timeout(
     Ok(progressive_result)
 }
 
-/// Parse the merge point (base_branch) from config.toml
-///
-/// Falls back to "main" if not configured.
-pub fn get_merge_point(work_dir: &Path) -> Result<String> {
-    match load_config(work_dir)? {
-        Some(config) => Ok(config.base_branch().unwrap_or_else(|| "main".to_string())),
-        None => Ok("main".to_string()),
-    }
-}
+// get_merge_point is now provided by crate::fs module
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::fs::get_merge_point;
     use std::fs;
     use tempfile::TempDir;
 
