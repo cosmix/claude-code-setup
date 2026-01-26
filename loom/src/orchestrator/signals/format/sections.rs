@@ -1,6 +1,6 @@
 use crate::handoff::git_handoff::{format_git_history_markdown, GitHistory};
 use crate::models::session::Session;
-use crate::models::stage::Stage;
+use crate::models::stage::{Stage, StageType};
 use crate::models::worktree::Worktree;
 use crate::skills::SkillMatch;
 
@@ -12,7 +12,10 @@ use super::helpers::{
 
 /// SEMI-STABLE section: Changes per stage, not per session
 /// Contains knowledge map references and facts
-pub(super) fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> String {
+pub(super) fn format_semi_stable_section(
+    embedded_context: &EmbeddedContext,
+    stage_type: StageType,
+) -> String {
     let mut content = String::new();
 
     // Embed knowledge summary (curated entry points, patterns, conventions)
@@ -22,87 +25,212 @@ pub(super) fn format_semi_stable_section(embedded_context: &EmbeddedContext) -> 
         content.push_str("\n</knowledge>\n\n");
     }
 
-    // Add prominent knowledge update reminder box
-    content.push_str("```text\n");
-    content.push_str("┌────────────────────────────────────────────────────────────────────┐\n");
-    content.push_str("│  📝 KNOWLEDGE UPDATES REQUIRED                                     │\n");
-    content.push_str("│                                                                    │\n");
-    content.push_str("│  As you work, UPDATE doc/loom/knowledge/:                          │\n");
-    content.push_str("│  - Entry points: Key files you discover                            │\n");
-    content.push_str("│  - Patterns: Architectural patterns you find                       │\n");
-    content.push_str("│  - Conventions: Coding conventions you learn                       │\n");
-    content.push_str("│  - Mistakes: Errors you make and how to avoid them                 │\n");
-    content.push_str("│                                                                    │\n");
-    content.push_str("│  Command: loom knowledge update <file> \"content\"                   │\n");
-    content.push_str("└────────────────────────────────────────────────────────────────────┘\n");
-    content.push_str("```\n\n");
-
-    // Knowledge Management section with conditional urgency
-    content.push_str("## Knowledge Management\n\n");
-
-    if !embedded_context.knowledge_exists || embedded_context.knowledge_is_empty {
-        // CRITICAL warning for missing/empty knowledge
-        content.push_str("```\n");
-        content
-            .push_str("┌────────────────────────────────────────────────────────────────────┐\n");
-        content
-            .push_str("│  CRITICAL: KNOWLEDGE BASE IS EMPTY                                 │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content.push_str("│  Before implementing ANYTHING, you MUST explore and document:     │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content
-            .push_str("│  1. Entry Points                                                   │\n");
-        content
-            .push_str("│     - Main files, CLI entry, API endpoints                         │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content
-            .push_str("│  2. Architectural Patterns                                         │\n");
-        content
-            .push_str("│     - Error handling, state management, data flow                  │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content
-            .push_str("│  3. Coding Conventions                                             │\n");
-        content
-            .push_str("│     - Naming, file structure, testing patterns                     │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content
-            .push_str("│  4. Mistakes and Lessons Learned                                   │\n");
-        content
-            .push_str("│     - Document errors and how to avoid them                        │\n");
-        content
-            .push_str("│                                                                    │\n");
-        content
-            .push_str("│  This prevents wasted context on repeated exploration.             │\n");
-        content
-            .push_str("└────────────────────────────────────────────────────────────────────┘\n");
-        content.push_str("```\n\n");
-
-        content.push_str("**Exploration Order (hierarchical):**\n\n");
-        content.push_str("1. **Entry Points First** - Find main.rs, index.ts, app.py, etc.\n");
-        content.push_str("2. **Core Modules** - Identify the key abstractions and data flow\n");
-        content.push_str("3. **Patterns** - Document error handling, logging, config approaches\n");
-        content.push_str("4. **Conventions** - Note naming, file organization, test patterns\n\n");
-    } else {
-        // Standard instructions for established knowledge base
-        content.push_str("**Extend the knowledge base** as you work:\n\n");
-        content.push_str("- Check for undocumented modules in your working area\n");
-        content.push_str("- Record new insights about system behavior\n");
-        content.push_str("- Document edge cases and gotchas for future sessions\n\n");
+    // Stage-type-aware reminder boxes
+    match stage_type {
+        StageType::Knowledge | StageType::IntegrationVerify => {
+            // Knowledge and integration-verify stages: CAN use both memory and knowledge
+            content.push_str("```text\n");
+            content.push_str(
+                "┌────────────────────────────────────────────────────────────────────┐\n",
+            );
+            content.push_str(
+                "│  📝 KNOWLEDGE UPDATES REQUIRED                                     │\n",
+            );
+            content.push_str(
+                "│                                                                    │\n",
+            );
+            content.push_str(
+                "│  As you work, UPDATE doc/loom/knowledge/:                          │\n",
+            );
+            content.push_str(
+                "│  - Entry points: Key files you discover                            │\n",
+            );
+            content.push_str(
+                "│  - Patterns: Architectural patterns you find                       │\n",
+            );
+            content.push_str(
+                "│  - Conventions: Coding conventions you learn                       │\n",
+            );
+            content.push_str(
+                "│  - Mistakes: Errors you make and how to avoid them                 │\n",
+            );
+            content.push_str(
+                "│                                                                    │\n",
+            );
+            content.push_str(
+                "│  Command: loom knowledge update <file> \"content\"                   │\n",
+            );
+            content.push_str(
+                "└────────────────────────────────────────────────────────────────────┘\n",
+            );
+            content.push_str("```\n\n");
+        }
+        StageType::Standard => {
+            // Standard implementation stages: MEMORY ONLY, NO KNOWLEDGE UPDATES
+            content.push_str("```text\n");
+            content.push_str(
+                "┌────────────────────────────────────────────────────────────────────┐\n",
+            );
+            content.push_str(
+                "│  📝 SESSION MEMORY REQUIRED                                        │\n",
+            );
+            content.push_str(
+                "│                                                                    │\n",
+            );
+            content.push_str(
+                "│  As you work, record insights using MEMORY (NOT knowledge):        │\n",
+            );
+            content.push_str(
+                "│  - Decisions: WHY you chose an approach                            │\n",
+            );
+            content.push_str(
+                "│  - Discoveries: Patterns, gotchas, useful code locations           │\n",
+            );
+            content.push_str(
+                "│  - Mistakes: What went wrong and how to avoid it                   │\n",
+            );
+            content.push_str(
+                "│                                                                    │\n",
+            );
+            content.push_str(
+                "│  Commands: loom memory note/decision/question                      │\n",
+            );
+            content.push_str(
+                "│                                                                    │\n",
+            );
+            content.push_str(
+                "│  ⚠️  NEVER use 'loom knowledge' in implementation stages           │\n",
+            );
+            content.push_str(
+                "│      Memory gets promoted to knowledge by integration-verify       │\n",
+            );
+            content.push_str(
+                "└────────────────────────────────────────────────────────────────────┘\n",
+            );
+            content.push_str("```\n\n");
+        }
     }
 
-    // Always show commands table at the end
-    content.push_str("**Commands:**\n\n");
-    content.push_str("| Discovery Type | Command |\n");
-    content.push_str("|----------------|--------|\n");
-    content.push_str("| Key entry point | `loom knowledge update entry-points \"## Section\\n\\n- path/file.rs - description\"` |\n");
-    content.push_str("| Architectural pattern | `loom knowledge update patterns \"## Pattern Name\\n\\n- How it works\"` |\n");
-    content.push_str("| Coding convention | `loom knowledge update conventions \"## Convention\\n\\n- Details\"` |\n");
-    content.push_str("| Mistake/lesson | `loom knowledge update mistakes \"## What happened\\n\\n- Details\"` |\n\n");
+    // Knowledge Management section with stage-type-aware content
+    match stage_type {
+        StageType::Knowledge | StageType::IntegrationVerify => {
+            content.push_str("## Knowledge Management\n\n");
+
+            if !embedded_context.knowledge_exists || embedded_context.knowledge_is_empty {
+                // CRITICAL warning for missing/empty knowledge
+                content.push_str("```\n");
+                content.push_str(
+                    "┌────────────────────────────────────────────────────────────────────┐\n",
+                );
+                content.push_str(
+                    "│  CRITICAL: KNOWLEDGE BASE IS EMPTY                                 │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  Before implementing ANYTHING, you MUST explore and document:     │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  1. Entry Points                                                   │\n",
+                );
+                content.push_str(
+                    "│     - Main files, CLI entry, API endpoints                         │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  2. Architectural Patterns                                         │\n",
+                );
+                content.push_str(
+                    "│     - Error handling, state management, data flow                  │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  3. Coding Conventions                                             │\n",
+                );
+                content.push_str(
+                    "│     - Naming, file structure, testing patterns                     │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  4. Mistakes and Lessons Learned                                   │\n",
+                );
+                content.push_str(
+                    "│     - Document errors and how to avoid them                        │\n",
+                );
+                content.push_str(
+                    "│                                                                    │\n",
+                );
+                content.push_str(
+                    "│  This prevents wasted context on repeated exploration.             │\n",
+                );
+                content.push_str(
+                    "└────────────────────────────────────────────────────────────────────┘\n",
+                );
+                content.push_str("```\n\n");
+
+                content.push_str("**Exploration Order (hierarchical):**\n\n");
+                content
+                    .push_str("1. **Entry Points First** - Find main.rs, index.ts, app.py, etc.\n");
+                content.push_str(
+                    "2. **Core Modules** - Identify the key abstractions and data flow\n",
+                );
+                content.push_str(
+                    "3. **Patterns** - Document error handling, logging, config approaches\n",
+                );
+                content.push_str(
+                    "4. **Conventions** - Note naming, file organization, test patterns\n\n",
+                );
+            } else {
+                // Standard instructions for established knowledge base
+                content.push_str("**Extend the knowledge base** as you work:\n\n");
+                content.push_str("- Check for undocumented modules in your working area\n");
+                content.push_str("- Record new insights about system behavior\n");
+                content.push_str("- Document edge cases and gotchas for future sessions\n\n");
+            }
+
+            // Show knowledge commands table for Knowledge and IntegrationVerify stages
+            content.push_str("**Commands:**\n\n");
+            content.push_str("| Discovery Type | Command |\n");
+            content.push_str("|----------------|--------|\n");
+            content.push_str("| Key entry point | `loom knowledge update entry-points \"## Section\\n\\n- path/file.rs - description\"` |\n");
+            content.push_str("| Architectural pattern | `loom knowledge update patterns \"## Pattern Name\\n\\n- How it works\"` |\n");
+            content.push_str("| Coding convention | `loom knowledge update conventions \"## Convention\\n\\n- Details\"` |\n");
+            content.push_str("| Mistake/lesson | `loom knowledge update mistakes \"## What happened\\n\\n- Details\"` |\n\n");
+        }
+        StageType::Standard => {
+            // Standard implementation stages: Show MEMORY guidance instead
+            content.push_str("## Session Memory\n\n");
+            content.push_str(
+                "**Record insights as you work** (to be promoted later by integration-verify):\n\n",
+            );
+            content.push_str("- Decisions and their rationale\n");
+            content.push_str("- Code patterns discovered during implementation\n");
+            content.push_str("- Mistakes made and how to avoid them\n");
+            content.push_str("- Important file locations and their purposes\n\n");
+
+            // Show memory commands table for Standard stages
+            content.push_str("**Commands:**\n\n");
+            content.push_str("| Type | Command |\n");
+            content.push_str("|------|--------|\n");
+            content.push_str("| Note | `loom memory note \"observation or discovery\"` |\n");
+            content.push_str(
+                "| Decision | `loom memory decision \"choice made\" --context \"why\"` |\n",
+            );
+            content
+                .push_str("| Question | `loom memory question \"open question to address\"` |\n");
+            content.push_str("| List | `loom memory list` |\n\n");
+        }
+    }
 
     // Embed skill recommendations (semi-stable - based on stage description)
     if !embedded_context.skill_recommendations.is_empty() {

@@ -3,6 +3,8 @@
 use std::fs;
 use tempfile::TempDir;
 
+use crate::models::stage::StageType;
+
 use super::super::cache::{compute_hash, generate_stable_prefix, SignalMetrics};
 use super::super::format::{format_signal_content, format_signal_with_metrics};
 use super::super::generate::generate_signal_with_metrics;
@@ -160,27 +162,26 @@ fn test_signal_sections_ordering() {
 
     let worktree_pos = content.find("## Worktree Context").unwrap();
     let execution_pos = content.find("## Execution Rules").unwrap();
-    let knowledge_pos = content.find("## Knowledge Management").unwrap();
+    // Standard stages show "## Session Memory" in semi-stable section
+    let memory_semi_stable_pos = content.find("## Session Memory").unwrap();
     let target_pos = content.find("## Target").unwrap();
     let tasks_pos = content.find("## Immediate Tasks").unwrap();
-    let memory_pos = content.find("## Session Memory").unwrap();
 
     // Stable before semi-stable
-    assert!(worktree_pos < knowledge_pos);
-    assert!(execution_pos < knowledge_pos);
+    assert!(worktree_pos < memory_semi_stable_pos);
+    assert!(execution_pos < memory_semi_stable_pos);
 
     // Semi-stable before dynamic
-    assert!(knowledge_pos < target_pos);
+    assert!(memory_semi_stable_pos < target_pos);
 
-    // Recitation at end (tasks and memory are last)
+    // Recitation at end (tasks are last)
     assert!(target_pos < tasks_pos);
-    assert!(tasks_pos < memory_pos);
 }
 
 #[test]
-fn test_signal_contains_knowledge_management_section_empty() {
+fn test_signal_contains_session_memory_section_for_standard_stages() {
     let session = create_test_session();
-    let stage = create_test_stage();
+    let stage = create_test_stage(); // Creates a Standard stage (default)
     let worktree = create_test_worktree();
     // Default context has no knowledge (knowledge_exists: false, knowledge_is_empty: true)
     let embedded_context = EmbeddedContext::default();
@@ -195,25 +196,32 @@ fn test_signal_contains_knowledge_management_section_empty() {
         &embedded_context,
     );
 
-    // Knowledge Management section should always be present
-    assert!(content.contains("## Knowledge Management"));
-    // For empty knowledge, should show CRITICAL warning box
-    assert!(content.contains("CRITICAL: KNOWLEDGE BASE IS EMPTY"));
-    assert!(content.contains("Before implementing ANYTHING"));
-    // Should show exploration order
-    assert!(content.contains("Exploration Order"));
-    assert!(content.contains("Entry Points First"));
-    assert!(content.contains("Core Modules"));
-    // Commands should always be present
-    assert!(content.contains("loom knowledge update entry-points"));
-    assert!(content.contains("loom knowledge update patterns"));
-    assert!(content.contains("loom knowledge update conventions"));
+    // Standard stages should show Session Memory section (not Knowledge Management)
+    assert!(content.contains("## Session Memory"));
+    assert!(!content.contains("## Knowledge Management"));
+
+    // Should show memory-only instructions
+    assert!(content.contains("SESSION MEMORY REQUIRED"));
+    assert!(content.contains("record insights using MEMORY (NOT knowledge)"));
+
+    // Should show warning against using loom knowledge
+    assert!(content.contains("NEVER use 'loom knowledge' in implementation stages"));
+
+    // Commands should be memory commands
+    assert!(content.contains("loom memory note"));
+    assert!(content.contains("loom memory decision"));
+    assert!(content.contains("loom memory question"));
+
+    // Should NOT show knowledge commands
+    assert!(!content.contains("loom knowledge update entry-points"));
+    assert!(!content.contains("loom knowledge update patterns"));
 }
 
 #[test]
-fn test_signal_contains_knowledge_management_section_populated() {
+fn test_signal_contains_knowledge_management_section_for_knowledge_stages() {
     let session = create_test_session();
-    let stage = create_test_stage();
+    let mut stage = create_test_stage();
+    stage.stage_type = StageType::Knowledge; // Set to Knowledge stage
     let worktree = create_test_worktree();
     // Context with populated knowledge
     let embedded_context = EmbeddedContext {
@@ -235,7 +243,7 @@ fn test_signal_contains_knowledge_management_section_populated() {
         &embedded_context,
     );
 
-    // Knowledge Management section should always be present
+    // Knowledge stages should show Knowledge Management section
     assert!(content.contains("## Knowledge Management"));
     // For populated knowledge, should NOT show CRITICAL warning
     assert!(!content.contains("CRITICAL: KNOWLEDGE BASE IS EMPTY"));
@@ -243,7 +251,7 @@ fn test_signal_contains_knowledge_management_section_populated() {
     assert!(content.contains("Extend the knowledge base"));
     assert!(content.contains("undocumented modules"));
     assert!(content.contains("new insights"));
-    // Commands should always be present
+    // Commands should be knowledge commands
     assert!(content.contains("loom knowledge update entry-points"));
     assert!(content.contains("loom knowledge update patterns"));
     assert!(content.contains("loom knowledge update conventions"));

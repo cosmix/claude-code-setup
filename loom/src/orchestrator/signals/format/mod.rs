@@ -66,7 +66,7 @@ pub fn format_signal_with_metrics(
     // Build each section separately for metrics
     let header = format!("# Signal: {}\n\n", &session.id);
     let stable_prefix = generate_stable_prefix();
-    let semi_stable = sections::format_semi_stable_section(embedded_context);
+    let semi_stable = sections::format_semi_stable_section(embedded_context, stage.stage_type);
     let dynamic = sections::format_dynamic_section(
         session,
         stage,
