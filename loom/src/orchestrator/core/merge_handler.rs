@@ -172,7 +172,11 @@ impl Orchestrator {
             }) => {
                 // Verify the merge actually succeeded before marking as merged
                 if let Some(ref completed_commit) = stage.completed_commit {
-                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                    match verify_merge_succeeded(
+                        completed_commit,
+                        &target_branch,
+                        &self.config.repo_root,
+                    ) {
                         Ok(true) => {
                             // Verification passed - mark as merged
                             stage.merged = true;
@@ -199,7 +203,9 @@ impl Orchestrator {
                                 eprintln!("Warning: Failed to save stage: {e}");
                             }
                             if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
-                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                                eprintln!(
+                                    "Warning: Failed to mark stage as merge blocked in graph: {e}"
+                                );
                             }
                             false
                         }
@@ -233,7 +239,11 @@ impl Orchestrator {
             Ok(AutoMergeResult::FastForward { .. }) => {
                 // Verify the merge actually succeeded before marking as merged
                 if let Some(ref completed_commit) = stage.completed_commit {
-                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                    match verify_merge_succeeded(
+                        completed_commit,
+                        &target_branch,
+                        &self.config.repo_root,
+                    ) {
                         Ok(true) => {
                             stage.merged = true;
                             if let Err(e) = self.save_stage(&stage) {
@@ -256,7 +266,9 @@ impl Orchestrator {
                                 eprintln!("Warning: Failed to save stage: {e}");
                             }
                             if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
-                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                                eprintln!(
+                                    "Warning: Failed to mark stage as merge blocked in graph: {e}"
+                                );
                             }
                             false
                         }
@@ -284,7 +296,11 @@ impl Orchestrator {
             Ok(AutoMergeResult::AlreadyUpToDate { .. }) => {
                 // Verify the stage's commit is actually in the target branch
                 if let Some(ref completed_commit) = stage.completed_commit {
-                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                    match verify_merge_succeeded(
+                        completed_commit,
+                        &target_branch,
+                        &self.config.repo_root,
+                    ) {
                         Ok(true) => {
                             stage.merged = true;
                             if let Err(e) = self.save_stage(&stage) {
@@ -308,7 +324,9 @@ impl Orchestrator {
                                 eprintln!("Warning: Failed to save stage: {e}");
                             }
                             if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
-                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                                eprintln!(
+                                    "Warning: Failed to mark stage as merge blocked in graph: {e}"
+                                );
                             }
                             false
                         }
@@ -367,7 +385,11 @@ impl Orchestrator {
                 // Nothing to merge - stage may have been created without worktree
                 // If there's a completed_commit, verify it's in the target branch
                 if let Some(ref completed_commit) = stage.completed_commit {
-                    match verify_merge_succeeded(completed_commit, &target_branch, &self.config.repo_root) {
+                    match verify_merge_succeeded(
+                        completed_commit,
+                        &target_branch,
+                        &self.config.repo_root,
+                    ) {
                         Ok(true) => {
                             stage.merged = true;
                             if let Err(e) = self.save_stage(&stage) {
@@ -389,7 +411,9 @@ impl Orchestrator {
                                 eprintln!("Warning: Failed to save stage: {e}");
                             }
                             if let Err(e) = self.graph.mark_merge_blocked(stage_id) {
-                                eprintln!("Warning: Failed to mark stage as merge blocked in graph: {e}");
+                                eprintln!(
+                                    "Warning: Failed to mark stage as merge blocked in graph: {e}"
+                                );
                             }
                             false
                         }
