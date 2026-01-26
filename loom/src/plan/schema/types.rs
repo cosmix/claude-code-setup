@@ -4,13 +4,17 @@ use serde::{Deserialize, Serialize};
 
 /// Type of stage for specialized handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum StageType {
     /// Standard implementation stage
     #[default]
     Standard,
     /// Knowledge-gathering stage (e.g., knowledge-bootstrap)
+    /// Can use both `loom memory` and `loom knowledge` commands
     Knowledge,
+    /// Integration verification stage (e.g., integration-verify)
+    /// Can use `loom memory` and `loom knowledge` (for promoting memories)
+    IntegrationVerify,
 }
 
 /// Root structure of the loom metadata block
