@@ -300,3 +300,11 @@ Stage marked complete without verifying acceptance criteria passed.
 **Why:** Agents invoked stale binaries instead of loom from PATH.
 
 **How to avoid:** Always use loom from PATH, never target/debug/loom.
+
+## Integration-verify working_dir Mismatch (2026-01-26)
+
+**What happened:** Stage had working_dir='.' but acceptance criteria used cargo commands requiring Cargo.toml in 'loom/' subdirectory.
+
+**Why:** Plan author did not verify working_dir matches build tool config locations.
+
+**How to avoid:** For this project, cargo commands need working_dir='loom' not '.'.
