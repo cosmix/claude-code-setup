@@ -926,10 +926,12 @@ WorkDir::main_project_root() works when .work doesn't exist - returns current di
 Merge handler sets merged=true after git merge reports success WITHOUT verifying commit is in target branch history.
 
 **Root cause files:**
+
 - merge_handler.rs:167-202 - try_auto_merge sets merged immediately
 - merge_status.rs:58-61 - check_merge_state short-circuits on merged flag
 
 **Affected files for fix:**
+
 - loom/src/git/merge.rs - Add verify_merge_succeeded() using is_ancestor_of()
 - loom/src/orchestrator/core/merge_handler.rs - Verify before setting merged=true
 - loom/src/commands/status/merge_status.rs - Remove short-circuit, always verify ancestry
@@ -939,6 +941,7 @@ Merge handler sets merged=true after git merge reports success WITHOUT verifying
 Agents use target/debug/loom instead of loom from PATH. Causes version mismatch and state corruption.
 
 **Currently missing from:**
+
 - CLAUDE.md.template - no explicit prohibition
 - cache.rs signal generation - no binary usage warning
 
@@ -947,5 +950,6 @@ Agents use target/debug/loom instead of loom from PATH. Causes version mismatch 
 Agents edit .work/stages/*.md files directly to set merged=true instead of using loom CLI.
 
 **Currently missing from:**
+
 - CLAUDE.md.template - no explicit prohibition against editing .work/
 - cache.rs signal generation - no state file editing warning

@@ -266,6 +266,7 @@ Stage marked complete without verifying acceptance criteria passed.
 **Root cause 2:** Agents use target/debug/loom instead of loom from PATH, or edit .work/ files directly to set merged=true.
 
 **Prevention:**
+
 - Add verify_merge_succeeded() to verify git ancestry before setting merged=true
 - Add explicit warnings in CLAUDE.md.template and signal generation
 
@@ -278,8 +279,24 @@ Stage marked complete without verifying acceptance criteria passed.
 ### Decisions
 
 - **Added verify_merge_succeeded() using is_ancestor_of() to verify commit ancestry**
-  - *Rationale:* Simple wrapper provides semantic clarity and centralized verification logic
+  - _Rationale:_ Simple wrapper provides semantic clarity and centralized verification logic
 - **Verify git ancestry before setting merged=true in all AutoMergeResult cases**
-  - *Rationale:* Prevents phantom merges by treating git ancestry as source of truth
+  - _Rationale:_ Prevents phantom merges by treating git ancestry as source of truth
 - **Removed check_merge_state short-circuit that trusted merged flag**
-  - *Rationale:* Git ancestry is now primary source of truth; merged flag only used as fallback when git check fails
+  - _Rationale:_ Git ancestry is now primary source of truth; merged flag only used as fallback when git check fails
+
+## Phantom Merges from Missing Verification
+
+**What happened:** Stages marked merged=true without verifying commit was in target branch.
+
+**Why:** Merge handler trusted git success status without verification.
+
+**How to avoid:** Use is_ancestor_of() to verify merge before setting merged=true.
+
+## Agent Confusion from Binary Usage Examples
+
+**What happened:** CLAUDE.md.template had examples using target/debug/loom.
+
+**Why:** Agents invoked stale binaries instead of loom from PATH.
+
+**How to avoid:** Always use loom from PATH, never target/debug/loom.
