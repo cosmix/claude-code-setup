@@ -138,6 +138,7 @@ fn test_serialize_stage_to_markdown_minimal() {
         truths: Vec::new(),
         artifacts: Vec::new(),
         wiring: Vec::new(),
+        sandbox: Default::default(),
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -190,6 +191,7 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         truths: Vec::new(),
         artifacts: Vec::new(),
         wiring: Vec::new(),
+        sandbox: Default::default(),
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();

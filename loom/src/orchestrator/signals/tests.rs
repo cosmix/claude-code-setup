@@ -171,6 +171,7 @@ fn test_format_signal_content_with_embedded_context() {
         skill_recommendations: Vec::new(),
         context_budget: None,
         context_usage: None,
+        sandbox_summary: None,
     };
 
     let content = format_signal_content(

@@ -2,7 +2,10 @@
 
 use crate::validation::validate_id;
 
-use super::types::{LoomMetadata, ValidationError};
+use super::types::{
+    FilesystemConfig, LoomMetadata, NetworkConfig, SandboxConfig, StageSandboxConfig,
+    ValidationError,
+};
 
 /// Validate a single acceptance criterion
 ///
@@ -37,6 +40,129 @@ pub(crate) fn validate_acceptance_criterion(criterion: &str) -> Result<(), Strin
     Ok(())
 }
 
+/// Validate a glob pattern is syntactically correct
+fn validate_glob_pattern(pattern: &str) -> Result<(), String> {
+    // Use the glob crate's Pattern::new() to validate
+    glob::Pattern::new(pattern)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Validate a domain pattern
+fn validate_domain_pattern(domain: &str) -> Result<(), String> {
+    // Check for basic validity:
+    // - Not empty
+    // - No spaces
+    // - Valid characters (alphanumeric, dots, dashes, wildcards)
+    if domain.is_empty() {
+        return Err("domain cannot be empty".to_string());
+    }
+    if domain.contains(' ') {
+        return Err("domain cannot contain spaces".to_string());
+    }
+    // Allow wildcards like *.example.com
+    let clean = domain.replace('*', "x");
+    // Simple validation - could be more strict
+    if clean
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '.' || c == '-')
+    {
+        Ok(())
+    } else {
+        Err("invalid characters in domain".to_string())
+    }
+}
+
+/// Validate filesystem configuration
+fn validate_filesystem_config(
+    filesystem: &FilesystemConfig,
+    errors: &mut Vec<ValidationError>,
+    stage_id: Option<&str>,
+) {
+    // Validate deny_read paths are valid globs
+    for path in &filesystem.deny_read {
+        if let Err(e) = validate_glob_pattern(path) {
+            errors.push(ValidationError {
+                message: format!("Invalid sandbox deny_read glob pattern '{}': {}", path, e),
+                stage_id: stage_id.map(|s| s.to_string()),
+            });
+        }
+    }
+
+    // Validate deny_write paths are valid globs
+    for path in &filesystem.deny_write {
+        if let Err(e) = validate_glob_pattern(path) {
+            errors.push(ValidationError {
+                message: format!("Invalid sandbox deny_write glob pattern '{}': {}", path, e),
+                stage_id: stage_id.map(|s| s.to_string()),
+            });
+        }
+    }
+
+    // Validate allow_write paths are valid globs
+    for path in &filesystem.allow_write {
+        if let Err(e) = validate_glob_pattern(path) {
+            errors.push(ValidationError {
+                message: format!("Invalid sandbox allow_write glob pattern '{}': {}", path, e),
+                stage_id: stage_id.map(|s| s.to_string()),
+            });
+        }
+    }
+}
+
+/// Validate network configuration
+fn validate_network_config(
+    network: &NetworkConfig,
+    errors: &mut Vec<ValidationError>,
+    stage_id: Option<&str>,
+) {
+    // Validate allowed_domains
+    for domain in &network.allowed_domains {
+        if let Err(e) = validate_domain_pattern(domain) {
+            errors.push(ValidationError {
+                message: format!("Invalid sandbox allowed_domain '{}': {}", domain, e),
+                stage_id: stage_id.map(|s| s.to_string()),
+            });
+        }
+    }
+
+    // Validate additional_domains
+    for domain in &network.additional_domains {
+        if let Err(e) = validate_domain_pattern(domain) {
+            errors.push(ValidationError {
+                message: format!("Invalid sandbox additional_domain '{}': {}", domain, e),
+                stage_id: stage_id.map(|s| s.to_string()),
+            });
+        }
+    }
+}
+
+/// Validate sandbox configuration at plan level
+fn validate_sandbox_config(sandbox: &SandboxConfig, errors: &mut Vec<ValidationError>) {
+    // Validate filesystem paths are valid globs
+    validate_filesystem_config(&sandbox.filesystem, errors, None);
+
+    // Validate domain patterns
+    validate_network_config(&sandbox.network, errors, None);
+}
+
+/// Validate sandbox configuration at stage level
+fn validate_stage_sandbox_config(
+    sandbox: &StageSandboxConfig,
+    errors: &mut Vec<ValidationError>,
+    stage_id: &str,
+) {
+    // Validate optional filesystem if present
+    if let Some(fs) = &sandbox.filesystem {
+        validate_filesystem_config(fs, errors, Some(stage_id));
+    }
+
+    // Validate optional network if present
+    if let Some(net) = &sandbox.network {
+        validate_network_config(net, errors, Some(stage_id));
+    }
+}
+
 /// Validate the loom metadata
 pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
@@ -51,6 +177,9 @@ pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
             stage_id: None,
         });
     }
+
+    // Validate plan-level sandbox configuration
+    validate_sandbox_config(&metadata.loom.sandbox, &mut errors);
 
     // Check for empty stages
     if metadata.loom.stages.is_empty() {
@@ -244,6 +373,9 @@ pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
                 });
             }
         }
+
+        // Validate stage-level sandbox configuration
+        validate_stage_sandbox_config(&stage.sandbox, &mut errors, &stage.id);
     }
 
     if errors.is_empty() {
@@ -275,6 +407,49 @@ pub fn check_knowledge_recommendations(stages: &[super::types::StageDefinition])
             "Consider adding a 'knowledge-bootstrap' stage to capture codebase knowledge. \
              This stage can run first (no dependencies) to document entry points, patterns, \
              and conventions for subsequent stages."
+                .to_string(),
+        );
+    }
+
+    warnings
+}
+
+/// Check for sandbox-related recommendations (non-fatal warnings)
+///
+/// Returns a list of warning messages when:
+/// - Plan-level sandbox configuration has potential security or usability concerns
+pub fn check_sandbox_recommendations(metadata: &LoomMetadata) -> Vec<String> {
+    let mut warnings = Vec::new();
+
+    // Warn if "loom" is not in excluded_commands
+    if !metadata
+        .loom
+        .sandbox
+        .excluded_commands
+        .contains(&"loom".to_string())
+    {
+        warnings.push(
+            "Consider adding 'loom' to sandbox.excluded_commands to allow agents to use loom CLI"
+                .to_string(),
+        );
+    }
+
+    // Warn if allow_unsandboxed_escape is enabled (security concern)
+    if metadata.loom.sandbox.allow_unsandboxed_escape {
+        warnings.push(
+            "Warning: allow_unsandboxed_escape=true reduces sandbox security. \
+             Agents can escape sandbox restrictions with explicit commands."
+                .to_string(),
+        );
+    }
+
+    // Check for common misconfiguration: deny_write includes .work/** but that's already default
+    let deny_write = &metadata.loom.sandbox.filesystem.deny_write;
+    if deny_write.iter().any(|p| p.contains(".work")) {
+        // This is actually the default, but if someone explicitly adds it, mention it
+        warnings.push(
+            "Note: .work/** is already denied by default in deny_write. \
+             Explicit entry is redundant but harmless."
                 .to_string(),
         );
     }
