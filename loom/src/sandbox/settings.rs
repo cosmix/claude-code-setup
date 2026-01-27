@@ -37,62 +37,40 @@ pub fn generate_settings_json(config: &MergedSandboxConfig) -> Value {
     let mut permissions = json!({});
 
     // Build deny permissions (filesystem)
-    let mut deny = Vec::new();
+    // Format: "Read(path)" or "Write(path)" per Claude Code settings spec
+    let mut deny: Vec<Value> = Vec::new();
 
     // Add deny_read paths
     for path in &config.filesystem.deny_read {
-        deny.push(json!({
-            "type": "read",
-            "path": path
-        }));
+        deny.push(json!(format!("Read({})", path)));
     }
 
     // Add deny_write paths
     for path in &config.filesystem.deny_write {
-        deny.push(json!({
-            "type": "write",
-            "path": path
-        }));
+        deny.push(json!(format!("Write({})", path)));
     }
 
     // Build allow permissions (filesystem allow_write exceptions)
-    let mut allow = Vec::new();
+    let mut allow: Vec<Value> = Vec::new();
 
     for path in &config.filesystem.allow_write {
-        allow.push(json!({
-            "type": "write",
-            "path": path
-        }));
+        allow.push(json!(format!("Write({})", path)));
     }
 
     // Add network permissions
+    // Format: "WebFetch(domain:example.com)" per Claude Code settings spec
     if !config.network.allowed_domains.is_empty() || !config.network.additional_domains.is_empty() {
         let mut domains = config.network.allowed_domains.clone();
         domains.extend(config.network.additional_domains.clone());
 
         for domain in domains {
-            allow.push(json!({
-                "type": "network",
-                "domain": domain
-            }));
+            allow.push(json!(format!("WebFetch(domain:{})", domain)));
         }
     }
 
-    // Add local binding permission if enabled
-    if config.network.allow_local_binding {
-        allow.push(json!({
-            "type": "network",
-            "binding": "local"
-        }));
-    }
-
-    // Add Unix socket permission if enabled
-    if config.network.allow_unix_sockets {
-        allow.push(json!({
-            "type": "socket",
-            "protocol": "unix"
-        }));
-    }
+    // Note: allow_local_binding and allow_unix_sockets are not directly supported
+    // in Claude Code's settings.json format. These would need to be handled via
+    // sandbox configuration or other mechanisms if needed.
 
     // Build permissions object
     if !allow.is_empty() {
@@ -170,13 +148,12 @@ mod tests {
 
         let deny = json["permissions"]["deny"].as_array().unwrap();
         assert_eq!(deny.len(), 2);
-        assert_eq!(deny[0]["type"], "read");
-        assert_eq!(deny[0]["path"], "~/.ssh/**");
+        assert_eq!(deny[0], "Read(~/.ssh/**)");
+        assert_eq!(deny[1], "Write(.work/**)");
 
         let allow = json["permissions"]["allow"].as_array().unwrap();
         assert_eq!(allow.len(), 1);
-        assert_eq!(allow[0]["type"], "write");
-        assert_eq!(allow[0]["path"], "src/**");
+        assert_eq!(allow[0], "Write(src/**)");
     }
 
     #[test]
@@ -199,26 +176,14 @@ mod tests {
         let json = generate_settings_json(&config);
 
         let allow = json["permissions"]["allow"].as_array().unwrap();
-        // 2 domains + local binding + unix sockets
-        assert_eq!(allow.len(), 4);
+        // Only 2 domains (local binding and unix sockets not supported in settings.json format)
+        assert_eq!(allow.len(), 2);
 
-        // Check domain permissions
+        // Check domain permissions use correct format
+        assert!(allow.iter().any(|p| p == "WebFetch(domain:*.github.com)"));
         assert!(allow
             .iter()
-            .any(|p| p["type"] == "network" && p["domain"] == "*.github.com"));
-        assert!(allow
-            .iter()
-            .any(|p| p["type"] == "network" && p["domain"] == "api.example.com"));
-
-        // Check binding permission
-        assert!(allow
-            .iter()
-            .any(|p| p["type"] == "network" && p["binding"] == "local"));
-
-        // Check unix socket permission
-        assert!(allow
-            .iter()
-            .any(|p| p["type"] == "socket" && p["protocol"] == "unix"));
+            .any(|p| p == "WebFetch(domain:api.example.com)"));
     }
 
     #[test]
