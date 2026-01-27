@@ -225,9 +225,7 @@ fn test_signal_contains_knowledge_management_section_for_knowledge_stages() {
     let worktree = create_test_worktree();
     // Context with populated knowledge
     let embedded_context = EmbeddedContext {
-        knowledge_exists: true,
-        knowledge_is_empty: false,
-        knowledge_summary: Some("## Entry Points\n\n- src/main.rs".to_string()),
+        knowledge_has_content: true,
         context_budget: None,
         context_usage: None,
         ..Default::default()

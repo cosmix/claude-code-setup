@@ -172,18 +172,10 @@ pub fn build_embedded_context_with_stage_and_session(
     // Read plan overview from config.toml and the plan file
     context.plan_overview = read_plan_overview(work_dir);
 
-    // Read knowledge summary if knowledge directory exists
+    // Check if knowledge directory has meaningful content
     let project_root = work_dir.parent().unwrap_or(work_dir);
     let knowledge = KnowledgeDir::new(project_root);
-    context.knowledge_exists = knowledge.exists();
-    if context.knowledge_exists {
-        let summary = knowledge.generate_summary().ok().filter(|s| !s.is_empty());
-        // Knowledge is considered empty if there's no summary or the summary is only placeholder content
-        context.knowledge_is_empty = summary.is_none();
-        context.knowledge_summary = summary;
-    } else {
-        context.knowledge_is_empty = true;
-    }
+    context.knowledge_has_content = knowledge.has_content();
 
     // Read task state if stage_id is provided
     if let Some(stage_id) = stage_id {

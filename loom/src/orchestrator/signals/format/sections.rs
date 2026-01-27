@@ -18,11 +18,18 @@ pub(super) fn format_semi_stable_section(
 ) -> String {
     let mut content = String::new();
 
-    // Embed knowledge summary (curated entry points, patterns, conventions)
-    if let Some(knowledge_summary) = &embedded_context.knowledge_summary {
-        content.push_str("<knowledge>\n");
-        content.push_str(knowledge_summary);
-        content.push_str("\n</knowledge>\n\n");
+    // Knowledge reference via CLI (not embedded to save context tokens)
+    if embedded_context.knowledge_has_content {
+        content.push_str("## Knowledge Base\n\n");
+        content.push_str("**Curated knowledge is available.** Read it BEFORE starting work:\n\n");
+        content.push_str("```bash\n");
+        content.push_str("loom knowledge show              # Show all knowledge\n");
+        content.push_str("loom knowledge show architecture # Architecture overview\n");
+        content.push_str("loom knowledge show entry-points # Key entry points\n");
+        content.push_str("loom knowledge show patterns     # Architectural patterns\n");
+        content.push_str("loom knowledge show conventions  # Coding conventions\n");
+        content.push_str("loom knowledge show mistakes     # Lessons learned\n");
+        content.push_str("```\n\n");
     }
 
     // Stage-type-aware reminder boxes
@@ -116,7 +123,7 @@ pub(super) fn format_semi_stable_section(
         StageType::Knowledge | StageType::IntegrationVerify => {
             content.push_str("## Knowledge Management\n\n");
 
-            if !embedded_context.knowledge_exists || embedded_context.knowledge_is_empty {
+            if !embedded_context.knowledge_has_content {
                 // CRITICAL warning for missing/empty knowledge
                 content.push_str("```\n");
                 content.push_str(

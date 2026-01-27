@@ -100,6 +100,35 @@ impl KnowledgeDir {
         self.root.exists()
     }
 
+    /// Check if the knowledge directory has any meaningful content
+    ///
+    /// Returns true if at least one knowledge file exists and has content
+    /// beyond the default placeholder text.
+    pub fn has_content(&self) -> bool {
+        if !self.exists() {
+            return false;
+        }
+
+        for file_type in KnowledgeFile::all() {
+            let path = self.file_path(*file_type);
+            if path.exists() {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    // Check if content has more than just the default template
+                    // by looking for ## headers added by agents
+                    if content.lines().any(|line| {
+                        line.starts_with("## ")
+                            && !line.contains("(Add ")
+                            && !line.contains("append-only")
+                    }) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
     /// Initialize the knowledge directory with default files
     pub fn initialize(&self) -> Result<()> {
         if !self.root.exists() {
