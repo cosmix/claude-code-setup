@@ -315,3 +315,13 @@ loom map [--deep] [--focus <area>] [--overwrite]
 - loom/src/orchestrator/signals/cache.rs - Stable prefix generation (agent rules)
 - loom/src/orchestrator/signals/format.rs - Full signal formatting
 - loom/src/orchestrator/signals/generate.rs - Signal file creation
+
+## Shell Completions Dynamic Routing
+
+New completion handlers added:
+
+- memory session: Lists session IDs for memory commands
+- memory entry-type: Shows note/decision/question/all for promote
+- memory target: Shows knowledge file types for promote targets  
+- checkpoint status: Shows pending/active/completed/all statuses
+- knowledge files: Shows all 7 knowledge file types (architecture, entry-points, patterns, conventions, mistakes, stack, concerns)

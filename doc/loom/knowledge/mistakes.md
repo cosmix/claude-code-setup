@@ -318,6 +318,4 @@ Stage marked complete without verifying acceptance criteria passed.
 ### Decisions
 
 - **All acceptance criteria verified through direct command execution rather than relying on test-only verification**
-  - *Rationale:* Direct CLI verification catches integration issues that unit tests may miss - especially dynamic completion routing which depends on proper command dispatch
-
-
+  - _Rationale:_ Direct CLI verification catches integration issues that unit tests may miss - especially dynamic completion routing which depends on proper command dispatch
