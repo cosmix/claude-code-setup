@@ -25,7 +25,7 @@ pub fn install() -> Result<()> {
     // Install hooks to ~/.claude/hooks/loom/
     let scripts_installed = install_loom_hooks()?;
     if scripts_installed > 0 {
-        println!("  Installed {scripts_installed} hook script(s) to ~/.claude/hooks/loom/");
+        println!("  Installed/updated {scripts_installed} hook script(s) to ~/.claude/hooks/loom/");
     } else {
         println!("  Hook scripts already up to date in ~/.claude/hooks/loom/");
     }

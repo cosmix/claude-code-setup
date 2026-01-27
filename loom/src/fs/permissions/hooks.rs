@@ -298,21 +298,41 @@ fn remove_duplicate_hooks(hooks_arr: &mut Vec<Value>) {
     });
 }
 
-/// Check if a hook command already exists in a hooks array
-fn hook_command_exists(hooks_arr: &[Value], command: &str) -> bool {
-    hooks_arr.iter().any(|hook_entry| {
-        hook_entry
+/// Check if a hook command points to a loom hook (in ~/.claude/hooks/loom/)
+fn is_loom_hook(command: &str) -> bool {
+    // Check for both absolute path and tilde-prefixed path
+    let is_tilde_loom = command.contains("/.claude/hooks/loom/");
+    let is_absolute_loom = dirs::home_dir()
+        .map(|h| {
+            let loom_dir = h.join(".claude/hooks/loom/");
+            command.starts_with(&loom_dir.display().to_string())
+        })
+        .unwrap_or(false);
+    is_tilde_loom || is_absolute_loom
+}
+
+/// Remove all loom hooks from a hooks array
+///
+/// This removes any hook entries that point to scripts in ~/.claude/hooks/loom/
+/// so they can be replaced with the current loom hook configuration.
+fn remove_loom_hooks(hooks_arr: &mut Vec<Value>) {
+    hooks_arr.retain(|hook_entry| {
+        // Check if any hook in this entry is a loom hook
+        let is_loom = hook_entry
             .get("hooks")
             .and_then(|h| h.as_array())
             .map(|arr| {
                 arr.iter().any(|hook| {
                     hook.get("command")
                         .and_then(|c| c.as_str())
-                        .is_some_and(|cmd| cmd == command)
+                        .is_some_and(is_loom_hook)
                 })
             })
-            .unwrap_or(false)
-    })
+            .unwrap_or(false);
+
+        // Keep if NOT a loom hook
+        !is_loom
+    });
 }
 
 /// Configure loom hooks in settings object
@@ -320,13 +340,14 @@ fn hook_command_exists(hooks_arr: &[Value], command: &str) -> bool {
 ///
 /// This function:
 /// 1. Migrates old hook paths to the new loom/ subdirectory
-/// 2. Removes any duplicate hook entries before adding new ones
-/// 3. Only adds hooks that don't already exist (by command)
-/// 4. Handles both fresh configs and existing configs with duplicates
+/// 2. Removes ALL existing loom hooks from settings
+/// 3. Adds fresh loom hooks from current configuration
+///
+/// This overwrites existing loom hooks to ensure users get updates when
+/// hook configurations change. User's non-loom hooks are preserved.
 pub fn configure_loom_hooks(settings_obj: &mut serde_json::Map<String, Value>) -> Result<bool> {
     // First, migrate any old hook paths to the new loom/ subdirectory
-    let migrated = migrate_old_hook_paths(settings_obj)?;
-    let mut modified = migrated;
+    let _ = migrate_old_hook_paths(settings_obj)?;
 
     let loom_hooks = loom_hooks_config();
 
@@ -336,47 +357,44 @@ pub fn configure_loom_hooks(settings_obj: &mut serde_json::Map<String, Value>) -
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("hooks must be a JSON object"))?;
 
-    // Process each hook type from loom config
+    // Collect all event names we need to process (from both existing config and loom config)
+    let mut all_event_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for key in hooks_obj.keys() {
+        all_event_names.insert(key.clone());
+    }
     if let Some(loom_hooks_obj) = loom_hooks.as_object() {
-        for (event_name, event_hooks) in loom_hooks_obj {
-            let event_arr = hooks_obj
-                .entry(event_name)
-                .or_insert_with(|| json!([]))
-                .as_array_mut()
-                .ok_or_else(|| anyhow::anyhow!("hooks.{event_name} must be an array"))?;
+        for key in loom_hooks_obj.keys() {
+            all_event_names.insert(key.clone());
+        }
+    }
 
-            // First, remove any existing duplicates
-            let original_len = event_arr.len();
-            remove_duplicate_hooks(event_arr);
-            if event_arr.len() != original_len {
-                modified = true;
-            }
+    // Process each event type
+    let loom_hooks_obj = loom_hooks.as_object();
+    for event_name in all_event_names {
+        let event_arr = hooks_obj
+            .entry(&event_name)
+            .or_insert_with(|| json!([]))
+            .as_array_mut()
+            .ok_or_else(|| anyhow::anyhow!("hooks.{event_name} must be an array"))?;
 
-            // Add loom hooks only if they don't already exist
-            if let Some(new_hooks) = event_hooks.as_array() {
-                for hook in new_hooks {
-                    // Extract the command from this hook entry
-                    let command = hook
-                        .get("hooks")
-                        .and_then(|h| h.as_array())
-                        .and_then(|arr| arr.first())
-                        .and_then(|h| h.get("command"))
-                        .and_then(|c| c.as_str());
+        // Remove ALL existing loom hooks for this event type
+        remove_loom_hooks(event_arr);
 
-                    if let Some(cmd) = command {
-                        if !hook_command_exists(event_arr, cmd) {
-                            event_arr.push(hook.clone());
-                            modified = true;
-                        }
-                    } else {
-                        // No command found, add anyway (shouldn't happen with our config)
-                        event_arr.push(hook.clone());
-                        modified = true;
-                    }
-                }
+        // Remove any duplicates among remaining (non-loom) hooks
+        remove_duplicate_hooks(event_arr);
+
+        // Add fresh loom hooks for this event type
+        if let Some(new_hooks) = loom_hooks_obj
+            .and_then(|obj| obj.get(&event_name))
+            .and_then(|h| h.as_array())
+        {
+            for hook in new_hooks {
+                event_arr.push(hook.clone());
             }
         }
     }
 
-    Ok(modified)
+    // Always return true since we want to ensure hooks are written
+    // (the actual comparison is done by the caller when writing the file)
+    Ok(true)
 }
