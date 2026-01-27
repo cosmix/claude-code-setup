@@ -58,6 +58,7 @@ pub(crate) fn create_test_stage(id: &str, status: StageStatus) -> Stage {
         truths: Vec::new(),
         artifacts: Vec::new(),
         wiring: Vec::new(),
+        sandbox: Default::default(),
     }
 }
 

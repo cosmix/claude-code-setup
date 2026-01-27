@@ -238,6 +238,7 @@ mod tests {
             truths: Vec::new(),
             artifacts: Vec::new(),
             wiring: Vec::new(),
+            sandbox: Default::default(),
         }
     }
 
