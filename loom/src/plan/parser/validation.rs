@@ -2,10 +2,11 @@
 
 use anyhow::{bail, Context, Result};
 
-use crate::plan::schema::{validate, LoomMetadata, StageDefinition};
+use crate::plan::schema::{validate, LoomMetadata};
 
 /// Parse and validate YAML metadata
-pub fn parse_and_validate(yaml_content: &str) -> Result<Vec<StageDefinition>> {
+/// Returns the full LoomMetadata to allow callers to access sandbox config, etc.
+pub fn parse_and_validate(yaml_content: &str) -> Result<LoomMetadata> {
     // Parse YAML
     let metadata: LoomMetadata =
         serde_yaml::from_str(yaml_content).with_context(|| "Failed to parse YAML metadata")?;
@@ -16,7 +17,7 @@ pub fn parse_and_validate(yaml_content: &str) -> Result<Vec<StageDefinition>> {
         bail!("Validation errors:\n  - {}", error_messages.join("\n  - "));
     }
 
-    Ok(metadata.loom.stages)
+    Ok(metadata)
 }
 
 #[cfg(test)]
@@ -36,7 +37,8 @@ loom:
       truths:
         - "test -f README.md"
 "#;
-        let stages = parse_and_validate(yaml).unwrap();
+        let metadata = parse_and_validate(yaml).unwrap();
+        let stages = &metadata.loom.stages;
         assert_eq!(stages.len(), 1);
         assert_eq!(stages[0].id, "stage-1");
     }

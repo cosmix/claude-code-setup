@@ -110,7 +110,7 @@ impl Default for FilesystemConfig {
 }
 
 /// Network access configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NetworkConfig {
     /// Allowed network domains (glob patterns)
     /// Empty means no network access allowed
@@ -130,32 +130,13 @@ pub struct NetworkConfig {
     pub allow_unix_sockets: bool,
 }
 
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        Self {
-            allowed_domains: Vec::new(),
-            additional_domains: Vec::new(),
-            allow_local_binding: false,
-            allow_unix_sockets: false,
-        }
-    }
-}
-
 /// Linux-specific sandbox configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LinuxConfig {
     /// Enable weaker nested sandboxing for compatibility (default: false)
     /// Use this if running inside containers or VMs with restricted capabilities
     #[serde(default)]
     pub enable_weaker_nested: bool,
-}
-
-impl Default for LinuxConfig {
-    fn default() -> Self {
-        Self {
-            enable_weaker_nested: false,
-        }
-    }
 }
 
 // Default value functions for serde

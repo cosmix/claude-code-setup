@@ -17,6 +17,8 @@ pub struct ParsedPlan {
     pub name: String,
     pub source_path: String,
     pub stages: Vec<crate::plan::schema::StageDefinition>,
+    /// Full metadata including sandbox config (for recommendations/validation)
+    pub metadata: crate::plan::schema::LoomMetadata,
 }
 
 /// Parse a plan document and extract loom metadata
@@ -43,13 +45,14 @@ pub fn parse_plan_content(content: &str, source_path: &Path) -> Result<ParsedPla
     let yaml_content = extraction::extract_yaml_metadata(content)?;
 
     // Parse and validate YAML
-    let stages = validation::parse_and_validate(&yaml_content)?;
+    let metadata = validation::parse_and_validate(&yaml_content)?;
 
     Ok(ParsedPlan {
         id,
         name,
         source_path: source_path.to_string_lossy().to_string(),
-        stages,
+        stages: metadata.loom.stages.clone(),
+        metadata,
     })
 }
 
