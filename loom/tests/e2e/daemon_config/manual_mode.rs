@@ -4,8 +4,8 @@ use crate::helpers::create_temp_git_repo;
 use loom::models::stage::{Stage, StageStatus};
 use loom::orchestrator::terminal::BackendType;
 use loom::orchestrator::OrchestratorConfig;
-use loom::plan::schema::SandboxConfig;
 use loom::plan::graph::ExecutionGraph;
+use loom::plan::schema::SandboxConfig;
 use loom::verify::transitions::save_stage;
 use std::time::Duration;
 

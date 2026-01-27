@@ -4,7 +4,9 @@ use crate::fs::stage_files::{compute_stage_depths, stage_file_path, StageDepende
 use crate::fs::work_dir::WorkDir;
 use crate::models::stage::{Stage, StageStatus, StageType};
 use crate::plan::parser::parse_plan;
-use crate::plan::schema::{check_knowledge_recommendations, check_sandbox_recommendations, StageDefinition};
+use crate::plan::schema::{
+    check_knowledge_recommendations, check_sandbox_recommendations, StageDefinition,
+};
 use crate::verify::serialize_stage_to_markdown;
 use anyhow::{Context, Result};
 use chrono::Utc;
