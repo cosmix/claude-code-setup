@@ -404,20 +404,20 @@ fn is_directory_mentioned(dir_name: &str, content: &str) -> bool {
 
     // Check for various mention patterns
     let patterns = [
-        format!("{}/", dir_lower),           // path reference
-        format!("/{}/", dir_lower),          // absolute path
-        format!("`{}`", dir_lower),          // code reference
-        format!("**{}**", dir_lower),        // bold reference
-        format!(" {} ", dir_lower),          // word boundary
-        format!("\n{}\n", dir_lower),        // line boundary
-        format!("{} -", dir_lower),          // list item
-        format!("- {}", dir_lower),          // list item start
-        format!("/{}", dir_lower),           // path start
-        format!("{}:", dir_lower),           // section header
-        format!("## {}", dir_lower),         // markdown header
-        format!("### {}", dir_lower),        // markdown subheader
-        dir_lower.replace('_', " "),         // underscore to space
-        dir_lower.replace('_', "-"),         // underscore to dash
+        format!("{}/", dir_lower),    // path reference
+        format!("/{}/", dir_lower),   // absolute path
+        format!("`{}`", dir_lower),   // code reference
+        format!("**{}**", dir_lower), // bold reference
+        format!(" {} ", dir_lower),   // word boundary
+        format!("\n{}\n", dir_lower), // line boundary
+        format!("{} -", dir_lower),   // list item
+        format!("- {}", dir_lower),   // list item start
+        format!("/{}", dir_lower),    // path start
+        format!("{}:", dir_lower),    // section header
+        format!("## {}", dir_lower),  // markdown header
+        format!("### {}", dir_lower), // markdown subheader
+        dir_lower.replace('_', " "),  // underscore to space
+        dir_lower.replace('_', "-"),  // underscore to dash
     ];
 
     patterns.iter().any(|p| content_lower.contains(p))
@@ -467,7 +467,11 @@ fn print_check_results(result: &KnowledgeCheckResult) {
         );
 
         if !src_coverage.mentioned_directories.is_empty() {
-            println!("  {} Documented: {}", "✓".green(), src_coverage.mentioned_directories.join(", "));
+            println!(
+                "  {} Documented: {}",
+                "✓".green(),
+                src_coverage.mentioned_directories.join(", ")
+            );
         }
 
         let missing: Vec<_> = src_coverage
@@ -480,7 +484,11 @@ fn print_check_results(result: &KnowledgeCheckResult) {
             println!(
                 "  {} Missing: {}",
                 "○".yellow(),
-                missing.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+                missing
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
         }
     }
