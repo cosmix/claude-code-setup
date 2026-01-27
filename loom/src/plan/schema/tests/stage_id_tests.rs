@@ -1,6 +1,8 @@
 //! Stage ID validation tests
 
-use crate::plan::schema::types::{LoomConfig, LoomMetadata, StageDefinition, StageType};
+use crate::plan::schema::types::{
+    LoomConfig, LoomMetadata, SandboxConfig, StageDefinition, StageSandboxConfig, StageType,
+};
 use crate::plan::schema::validation::validate;
 
 #[test]
@@ -9,6 +11,7 @@ fn test_validate_stage_id_path_traversal() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "../etc/passwd".to_string(),
                 name: "Malicious Stage".to_string(),
@@ -25,6 +28,7 @@ fn test_validate_stage_id_path_traversal() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -43,6 +47,7 @@ fn test_validate_stage_id_with_slashes() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage/with/slashes".to_string(),
                 name: "Stage".to_string(),
@@ -59,6 +64,7 @@ fn test_validate_stage_id_with_slashes() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -77,6 +83,7 @@ fn test_validate_stage_id_with_dots() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage.with.dots".to_string(),
                 name: "Stage".to_string(),
@@ -93,6 +100,7 @@ fn test_validate_stage_id_with_dots() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -111,6 +119,7 @@ fn test_validate_stage_id_reserved_name_dotdot() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "..".to_string(),
                 name: "Stage".to_string(),
@@ -127,6 +136,7 @@ fn test_validate_stage_id_reserved_name_dotdot() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -141,6 +151,7 @@ fn test_validate_stage_id_reserved_name_con() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "CON".to_string(),
                 name: "Stage".to_string(),
@@ -157,6 +168,7 @@ fn test_validate_stage_id_reserved_name_con() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -173,6 +185,7 @@ fn test_validate_dependency_id_path_traversal() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage-1".to_string(),
                 name: "Stage One".to_string(),
@@ -189,6 +202,7 @@ fn test_validate_dependency_id_path_traversal() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -208,6 +222,7 @@ fn test_validate_stage_id_too_long() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: long_id,
                 name: "Stage".to_string(),
@@ -224,6 +239,7 @@ fn test_validate_stage_id_too_long() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -240,6 +256,7 @@ fn test_validate_stage_id_with_spaces() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage with spaces".to_string(),
                 name: "Stage".to_string(),
@@ -256,6 +273,7 @@ fn test_validate_stage_id_with_spaces() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };

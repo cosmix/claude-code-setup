@@ -2,6 +2,191 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Plan-level sandbox configuration (defaults for all stages)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SandboxConfig {
+    /// Whether sandboxing is enabled (default: true)
+    #[serde(default = "default_sandbox_enabled")]
+    pub enabled: bool,
+
+    /// Automatically allow sandbox permissions when stage starts (default: true)
+    #[serde(default = "default_auto_allow")]
+    pub auto_allow: bool,
+
+    /// Allow agents to escape sandbox with explicit commands (default: false)
+    #[serde(default)]
+    pub allow_unsandboxed_escape: bool,
+
+    /// Commands excluded from sandboxing (e.g., "loom" CLI)
+    #[serde(default = "default_excluded_commands")]
+    pub excluded_commands: Vec<String>,
+
+    /// Filesystem access restrictions
+    #[serde(default)]
+    pub filesystem: FilesystemConfig,
+
+    /// Network access restrictions
+    #[serde(default)]
+    pub network: NetworkConfig,
+
+    /// Linux-specific configuration
+    #[serde(default)]
+    pub linux: LinuxConfig,
+}
+
+impl Default for SandboxConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_sandbox_enabled(),
+            auto_allow: default_auto_allow(),
+            allow_unsandboxed_escape: false,
+            excluded_commands: default_excluded_commands(),
+            filesystem: FilesystemConfig::default(),
+            network: NetworkConfig::default(),
+            linux: LinuxConfig::default(),
+        }
+    }
+}
+
+/// Per-stage sandbox configuration (overrides plan-level defaults)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct StageSandboxConfig {
+    /// Override enabled setting for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+
+    /// Override auto_allow setting for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_allow: Option<bool>,
+
+    /// Override allow_unsandboxed_escape for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allow_unsandboxed_escape: Option<bool>,
+
+    /// Additional excluded commands for this stage
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub excluded_commands: Vec<String>,
+
+    /// Filesystem overrides for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filesystem: Option<FilesystemConfig>,
+
+    /// Network overrides for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network: Option<NetworkConfig>,
+
+    /// Linux-specific overrides for this stage
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub linux: Option<LinuxConfig>,
+}
+
+/// Filesystem access configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilesystemConfig {
+    /// Paths that agents cannot read (glob patterns)
+    /// Default: ~/.ssh/**, ~/.aws/**, ~/.config/gcloud/**, ~/.gnupg/**
+    #[serde(default = "default_deny_read")]
+    pub deny_read: Vec<String>,
+
+    /// Paths that agents cannot write (glob patterns)
+    /// Default: .work/stages/**, doc/loom/knowledge/**
+    #[serde(default = "default_deny_write")]
+    pub deny_write: Vec<String>,
+
+    /// Additional paths agents are allowed to write (glob patterns)
+    /// Use this to grant exceptions to deny rules
+    #[serde(default)]
+    pub allow_write: Vec<String>,
+}
+
+impl Default for FilesystemConfig {
+    fn default() -> Self {
+        Self {
+            deny_read: default_deny_read(),
+            deny_write: default_deny_write(),
+            allow_write: Vec::new(),
+        }
+    }
+}
+
+/// Network access configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    /// Allowed network domains (glob patterns)
+    /// Empty means no network access allowed
+    #[serde(default)]
+    pub allowed_domains: Vec<String>,
+
+    /// Additional domains to allow beyond the defaults
+    #[serde(default)]
+    pub additional_domains: Vec<String>,
+
+    /// Allow binding to local ports (default: false)
+    #[serde(default)]
+    pub allow_local_binding: bool,
+
+    /// Allow Unix socket connections (default: false)
+    #[serde(default)]
+    pub allow_unix_sockets: bool,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            allowed_domains: Vec::new(),
+            additional_domains: Vec::new(),
+            allow_local_binding: false,
+            allow_unix_sockets: false,
+        }
+    }
+}
+
+/// Linux-specific sandbox configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinuxConfig {
+    /// Enable weaker nested sandboxing for compatibility (default: false)
+    /// Use this if running inside containers or VMs with restricted capabilities
+    #[serde(default)]
+    pub enable_weaker_nested: bool,
+}
+
+impl Default for LinuxConfig {
+    fn default() -> Self {
+        Self {
+            enable_weaker_nested: false,
+        }
+    }
+}
+
+// Default value functions for serde
+fn default_sandbox_enabled() -> bool {
+    true
+}
+
+fn default_auto_allow() -> bool {
+    true
+}
+
+fn default_excluded_commands() -> Vec<String> {
+    vec!["loom".to_string()]
+}
+
+fn default_deny_read() -> Vec<String> {
+    vec![
+        "~/.ssh/**".to_string(),
+        "~/.aws/**".to_string(),
+        "~/.config/gcloud/**".to_string(),
+        "~/.gnupg/**".to_string(),
+    ]
+}
+
+fn default_deny_write() -> Vec<String> {
+    vec![
+        ".work/stages/**".to_string(),
+        "doc/loom/knowledge/**".to_string(),
+    ]
+}
+
 /// Type of stage for specialized handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -29,6 +214,9 @@ pub struct LoomConfig {
     pub version: u32,
     #[serde(default)]
     pub auto_merge: Option<bool>,
+    /// Plan-level sandbox configuration (defaults for all stages)
+    #[serde(default)]
+    pub sandbox: SandboxConfig,
     pub stages: Vec<StageDefinition>,
 }
 
@@ -73,6 +261,9 @@ pub struct StageDefinition {
     /// When context usage exceeds this, auto-handoff is triggered.
     #[serde(default)]
     pub context_budget: Option<u32>,
+    /// Per-stage sandbox configuration (overrides plan-level defaults)
+    #[serde(default)]
+    pub sandbox: StageSandboxConfig,
 }
 
 /// Wiring check to verify component connections

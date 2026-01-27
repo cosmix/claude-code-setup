@@ -1,7 +1,7 @@
 //! Tests for the execution graph
 
 use super::*;
-use crate::plan::schema::StageDefinition;
+use crate::plan::schema::{StageDefinition, StageSandboxConfig};
 
 fn make_stage(id: &str, deps: Vec<&str>, group: Option<&str>) -> StageDefinition {
     StageDefinition {
@@ -20,6 +20,7 @@ fn make_stage(id: &str, deps: Vec<&str>, group: Option<&str>) -> StageDefinition
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     }
 }
 

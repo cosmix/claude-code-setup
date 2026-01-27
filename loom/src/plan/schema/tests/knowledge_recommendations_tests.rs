@@ -1,6 +1,6 @@
 //! Knowledge recommendations validation tests
 
-use crate::plan::schema::types::{StageDefinition, StageType};
+use crate::plan::schema::types::{StageDefinition, StageSandboxConfig, StageType};
 use crate::plan::schema::validation::check_knowledge_recommendations;
 
 #[test]
@@ -22,6 +22,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -39,6 +40,7 @@ fn test_knowledge_recommendations_no_knowledge_stage() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
     ];
 
@@ -66,6 +68,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -83,6 +86,7 @@ fn test_knowledge_recommendations_has_knowledge_id() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
     ];
 
@@ -108,6 +112,7 @@ fn test_knowledge_recommendations_has_knowledge_name() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -132,6 +137,7 @@ fn test_knowledge_recommendations_case_insensitive() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     }];
 
     let warnings = check_knowledge_recommendations(&stages);
@@ -158,6 +164,7 @@ fn test_knowledge_recommendations_no_root_stages() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     }];
 
     let warnings = check_knowledge_recommendations(&stages);

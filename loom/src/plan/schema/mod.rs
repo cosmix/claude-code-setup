@@ -7,6 +7,7 @@ mod validation;
 mod tests;
 
 pub use types::{
-    LoomConfig, LoomMetadata, StageDefinition, StageType, ValidationError, WiringCheck,
+    FilesystemConfig, LinuxConfig, LoomConfig, LoomMetadata, NetworkConfig, SandboxConfig,
+    StageDefinition, StageSandboxConfig, StageType, ValidationError, WiringCheck,
 };
 pub use validation::{check_knowledge_recommendations, validate};

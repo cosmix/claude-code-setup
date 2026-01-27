@@ -1,6 +1,8 @@
 //! Acceptance criterion validation tests
 
-use crate::plan::schema::types::{LoomConfig, LoomMetadata, StageDefinition, StageType};
+use crate::plan::schema::types::{
+    LoomConfig, LoomMetadata, SandboxConfig, StageDefinition, StageSandboxConfig, StageType,
+};
 use crate::plan::schema::validation::{validate, validate_acceptance_criterion};
 
 #[test]
@@ -51,6 +53,7 @@ fn test_validate_metadata_with_empty_acceptance() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage-1".to_string(),
                 name: "Stage One".to_string(),
@@ -67,6 +70,7 @@ fn test_validate_metadata_with_empty_acceptance() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -86,6 +90,7 @@ fn test_validate_metadata_with_valid_acceptance() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage-1".to_string(),
                 name: "Stage One".to_string(),
@@ -106,6 +111,7 @@ fn test_validate_metadata_with_valid_acceptance() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };
@@ -120,6 +126,7 @@ fn test_validate_metadata_multiple_invalid_acceptance() {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![StageDefinition {
                 id: "stage-1".to_string(),
                 name: "Stage One".to_string(),
@@ -136,6 +143,7 @@ fn test_validate_metadata_multiple_invalid_acceptance() {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             }],
         },
     };

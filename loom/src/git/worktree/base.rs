@@ -149,7 +149,7 @@ pub fn resolve_base_branch(
 mod tests {
     use super::*;
     use crate::plan::graph::ExecutionGraph;
-    use crate::plan::schema::StageDefinition;
+    use crate::plan::schema::{StageDefinition, StageSandboxConfig};
     use std::process::Command;
     use tempfile::TempDir;
 
@@ -245,6 +245,7 @@ mod tests {
                 artifacts: vec![],
                 wiring: vec![],
                 context_budget: None,
+                sandbox: StageSandboxConfig::default(),
             })
             .collect();
 

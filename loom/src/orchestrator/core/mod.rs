@@ -32,7 +32,7 @@ pub(super) fn clear_status_line() {
 mod tests {
     use super::*;
     use crate::parser::frontmatter::extract_yaml_frontmatter;
-    use crate::plan::schema::StageDefinition;
+    use crate::plan::schema::{StageDefinition, StageSandboxConfig};
     use crate::plan::ExecutionGraph;
     use std::path::PathBuf;
     use std::time::Duration;
@@ -72,6 +72,7 @@ mod tests {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         }];
 
         ExecutionGraph::build(stages).unwrap()
