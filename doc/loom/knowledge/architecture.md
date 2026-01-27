@@ -346,3 +346,24 @@ Key files:
 - loom/src/orchestrator/monitor/events.rs:88-94 - BudgetExceeded event
 - loom/src/orchestrator/monitor/detection.rs:242-261 - Budget detection
 - loom/src/orchestrator/core/event_handler.rs:242-294 - Handler
+
+## .work Directory Creation
+
+### WorkDir (fs/work_dir.rs:79-316)
+
+- initialize() creates .work/ structure with subdirs: runners, tracks, signals, handoffs, archive, stages, sessions, logs, crashes, checkpoints, task-state
+- load() validates existing structure, auto-creates missing dirs
+- main_project_root() resolves symlinks to true repo root (critical for worktrees)
+
+## Worktree Symlinks
+
+### Symlink Setup (git/worktree/settings.rs)
+
+Worktrees get three symlinks:
+
+- .work -> ../../.work (shared state)
+- .claude/CLAUDE.md -> ../../../.claude/CLAUDE.md (instructions)
+- CLAUDE.md -> ../../CLAUDE.md (project guidance)
+
+Functions: ensure_work_symlink():16, setup_claude_directory():40, setup_root_claude_md():85
+All use relative paths for portability. .claude/ is real dir for session-specific hooks.

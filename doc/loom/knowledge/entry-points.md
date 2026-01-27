@@ -325,3 +325,17 @@ New completion handlers added:
 - memory target: Shows knowledge file types for promote targets  
 - checkpoint status: Shows pending/active/completed/all statuses
 - knowledge files: Shows all 7 knowledge file types (architecture, entry-points, patterns, conventions, mistakes, stack, concerns)
+
+## Git Hook Entry Points
+
+### Hook Installation
+
+- commands/hooks.rs - loom hooks install/list commands
+- fs/permissions/hooks.rs - install_loom_hooks(), loom_hooks_config()
+- fs/permissions/constants.rs - embedded hook scripts (include_str! from hooks/*.sh)
+
+### Hook Event System
+
+- orchestrator/hooks/config.rs - HookEvent enum, HooksConfig struct
+- orchestrator/hooks/events.rs - HookEventLog, log_hook_event()
+- orchestrator/hooks/generator.rs - setup_hooks_for_worktree()

@@ -1007,3 +1007,64 @@ Goal-backward checks (truths/artifacts/wiring) required ONLY for Standard stages
 Knowledge and IntegrationVerify stages are EXEMPT.
 
 Validation warns if plan has no knowledge stage (lines 260-283).
+
+## Git Hook System
+
+### Hook Infrastructure
+
+Location: fs/permissions/hooks.rs, hooks/*.sh (embedded via include_str!)
+Installed to: ~/.claude/hooks/loom/
+
+Key hooks:
+
+- commit-guard.sh (Stop): Blocks exit if uncommitted changes or stage incomplete
+- prefer-modern-tools.sh (PreToolUse): Blocks grep/find, suggests Grep/Glob tools
+- commit-filter.sh (PreToolUse): Blocks commits with Claude/Anthropic attribution
+
+## Git Hooks (continued)
+
+### Session Lifecycle Hooks
+
+- session-start.sh: Initializes heartbeat at .work/heartbeat/{stage}.json
+- post-tool-use.sh: Updates heartbeat, reminds about knowledge/memory after commits
+- pre-compact.sh: Triggers handoff on context exhaustion
+- session-end.sh: Logs completion event
+
+Hook events logged to: .work/hooks/events.jsonl (JSON Lines format)
+
+## Git Hooks (continued)
+
+### User Input Hooks
+
+- ask-user-pre.sh: Marks stage WaitingForInput, sends desktop notification
+- ask-user-post.sh: Resumes stage after user answers
+
+### Skill System Hooks
+
+- skill-trigger.sh (UserPromptSubmit): Suggests skills based on prompt keywords
+- skill-index-builder.sh: Builds keyword index from SKILL.md files
+
+Config in .claude/settings.json with env vars: LOOM_STAGE_ID, LOOM_SESSION_ID, LOOM_WORK_DIR
+
+## Signal Cache System
+
+### Manus KV-Cache Pattern (orchestrator/signals/cache.rs)
+
+SignalMetrics tracks signal size, token estimates, stable prefix hash.
+
+Signal sections for LLM cache optimization:
+
+1. Stable prefix (cacheable): Worktree context, isolation rules
+2. Semi-stable: Plan overview, knowledge context
+3. Dynamic: Assignment, acceptance criteria
+4. Recitation: Context restoration hints
+
+## Signal Cache (continued)
+
+### Prefix Generators
+
+- generate_stable_prefix(): For worktree agents - isolation rules, git staging warnings
+- generate_knowledge_stable_prefix(): For main repo knowledge stages - exploration focus
+
+Hash computed via SHA-256 (first 16 hex chars) for cache debugging.
+Stable prefixes are deterministic across invocations to maximize KV-cache hits.
