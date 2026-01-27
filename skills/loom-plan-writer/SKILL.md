@@ -114,6 +114,15 @@ loom:
       files: # Optional: target file globs for scope
         - "src/**/*.rs"
       working_dir: "." # Required: "." for worktree root, or subdirectory like "loom"
+      # REQUIRED: At least ONE of truths/artifacts/wiring per stage
+      truths: # Observable behaviors proving feature works
+        - "myapp --help"
+      artifacts: # Files that must exist with real implementation
+        - "src/feature/*.rs"
+      wiring: # Code patterns proving integration
+        - source: "src/main.rs"
+          pattern: "use feature"
+          description: "Feature module is imported"
 ```
 
 <!-- END loom METADATA -->
@@ -156,7 +165,69 @@ working_dir: "loom"   # Run from loom/ subdirectory
 
 **Mixed directories?** Create separate stages instead of inline `cd`. Each stage = one working directory.
 
-### 6. Knowledge Bootstrap Stage (First)
+**⚠️ CRITICAL: ALL PATHS ARE RELATIVE TO working_dir**
+
+This is a very common mistake. ALL path fields resolve relative to `working_dir`:
+
+- `acceptance` commands
+- `artifacts` file paths
+- `wiring` source paths
+- `truths` command paths
+
+```yaml
+# ❌ WRONG: working_dir is "loom" but paths redundantly include "loom/"
+- id: implement-feature
+  working_dir: "loom"
+  artifacts:
+    - "loom/src/feature.rs"      # WRONG: becomes loom/loom/src/feature.rs
+  wiring:
+    - source: "loom/src/main.rs" # WRONG: becomes loom/loom/src/main.rs
+      pattern: "mod feature"
+
+# ✅ CORRECT: Paths relative to working_dir
+- id: implement-feature
+  working_dir: "loom"
+  artifacts:
+    - "src/feature.rs"           # CORRECT: resolves to loom/src/feature.rs
+  wiring:
+    - source: "src/main.rs"      # CORRECT: resolves to loom/src/main.rs
+      pattern: "mod feature"
+```
+
+**Rule:** If `working_dir: "loom"`, write paths as if you're already IN `loom/`.
+
+### 6. Goal-Backward Verification (REQUIRED)
+
+**Every stage MUST have at least ONE of: truths, artifacts, or wiring.**
+
+These fields verify the feature actually works, not just that tests pass:
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `truths` | Observable behaviors proving feature works | `"myapp --help"`, `"curl -f localhost:8080/health"` |
+| `artifacts` | Files that must exist with real implementation | `"src/auth/*.rs"`, `"tests/auth_test.rs"` |
+| `wiring` | Code patterns proving integration | source + pattern + description |
+
+**Why required?** We have had MANY instances where tests pass but the feature is never wired up or functional. These fields catch that.
+
+```yaml
+# Example: CLI command stage
+truths:
+  - "myapp new-command --help"  # Command is registered and callable
+artifacts:
+  - "src/commands/new_command.rs"  # Implementation file exists
+wiring:
+  - source: "src/main.rs"
+    pattern: "mod new_command"
+    description: "Command module is imported in main"
+  - source: "src/cli.rs"
+    pattern: "NewCommand"
+    description: "Command is registered in CLI"
+```
+
+**Minimum requirement:** At least ONE field with at least ONE entry. More is better for critical stages.
+
+### 7. Knowledge Bootstrap Stage (First)
 
 Captures codebase understanding before implementation:
 
@@ -196,11 +267,15 @@ Captures codebase understanding before implementation:
   files:
     - "doc/loom/knowledge/**"
   working_dir: "."  # REQUIRED: "." for worktree root
+  # REQUIRED: At least one verification field
+  artifacts:
+    - "doc/loom/knowledge/architecture.md"
+    - "doc/loom/knowledge/entry-points.md"
 ```
 
 **Skip ONLY if:** `doc/loom/knowledge/` already populated or user explicitly states knowledge exists.
 
-### 7. Integration Verify Stage (Last)
+### 8. Integration Verify Stage (Last)
 
 Verifies all work integrates correctly after merges AND that the feature actually works:
 
@@ -269,6 +344,13 @@ Verifies all work integrates correctly after merges AND that the feature actuall
     # - "grep -q 'NewComponent' src/app/routes.tsx"  # UI wired
   files: [] # Verification only - no file modifications
   working_dir: "."  # REQUIRED: "." for worktree root, or subdirectory like "loom"
+  # REQUIRED: At least one verification field
+  truths:
+    - "myapp new-command --help"  # Feature is callable (adapt to YOUR feature)
+  wiring:
+    - source: "src/main.rs"
+      pattern: "new_feature"
+      description: "Feature is wired into main"
 ```
 
 **Why integration-verify is mandatory:**
@@ -282,7 +364,7 @@ Verifies all work integrates correctly after merges AND that the feature actuall
 | **Wiring verification** | **Features must be connected to actually work**    |
 | **Functional proof**    | **Smoke test proves the feature is usable**        |
 
-### 8. Memory Recording in Stage Descriptions
+### 9. Memory Recording in Stage Descriptions
 
 **Every stage description should remind agents to record memory.** Memory persists insights across sessions and prevents repeated mistakes.
 
@@ -318,7 +400,7 @@ description: |
 | Decision documentation | Records WHY choices were made, not just what was done |
 | Learning transfer | Memory → Knowledge transfer makes lessons permanent |
 
-### 9. Memory vs Knowledge Rules
+### 10. Memory vs Knowledge Rules
 
 **CRITICAL: Different stages have different recording permissions.**
 
@@ -350,7 +432,7 @@ During implementation stages, you MUST:
 
 **Exception:** If you discover a CRITICAL MISTAKE that would block other stages, record it immediately with `loom knowledge update mistakes "..."` AND document why in your commit message.
 
-### 10. After Writing Plan
+### 11. After Writing Plan
 
 1. Write plan to `doc/plans/PLAN-<name>.md`
 2. **STOP** - Do NOT implement
@@ -370,6 +452,7 @@ During implementation stages, you MUST:
 5. **Testable Acceptance**: Every acceptance criterion must be a runnable command
 6. **Bookend Compliance**: Always include knowledge-bootstrap first and integration-verify last
 7. **Working Directory**: Every stage must declare its `working_dir` explicitly
+8. **Goal-Backward Verification**: Every stage MUST have at least one of `truths`, `artifacts`, or `wiring`
 
 ## Examples
 
@@ -382,13 +465,16 @@ stages:
     dependencies: ["knowledge-bootstrap"]
     files: ["src/auth/**"]
     working_dir: "."
+    artifacts: ["src/auth/mod.rs"]
   - id: add-logging
     dependencies: ["knowledge-bootstrap"]
     files: ["src/logging/**"]
     working_dir: "."
+    artifacts: ["src/logging/mod.rs"]
   - id: integration-verify
     dependencies: ["add-auth", "add-logging"]
     working_dir: "."
+    truths: ["myapp --help"]
 ```
 
 ### Example 2: Sequential Stages (Same Files)
@@ -400,13 +486,22 @@ stages:
     dependencies: ["knowledge-bootstrap"]
     files: ["src/api/handler.rs"]
     working_dir: "."
+    wiring:
+      - source: "src/api/handler.rs"
+        pattern: "auth_middleware"
+        description: "Auth middleware applied to handler"
   - id: add-logging-to-handler
     dependencies: ["add-auth-to-handler"] # Sequential
     files: ["src/api/handler.rs"]
     working_dir: "."
+    wiring:
+      - source: "src/api/handler.rs"
+        pattern: "log_request"
+        description: "Request logging added to handler"
   - id: integration-verify
     dependencies: ["add-logging-to-handler"]
     working_dir: "."
+    truths: ["curl -f localhost:8080/api/health"]
 ```
 
 ### Example 3: Complete Plan Template
@@ -446,6 +541,9 @@ loom:
       files:
         - "doc/loom/knowledge/**"
       working_dir: "."
+      artifacts:
+        - "doc/loom/knowledge/architecture.md"
+        - "doc/loom/knowledge/entry-points.md"
 
     - id: stage-a
       name: "Feature A"
@@ -463,6 +561,8 @@ loom:
       files:
         - "src/feature_a/**"
       working_dir: "."
+      artifacts:
+        - "src/feature_a/mod.rs"
 
     - id: stage-b
       name: "Feature B"
@@ -480,6 +580,8 @@ loom:
       files:
         - "src/feature_b/**"
       working_dir: "."
+      artifacts:
+        - "src/feature_b/mod.rs"
 
     - id: integration-verify
       name: "Integration Verification"
@@ -507,6 +609,12 @@ loom:
         # ADD: Functional acceptance criteria for YOUR feature
       files: []
       working_dir: "."
+      truths:
+        - "myapp --help"  # Adapt to YOUR feature
+      wiring:
+        - source: "src/main.rs"
+          pattern: "feature_a"
+          description: "Feature A is wired into main"
 ```
 
 <!-- END loom METADATA -->

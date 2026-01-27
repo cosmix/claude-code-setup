@@ -173,6 +173,10 @@ loom:
       files:
         - "doc/loom/knowledge/**"
       working_dir: "." # REQUIRED: "." for worktree root
+      # REQUIRED: At least one of truths/artifacts/wiring per stage
+      artifacts:
+        - "doc/loom/knowledge/architecture.md"
+        - "doc/loom/knowledge/entry-points.md"
 
     # Subsequent stages depend on knowledge-bootstrap
     - id: implement-feature
@@ -208,7 +212,7 @@ loom:
         - "src/**/*.rs"
       working_dir: "." # REQUIRED: "." for worktree root, or subdirectory like "loom"
 
-      # OPTIONAL: Goal-backward verification (run with: loom verify <stage-id>)
+      # REQUIRED: Goal-backward verification - at least ONE of truths/artifacts/wiring
       # These verify working implementation, not just passing tests
       truths:
         - "curl -f http://localhost:8080/api/health"  # Observable behaviors
@@ -274,6 +278,14 @@ loom:
         # - "curl -f localhost:8080/api/new-endpoint"  # API reachable
       files: [] # Verification only - no file modifications
       working_dir: "." # REQUIRED: "." for worktree root, or subdirectory like "loom"
+
+      # REQUIRED: At least one of truths/artifacts/wiring per stage
+      truths:
+        - "myapp new-command --help"  # Feature is callable
+      wiring:
+        - source: "src/main.rs"
+          pattern: "new_feature"
+          description: "Feature is wired into main"
 ```
 
 <!-- END loom METADATA -->
@@ -425,6 +437,7 @@ If Cargo.toml is at `loom/Cargo.toml` in main repo, it's at `loom/Cargo.toml` in
 | `./target/debug/myapp` → "no such file"    | Binary built in subdirectory           | Use `./loom/target/debug/myapp`                |
 | Test passes locally, fails in stage        | Different directory than stage         | Verify working_dir matches local               |
 | `test -f src/new.rs` → fails               | Wrong relative path                    | Check if should be `loom/src/new.rs`           |
+| artifact `loom/src/x.rs` not found         | Double-path: working_dir + path        | Remove `loom/` prefix if working_dir is "loom" |
 
 #### Acceptance Criteria: Working Directory & Command Design
 
@@ -467,6 +480,40 @@ The `working_dir` field is **REQUIRED** on every stage.
 ```
 
 **Mixed directories?** Create separate stages instead of inline `cd`. Each stage = one working directory.
+
+**⚠️ CRITICAL: ALL PATHS ARE RELATIVE TO working_dir**
+
+This applies to ALL path fields, not just acceptance criteria:
+- `acceptance` commands
+- `artifacts` file paths
+- `wiring` source paths
+- `truths` command paths
+
+```yaml
+# ❌ WRONG: working_dir is "loom" but paths include "loom/" prefix
+- id: implement-feature
+  working_dir: "loom"
+  acceptance:
+    - "cargo test"
+  artifacts:
+    - "loom/src/feature.rs"      # WRONG: becomes loom/loom/src/feature.rs
+  wiring:
+    - source: "loom/src/main.rs" # WRONG: becomes loom/loom/src/main.rs
+      pattern: "mod feature"
+
+# ✅ CORRECT: Paths are relative to working_dir (loom/)
+- id: implement-feature
+  working_dir: "loom"
+  acceptance:
+    - "cargo test"
+  artifacts:
+    - "src/feature.rs"           # CORRECT: resolves to loom/src/feature.rs
+  wiring:
+    - source: "src/main.rs"      # CORRECT: resolves to loom/src/main.rs
+      pattern: "mod feature"
+```
+
+**Rule of thumb:** If `working_dir: "loom"`, pretend you're already IN the loom/ directory when writing paths.
 
 #### Parallelization Strategy
 
