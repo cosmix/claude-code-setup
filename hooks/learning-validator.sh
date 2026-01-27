@@ -65,11 +65,13 @@ check_memory_usage() {
 
 	# Count memory entries (files with actual content)
 	local memory_count=0
-	for f in "$memory_dir"/*.md 2>/dev/null; do
+	shopt -s nullglob
+	for f in "$memory_dir"/*.md; do
 		if [[ -f "$f" ]] && grep -q '^## ' "$f" 2>/dev/null; then
 			memory_count=$((memory_count + 1))
 		fi
 	done
+	shopt -u nullglob
 
 	if [[ "$memory_count" -eq 0 ]]; then
 		cat >&2 <<'WARN'
