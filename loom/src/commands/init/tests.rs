@@ -4,7 +4,9 @@ use super::cleanup::{cleanup_work_directory, prune_stale_worktrees};
 use super::plan_setup::{create_stage_from_definition, initialize_with_plan};
 use crate::fs::work_dir::WorkDir;
 use crate::models::stage::{Stage, StageStatus, StageType as ModelStageType};
-use crate::plan::schema::{LoomConfig, LoomMetadata, StageDefinition, StageType};
+use crate::plan::schema::{
+    LoomConfig, LoomMetadata, SandboxConfig, StageDefinition, StageSandboxConfig, StageType,
+};
 use crate::verify::serialize_stage_to_markdown;
 use chrono::Utc;
 use serial_test::serial;
@@ -18,6 +20,7 @@ fn create_test_plan(dir: &Path, stages: Vec<StageDefinition>) -> PathBuf {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages,
         },
     };
@@ -50,6 +53,7 @@ fn test_create_stage_from_definition_no_dependencies() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-001");
@@ -80,6 +84,7 @@ fn test_create_stage_from_definition_with_dependencies() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-002");
@@ -238,6 +243,7 @@ fn test_initialize_with_plan_creates_config() {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);
@@ -279,6 +285,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -296,6 +303,7 @@ fn test_initialize_with_plan_creates_stage_files() {
             artifacts: vec![],
             wiring: vec![],
             context_budget: None,
+            sandbox: StageSandboxConfig::default(),
         },
     ];
 

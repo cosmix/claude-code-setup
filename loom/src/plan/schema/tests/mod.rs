@@ -6,7 +6,9 @@ mod knowledge_recommendations_tests;
 mod stage_id_tests;
 mod validation_tests;
 
-use super::types::{LoomConfig, LoomMetadata, StageDefinition, StageType};
+use super::types::{
+    LoomConfig, LoomMetadata, SandboxConfig, StageDefinition, StageSandboxConfig, StageType,
+};
 
 /// Helper function to create a valid LoomMetadata for testing
 pub(crate) fn create_valid_metadata() -> LoomMetadata {
@@ -14,6 +16,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages: vec![
                 StageDefinition {
                     id: "stage-1".to_string(),
@@ -32,6 +35,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     artifacts: vec![],
                     wiring: vec![],
                     context_budget: None,
+                    sandbox: StageSandboxConfig::default(),
                 },
                 StageDefinition {
                     id: "stage-2".to_string(),
@@ -50,6 +54,7 @@ pub(crate) fn create_valid_metadata() -> LoomMetadata {
                     artifacts: vec![],
                     wiring: vec![],
                     context_budget: None,
+                    sandbox: StageSandboxConfig::default(),
                 },
             ],
         },

@@ -52,6 +52,7 @@ impl StageFrontmatter {
             artifacts: self.artifacts,
             wiring: self.wiring,
             context_budget: None,
+            sandbox: crate::plan::schema::StageSandboxConfig::default(),
         }
     }
 }

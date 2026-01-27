@@ -4,7 +4,9 @@ use super::frontmatter::{extract_stage_frontmatter, load_stages_from_work_dir};
 use super::graph_loader::build_execution_graph;
 use crate::fs::work_dir::WorkDir;
 use crate::orchestrator::OrchestratorResult;
-use crate::plan::schema::{LoomConfig, LoomMetadata, StageDefinition, StageType};
+use crate::plan::schema::{
+    LoomConfig, LoomMetadata, SandboxConfig, StageDefinition, StageSandboxConfig, StageType,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -14,6 +16,7 @@ fn create_test_plan(dir: &Path, stages: Vec<StageDefinition>) -> PathBuf {
         loom: LoomConfig {
             version: 1,
             auto_merge: None,
+            sandbox: SandboxConfig::default(),
             stages,
         },
     };
@@ -49,6 +52,7 @@ fn setup_work_dir_with_plan(temp_dir: &TempDir) -> (PathBuf, WorkDir) {
         artifacts: vec![],
         wiring: vec![],
         context_budget: None,
+        sandbox: StageSandboxConfig::default(),
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);
