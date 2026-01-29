@@ -168,20 +168,11 @@ fn default_deny_write() -> Vec<String> {
     ]
 }
 
-/// Type of stage for specialized handling
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum StageType {
-    /// Standard implementation stage
-    #[default]
-    Standard,
-    /// Knowledge-gathering stage (e.g., knowledge-bootstrap)
-    /// Can use both `loom memory` and `loom knowledge` commands
-    Knowledge,
-    /// Integration verification stage (e.g., integration-verify)
-    /// Can use `loom memory` and `loom knowledge` (for promoting memories)
-    IntegrationVerify,
-}
+/// Type of stage for specialized handling.
+///
+/// Re-exported from models::stage for backward compatibility.
+/// The canonical definition is in crate::models::stage::StageType.
+pub use crate::models::stage::StageType;
 
 /// Root structure of the loom metadata block
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -247,16 +238,11 @@ pub struct StageDefinition {
     pub sandbox: StageSandboxConfig,
 }
 
-/// Wiring check to verify component connections
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WiringCheck {
-    /// Source file path (relative to working_dir)
-    pub source: String,
-    /// What to check for (grep pattern)
-    pub pattern: String,
-    /// Human-readable description of what this verifies
-    pub description: String,
-}
+/// Wiring check to verify component connections.
+///
+/// Re-exported from models::stage for backward compatibility.
+/// The canonical definition is in crate::models::stage::WiringCheck.
+pub use crate::models::stage::WiringCheck;
 
 /// Validation error with context
 #[derive(Debug)]

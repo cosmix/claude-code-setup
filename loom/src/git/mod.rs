@@ -21,8 +21,9 @@ pub use worktree::{
 };
 
 pub use merge::{
-    abort_merge, checkout_branch, conflict_resolution_instructions, get_conflicting_files,
-    merge_stage, verify_merge_succeeded, MergeResult,
+    abort_merge, build_merge_report, check_merge_state, checkout_branch,
+    conflict_resolution_instructions, get_conflicting_files, merge_stage, verify_merge_succeeded,
+    MergeResult, MergeState, MergeStatusReport,
 };
 
 pub use branch::{

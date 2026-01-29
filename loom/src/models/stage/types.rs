@@ -3,13 +3,38 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::models::failure::FailureInfo;
-use crate::plan::schema::WiringCheck;
 
 /// Type of stage for specialized handling.
 ///
-/// Re-exported from plan schema for convenience. Use this to distinguish
-/// between knowledge-gathering stages and standard implementation stages.
-pub use crate::plan::schema::StageType;
+/// Use this to distinguish between knowledge-gathering stages and standard
+/// implementation stages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StageType {
+    /// Standard implementation stage
+    #[default]
+    Standard,
+    /// Knowledge-gathering stage (e.g., knowledge-bootstrap)
+    /// Can use both `loom memory` and `loom knowledge` commands
+    Knowledge,
+    /// Integration verification stage (e.g., integration-verify)
+    /// Can use `loom memory` and `loom knowledge` (for promoting memories)
+    IntegrationVerify,
+}
+
+/// Wiring check to verify component connections.
+///
+/// Used in goal-backward verification to ensure critical connections
+/// between components are in place.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WiringCheck {
+    /// Source file path (relative to working_dir)
+    pub source: String,
+    /// What to check for (grep pattern)
+    pub pattern: String,
+    /// Human-readable description of what this verifies
+    pub description: String,
+}
 
 /// Status of goal-backward verification for a stage
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]

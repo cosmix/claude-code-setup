@@ -5,10 +5,10 @@ use chrono::Utc;
 
 use crate::git;
 use crate::git::worktree::setup_worktree_hooks;
+use crate::hooks::{find_hooks_dir, setup_hooks_for_worktree, HooksConfig};
 use crate::models::failure::{FailureInfo, FailureType};
 use crate::models::session::Session;
 use crate::models::stage::{Stage, StageStatus, StageType};
-use crate::orchestrator::hooks::{find_hooks_dir, setup_hooks_for_worktree, HooksConfig};
 use crate::orchestrator::signals::{
     generate_knowledge_signal, generate_signal_with_skills, DependencyStatus,
 };

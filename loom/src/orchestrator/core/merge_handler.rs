@@ -2,8 +2,8 @@
 
 use anyhow::{Context, Result};
 
-use crate::commands::status::merge_status::{check_merge_state, MergeState};
 use crate::git::branch::default_branch;
+use crate::git::merge::{check_merge_state, MergeState};
 use crate::git::merge::{get_conflicting_files_from_status, verify_merge_succeeded};
 use crate::models::session::Session;
 use crate::models::stage::StageStatus;
