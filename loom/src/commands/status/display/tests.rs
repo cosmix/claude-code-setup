@@ -1,8 +1,8 @@
 use super::sessions::is_session_orphaned;
-use super::stages::parse_stage_from_markdown;
 use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::StageStatus;
 use crate::orchestrator::terminal::native::check_pid_alive;
+use crate::verify::transitions::parse_stage_from_markdown;
 
 #[test]
 fn test_is_session_orphaned_with_native_backend() {

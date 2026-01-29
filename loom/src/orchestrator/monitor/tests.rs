@@ -8,12 +8,13 @@ use crate::models::constants::{
 };
 use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::{Stage, StageStatus};
-use crate::orchestrator::monitor::core::{parse_session_from_markdown, parse_stage_from_markdown};
+use crate::orchestrator::monitor::core::parse_session_from_markdown;
 use crate::orchestrator::monitor::detection::Detection;
 use crate::orchestrator::monitor::handlers::Handlers;
 use crate::orchestrator::monitor::{
     context_health, context_usage_percent, ContextHealth, MonitorConfig, MonitorEvent,
 };
+use crate::verify::transitions::parse_stage_from_markdown;
 
 #[test]
 fn test_monitor_config_default() {
