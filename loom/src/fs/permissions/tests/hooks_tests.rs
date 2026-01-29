@@ -7,9 +7,16 @@ fn test_hooks_config_structure() {
     let hooks = loom_hooks_config();
     let hooks_obj = hooks.as_object().unwrap();
 
-    // Check PreToolUse hooks (AskUserQuestion, prefer-modern-tools, commit-filter, git-add-guard)
+    // Check PreToolUse hooks:
+    // 1. AskUserQuestion: ask-user-pre.sh
+    // 2. Bash: prefer-modern-tools.sh
+    // 3. Bash: commit-filter.sh
+    // 4. Bash: git-add-guard.sh
+    // 5. Bash: worktree-isolation.sh
+    // 6. Edit: worktree-isolation.sh
+    // 7. Write: worktree-isolation.sh
     let pre_tool = hooks_obj.get("PreToolUse").unwrap().as_array().unwrap();
-    assert_eq!(pre_tool.len(), 4);
+    assert_eq!(pre_tool.len(), 7);
     // First hook: AskUserQuestion matcher with ask-user-pre.sh
     assert_eq!(pre_tool[0]["matcher"], "AskUserQuestion");
     assert!(pre_tool[0]["hooks"][0]["command"]
@@ -34,6 +41,24 @@ fn test_hooks_config_structure() {
         .as_str()
         .unwrap()
         .contains("git-add-guard.sh"));
+    // Fifth hook: Bash matcher with worktree-isolation.sh
+    assert_eq!(pre_tool[4]["matcher"], "Bash");
+    assert!(pre_tool[4]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("worktree-isolation.sh"));
+    // Sixth hook: Edit matcher with worktree-isolation.sh
+    assert_eq!(pre_tool[5]["matcher"], "Edit");
+    assert!(pre_tool[5]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("worktree-isolation.sh"));
+    // Seventh hook: Write matcher with worktree-isolation.sh
+    assert_eq!(pre_tool[6]["matcher"], "Write");
+    assert!(pre_tool[6]["hooks"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("worktree-isolation.sh"));
 
     // Check PostToolUse hooks (only AskUserQuestion for resume in global config)
     // Session-specific post-tool-use.sh (Bash) is merged at worktree creation

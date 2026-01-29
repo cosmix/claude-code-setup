@@ -4,6 +4,7 @@
 //! - Auto-handoff on PreCompact (context exhaustion)
 //! - Session lifecycle tracking via event logging
 //! - Learning validation on Stop (memory usage checks)
+//! - Worktree isolation enforcement via PreToolUse hooks
 //!
 //! ## Hook Events
 //!
@@ -14,6 +15,7 @@
 //! - `SessionEnd`: Called when a session ends normally
 //! - `Stop`: Called when session is stopping (learning-validator)
 //! - `PreferModernTools`: Called before Bash to suggest modern CLI tools
+//! - `WorktreeIsolation`: Called before Bash/Edit/Write to enforce boundaries
 //!
 //! ## Configuration
 //!
@@ -23,6 +25,7 @@
 mod config;
 mod events;
 mod generator;
+pub mod validators;
 
 #[cfg(test)]
 mod tests;
