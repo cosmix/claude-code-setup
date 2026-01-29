@@ -196,21 +196,34 @@ if [[ -n "${LOOM_MAIN_AGENT_PID:-}" ]]; then
 		} >>"$DEBUG_LOG" 2>&1
 
 		# Check if this is a subagent
-		# Main agent: No other Claude process between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID
-		# Subagent: There's another Claude process in between (the main agent's Claude)
+		# Main agent: NEAREST_CLAUDE == LOOM_MAIN_AGENT_PID (same process after exec)
+		# Subagent: NEAREST_CLAUDE != LOOM_MAIN_AGENT_PID (different Claude process)
+		#
+		# IMPORTANT: After `exec claude`, the wrapper PID IS the Claude process PID.
+		# So for a main agent, NEAREST_CLAUDE == LOOM_MAIN_AGENT_PID.
 		#
 		# Process tree for main agent:
-		#   wrapper (LOOM_MAIN_AGENT_PID) → claude CLI → node (NEAREST_CLAUDE)
-		#   Claude count between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: 0
+		#   wrapper (exec'd) → now Claude (LOOM_MAIN_AGENT_PID == NEAREST_CLAUDE)
+		#   Claude count: 0 (same process)
 		#
 		# Process tree for subagent:
-		#   wrapper (LOOM_MAIN_AGENT_PID) → ... → main's node → ... → subagent's node (NEAREST_CLAUDE)
-		#   Claude count between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: 1+ (main agent's Claude)
+		#   wrapper → Claude (main) → ... → Claude (subagent = NEAREST_CLAUDE)
+		#   NEAREST_CLAUDE != LOOM_MAIN_AGENT_PID
 		if [[ -n "$NEAREST_CLAUDE" ]]; then
-			CLAUDE_COUNT=$(count_claude_processes_between "$NEAREST_CLAUDE" "$LOOM_MAIN_AGENT_PID")
-			{
-				echo "DEBUG: Claude processes between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: $CLAUDE_COUNT"
-			} >>"$DEBUG_LOG" 2>&1
+			# Fast path: if NEAREST_CLAUDE == LOOM_MAIN_AGENT_PID, we ARE the main agent
+			# This happens because the wrapper uses `exec claude` which replaces the
+			# shell process with Claude, inheriting the PID
+			if [[ "$NEAREST_CLAUDE" == "$LOOM_MAIN_AGENT_PID" ]]; then
+				CLAUDE_COUNT=0
+				{
+					echo "DEBUG: Fast path - NEAREST_CLAUDE == LOOM_MAIN_AGENT_PID (same process after exec)"
+				} >>"$DEBUG_LOG" 2>&1
+			else
+				CLAUDE_COUNT=$(count_claude_processes_between "$NEAREST_CLAUDE" "$LOOM_MAIN_AGENT_PID")
+				{
+					echo "DEBUG: Claude processes between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: $CLAUDE_COUNT"
+				} >>"$DEBUG_LOG" 2>&1
+			fi
 
 			if [[ "$CLAUDE_COUNT" == "0" ]]; then
 				# Main agent - no other Claude process between us and the wrapper

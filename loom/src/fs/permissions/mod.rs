@@ -16,5 +16,5 @@ mod tests;
 pub use constants::{LOOM_PERMISSIONS, LOOM_PERMISSIONS_WORKTREE};
 pub use hooks::{get_installed_hooks_dir, install_loom_hooks, loom_hooks_config};
 pub use settings::{create_worktree_settings, ensure_loom_permissions};
-pub use sync::{sync_worktree_permissions, SyncResult};
+pub use sync::{sync_worktree_permissions, sync_worktree_permissions_with_working_dir, SyncResult};
 pub use trust::add_worktrees_to_global_trust;

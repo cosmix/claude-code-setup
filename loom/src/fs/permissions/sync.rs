@@ -21,33 +21,86 @@ const WORKTREE_PATH_PATTERNS: &[&str] = &["../../", ".worktrees/"];
 /// Sync permissions from a worktree's settings.local.json to the main repo's settings
 ///
 /// This function:
-/// 1. Reads the worktree's settings.local.json
+/// 1. Reads the worktree's settings.local.json (from both worktree root and working_dir)
 /// 2. Extracts permissions.allow and permissions.deny arrays
 /// 3. Filters out worktree-specific paths (containing ../../ or .worktrees/)
 /// 4. Acquires an exclusive file lock on the main settings.local.json
 /// 5. Merges new permissions (skipping duplicates)
 /// 6. Writes back atomically
 /// 7. Propagates the updated permissions to all other existing worktrees
+///
+/// # Arguments
+/// * `worktree_path` - The root path of the worktree (.worktrees/<stage-id>)
+/// * `main_repo_path` - The root path of the main repository
+/// * `working_dir` - Optional working directory where Claude Code session ran
+///   (e.g., <worktree>/loom for Rust projects). Claude Code writes permissions
+///   to .claude/settings.local.json relative to the cwd, so we need to check
+///   both the worktree root and the working directory for permissions.
 pub fn sync_worktree_permissions(
     worktree_path: &Path,
     main_repo_path: &Path,
 ) -> Result<SyncResult> {
-    let worktree_settings_path = worktree_path.join(".claude/settings.local.json");
+    sync_worktree_permissions_with_working_dir(worktree_path, main_repo_path, None)
+}
+
+/// Sync permissions with an explicit working directory
+pub fn sync_worktree_permissions_with_working_dir(
+    worktree_path: &Path,
+    main_repo_path: &Path,
+    working_dir: Option<&Path>,
+) -> Result<SyncResult> {
     let main_settings_path = main_repo_path.join(".claude/settings.local.json");
 
-    // Read worktree settings
-    let worktree_settings = read_settings(&worktree_settings_path)?;
+    // Collect all paths to check for permissions
+    let mut paths_to_check = vec![worktree_path.join(".claude/settings.local.json")];
 
-    // Extract permissions from worktree settings
-    let (allow_perms, deny_perms) = extract_permissions(&worktree_settings);
+    // If working_dir is specified and different from worktree root, also check there
+    // Claude Code writes permissions relative to cwd, so if session ran in a subdirectory
+    // (e.g., worktree/loom/), permissions are in worktree/loom/.claude/settings.local.json
+    if let Some(wd) = working_dir {
+        if wd != worktree_path {
+            let wd_settings = wd.join(".claude/settings.local.json");
+            if wd_settings.exists() && !paths_to_check.contains(&wd_settings) {
+                paths_to_check.push(wd_settings);
+            }
+        }
+    }
+
+    // Also check common subdirectory patterns where settings might be stored
+    // This handles cases where working_dir wasn't passed but permissions exist
+    for subdir in ["loom", "src", "app", "packages", "workspace"] {
+        let subdir_settings = worktree_path
+            .join(subdir)
+            .join(".claude/settings.local.json");
+        if subdir_settings.exists() && !paths_to_check.contains(&subdir_settings) {
+            paths_to_check.push(subdir_settings);
+        }
+    }
+
+    // Collect permissions from all settings files
+    let mut all_allow_perms: Vec<String> = Vec::new();
+    let mut all_deny_perms: Vec<String> = Vec::new();
+
+    for settings_path in &paths_to_check {
+        let worktree_settings = read_settings(settings_path)?;
+        let (allow_perms, deny_perms) = extract_permissions(&worktree_settings);
+        all_allow_perms.extend(allow_perms);
+        all_deny_perms.extend(deny_perms);
+    }
+
+    // Deduplicate
+    all_allow_perms.sort();
+    all_allow_perms.dedup();
+    all_deny_perms.sort();
+    all_deny_perms.dedup();
 
     // Filter out worktree-specific paths
-    let filtered_allow: Vec<String> = allow_perms
+    let filtered_allow: Vec<String> = all_allow_perms
         .into_iter()
         .filter(|p| !is_worktree_specific_permission(p))
         .collect();
 
-    let filtered_deny: Vec<String> = deny_perms
+    let filtered_deny: Vec<String> = all_deny_perms
         .into_iter()
         .filter(|p| !is_worktree_specific_permission(p))
         .collect();

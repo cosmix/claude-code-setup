@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
-use crate::fs::permissions::sync_worktree_permissions;
+use crate::fs::permissions::sync_worktree_permissions_with_working_dir;
 use crate::fs::session_files::find_session_for_stage;
 use crate::fs::work_dir::load_config;
 use crate::git::worktree::{find_repo_root_from_cwd, find_worktree_root_from_cwd};
@@ -182,7 +182,11 @@ pub fn complete(
             let repo_root = find_repo_root_from_cwd(dir);
 
             if let Some(ref root) = repo_root {
-                match sync_worktree_permissions(dir, root) {
+                match sync_worktree_permissions_with_working_dir(
+                    dir,
+                    root,
+                    acceptance_dir.as_deref(),
+                ) {
                     Ok(result) => {
                         if result.allow_added > 0 || result.deny_added > 0 {
                             let mut msg = format!(
