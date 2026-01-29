@@ -32,7 +32,102 @@ doc/plans/PLAN-<description>.md
 
 **NEVER** write to `~/.claude/plans/` or any `.claude/plans` path.
 
-### 2. Parallelization Strategy
+### 2. Pre-Planning: Explore Before Writing
+
+**Problem:** Skipping exploration → duplicate code, poor reuse, inconsistent patterns.
+
+**Solution:** ALWAYS explore BEFORE planning:
+
+| Step | Action | Why |
+| ---- | ------ | --- |
+| 1 | Spawn Explore subagents for related modules | Find patterns to reuse |
+| 2 | Review `doc/loom/knowledge/*.md` | Learn from past mistakes |
+| 3 | Create TODO with "REUSE:" annotations | Track reuse explicitly |
+| 4 | Identify integration points | Where new code connects |
+
+**Exploration Subagent Template:**
+
+```text
+** READ CLAUDE.md FILES IMMEDIATELY AND FOLLOW ALL THEIR RULES. **
+
+## Exploration Assignment
+Find existing patterns for [feature area]. Document:
+1. Similar implementations to reuse
+2. Utility functions/modules that apply
+3. Integration points (where to wire in)
+4. Conventions to follow
+
+## Output
+Return findings as knowledge update commands.
+```
+
+### 3. Pre-Planning: Sandbox Configuration
+
+**⚠️ BEFORE WRITING ANY PLAN, ASK THE USER ABOUT SANDBOX SETTINGS**
+
+Gather sandbox requirements by asking:
+
+1. **Network Access:** "Does this task require network access? Which domains?"
+   - Examples: GitHub API, npm registry, PyPI, crates.io, external APIs
+
+2. **Sensitive Paths:** "Any files/directories to protect from agent access?"
+   - Examples: ~/.ssh, ~/.aws, .env files, credentials.json
+
+3. **Build Tools:** "Which package managers or build tools will agents need?"
+   - Examples: cargo, npm/bun, pip/uv, go, docker
+
+**After gathering answers:**
+
+1. Run `loom sandbox suggest` for project-specific recommendations
+2. Merge user requirements with suggestions
+3. Add the `sandbox` block to plan YAML
+
+**Sandbox Configuration Reference:**
+
+```yaml
+loom:
+  version: 1
+  sandbox:
+    enabled: true                    # Master switch (default: true)
+    auto_allow: true                 # Auto-grant permissions at stage start
+    excluded_commands:               # Commands exempt from sandboxing
+      - "loom"
+    filesystem:
+      deny_read:                     # Paths agents CANNOT read
+        - "~/.ssh/**"
+        - "~/.aws/**"
+        - "~/.config/gcloud/**"
+        - "~/.gnupg/**"
+      deny_write:                    # Paths agents CANNOT write
+        - ".work/stages/**"
+        - "doc/loom/knowledge/**"    # Except knowledge/integration-verify stages
+      allow_write:                   # Exceptions to deny rules
+        - "src/**"
+    network:
+      allowed_domains:               # Domains agents CAN access (empty = no network)
+        - "github.com"
+        - "api.github.com"
+        - "crates.io"                # Add based on project type
+      allow_local_binding: false     # Bind to local ports
+      allow_unix_sockets: false      # Unix socket connections
+```
+
+**Per-Stage Overrides:**
+
+```yaml
+- id: my-stage
+  sandbox:
+    enabled: false                   # Disable for this stage only
+    filesystem:
+      allow_write:
+        - "build/**"                 # Additional write access
+```
+
+**Special Stage Behavior:**
+
+- `knowledge` and `integration-verify` stages automatically get write access to `doc/loom/knowledge/**`
+
+### 4. Parallelization Strategy
 
 Maximize parallel execution at TWO levels:
 
@@ -53,7 +148,7 @@ Maximize parallel execution at TWO levels:
 | NO             | Same stage, parallel subagents     |
 | YES            | Separate stages, loom merges later |
 
-### 3. Stage Description Requirement
+### 5. Stage Description Requirement
 
 **EVERY stage description MUST include this line:**
 
@@ -63,7 +158,7 @@ Use parallel subagents and skills to maximize performance.
 
 This ensures Claude Code instances spawn concurrent subagents for independent tasks.
 
-### 4. Plan Structure
+### 6. Plan Structure
 
 Every plan MUST follow this structure:
 
@@ -85,7 +180,7 @@ Include a visual execution diagram:
 
 Stages in `[a, b]` notation run concurrently.
 
-### 5. Loom Metadata Format
+### 7. Loom Metadata Format
 
 Plans contain embedded YAML wrapped in HTML comments:
 
@@ -135,6 +230,29 @@ loom:
 | Code fence               | 3 backticks             | 4 backticks           |
 | Nested code blocks       | NEVER in descriptions   | Breaks YAML parser    |
 | Examples in descriptions | Use plain indented text | Do NOT use ``` fences |
+| stage_type values        | lowercase/kebab-case    | PascalCase            |
+| Path traversal           | NEVER use `../`         | Causes validation error |
+
+**stage_type Field (REQUIRED on every stage):**
+
+| Value | Use For | Special Behavior |
+| ----- | ------- | ---------------- |
+| `knowledge` | knowledge-bootstrap stage | Can write to doc/loom/knowledge/** |
+| `standard` | All implementation stages | Cannot write to knowledge files |
+| `integration-verify` | Final verification stage | Can write to doc/loom/knowledge/** |
+
+**NEVER use PascalCase** (Knowledge, Standard, IntegrationVerify) - the parser rejects these.
+
+**Example — CORRECT way to show code in descriptions:**
+
+```yaml
+description: |
+  Create the config file with TOML format:
+    [settings]
+    key = "value"
+```
+
+**NEVER** put triple backticks inside YAML descriptions — they break parsing.
 
 **Working Directory Requirement:**
 
@@ -196,7 +314,7 @@ This is a very common mistake. ALL path fields resolve relative to `working_dir`
 
 **Rule:** If `working_dir: "loom"`, write paths as if you're already IN `loom/`.
 
-### 6. Goal-Backward Verification (REQUIRED)
+### 8. Goal-Backward Verification (REQUIRED)
 
 **Every stage MUST have at least ONE of: truths, artifacts, or wiring.**
 
@@ -227,7 +345,7 @@ wiring:
 
 **Minimum requirement:** At least ONE field with at least ONE entry. More is better for critical stages.
 
-### 7. Knowledge Bootstrap Stage (First)
+### 9. Knowledge Bootstrap Stage (First)
 
 Captures codebase understanding before implementation:
 
@@ -275,7 +393,7 @@ Captures codebase understanding before implementation:
 
 **Skip ONLY if:** `doc/loom/knowledge/` already populated or user explicitly states knowledge exists.
 
-### 8. Integration Verify Stage (Last)
+### 10. Integration Verify Stage (Last)
 
 Verifies all work integrates correctly after merges AND that the feature actually works:
 
@@ -364,7 +482,7 @@ Verifies all work integrates correctly after merges AND that the feature actuall
 | **Wiring verification** | **Features must be connected to actually work**    |
 | **Functional proof**    | **Smoke test proves the feature is usable**        |
 
-### 9. Memory Recording in Stage Descriptions
+### 11. Memory Recording in Stage Descriptions
 
 **Every stage description should remind agents to record memory.** Memory persists insights across sessions and prevents repeated mistakes.
 
@@ -400,7 +518,7 @@ description: |
 | Decision documentation | Records WHY choices were made, not just what was done |
 | Learning transfer | Memory → Knowledge transfer makes lessons permanent |
 
-### 10. Memory vs Knowledge Rules
+### 12. Memory vs Knowledge Rules
 
 **CRITICAL: Different stages have different recording permissions.**
 
@@ -432,7 +550,37 @@ During implementation stages, you MUST:
 
 **Exception:** If you discover a CRITICAL MISTAKE that would block other stages, record it immediately with `loom knowledge update mistakes "..."` AND document why in your commit message.
 
-### 11. After Writing Plan
+### 13. Plan Document Structure
+
+**Plans have TWO sections: human-readable content FIRST, YAML metadata LAST.**
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  PLAN DOCUMENT STRUCTURE                                            │
+│                                                                     │
+│  1. HUMAN-READABLE SECTION (TOP)                                    │
+│     - Title, overview, goals                                        │
+│     - Execution diagram                                             │
+│     - Stage descriptions in plain language                          │
+│     - Each stage: purpose, tasks, files, acceptance                 │
+│                                                                     │
+│  2. YAML METADATA (BOTTOM)                                          │
+│     - Wrapped in <!-- loom METADATA --> comments                    │
+│     - Machine-parseable stage definitions                           │
+│     - Same information as above, in structured format               │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this structure?**
+
+| Benefit | Explanation |
+| ------- | ----------- |
+| Human review | Users can quickly understand the plan without parsing YAML |
+| Context for agents | Stage descriptions give agents fuller understanding |
+| Maintainability | Humans can review/edit the readable section easily |
+| Machine processing | YAML at bottom still enables loom CLI parsing |
+
+### 14. After Writing Plan
 
 1. Write plan to `doc/plans/PLAN-<name>.md`
 2. **STOP** - Do NOT implement
@@ -511,13 +659,109 @@ stages:
 
 ## Overview
 
-[2-3 sentence description]
+[2-3 sentence description of what this plan accomplishes and why.]
+
+## Goals
+
+- [Primary goal 1]
+- [Primary goal 2]
+- [Any constraints or non-goals]
 
 ## Execution Diagram
 
 ```
 [knowledge-bootstrap] --> [stage-a, stage-b] --> [integration-verify]
 ```
+
+Stages in `[a, b]` notation run concurrently in separate worktrees.
+
+---
+
+## Stages
+
+### 1. Knowledge Bootstrap
+
+**Purpose:** Explore codebase and populate knowledge base before implementation.
+
+**Tasks:**
+- Map high-level architecture and component relationships
+- Identify entry points (CLI commands, API endpoints, main modules)
+- Document patterns (error handling, state management, idioms)
+- Record conventions (naming, file structure, testing)
+
+**Files:** `doc/loom/knowledge/**`
+
+**Acceptance:** Knowledge files contain meaningful sections with `## ` headers.
+
+---
+
+### 2. Feature A
+
+**Purpose:** [What Feature A accomplishes]
+
+**Dependencies:** knowledge-bootstrap
+
+**Tasks:**
+- [Specific task 1 with clear requirements]
+- [Specific task 2 with clear requirements]
+- Use parallel subagents for independent subtasks
+
+**Files:** `src/feature_a/**`
+
+**Acceptance:** `cargo test` passes, feature module exists.
+
+**Verification:** `src/feature_a/mod.rs` exists with implementation.
+
+---
+
+### 3. Feature B
+
+**Purpose:** [What Feature B accomplishes]
+
+**Dependencies:** knowledge-bootstrap (runs parallel with Feature A)
+
+**Tasks:**
+- [Specific task 1 with clear requirements]
+- [Specific task 2 with clear requirements]
+- Use parallel subagents for independent subtasks
+
+**Files:** `src/feature_b/**`
+
+**Acceptance:** `cargo test` passes, feature module exists.
+
+**Verification:** `src/feature_b/mod.rs` exists with implementation.
+
+---
+
+### 4. Integration Verification
+
+**Purpose:** Final verification that all features are wired up and functional.
+
+**Dependencies:** stage-a, stage-b (all implementation stages)
+
+**Tasks:**
+
+*Build & Test:*
+- Run full test suite (all tests, not just affected)
+- Run linting with warnings as errors
+- Verify build succeeds (debug and release)
+
+*Functional Verification (CRITICAL):*
+- Verify features are WIRED INTO the application (not just compiled)
+- Execute smoke test of primary use case end-to-end
+- Confirm user-visible behavior works as expected
+
+*Knowledge:*
+- Promote session memory insights to knowledge
+- Update architecture.md if structure changed
+
+**Files:** None (verification only)
+
+**Acceptance:** Build passes, tests pass, features callable via CLI/API.
+
+**Verification:** `myapp --help` shows new features; `src/main.rs` imports feature modules.
+
+---
 
 <!-- loom METADATA -->
 
@@ -527,6 +771,7 @@ loom:
   stages:
     - id: knowledge-bootstrap
       name: "Bootstrap Knowledge Base"
+      stage_type: knowledge
       description: |
         Explore codebase and populate doc/loom/knowledge/.
 
@@ -537,7 +782,7 @@ loom:
         - Document patterns and conventions
       dependencies: []
       acceptance:
-        - "grep -q '## ' doc/loom/knowledge/entry-points.md"
+        - "rg -q '## ' doc/loom/knowledge/entry-points.md"
       files:
         - "doc/loom/knowledge/**"
       working_dir: "."
@@ -547,6 +792,7 @@ loom:
 
     - id: stage-a
       name: "Feature A"
+      stage_type: standard
       description: |
         Implement feature A.
 
@@ -566,6 +812,7 @@ loom:
 
     - id: stage-b
       name: "Feature B"
+      stage_type: standard
       description: |
         Implement feature B.
 
@@ -585,6 +832,7 @@ loom:
 
     - id: integration-verify
       name: "Integration Verification"
+      stage_type: integration-verify
       description: |
         Final verification after all stages complete.
 
