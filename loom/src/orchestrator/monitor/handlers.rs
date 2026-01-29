@@ -8,8 +8,9 @@ use crate::fs::memory::{
     format_memory_for_handoff, generate_summary, preserve_for_crash, read_journal, write_summary,
 };
 use crate::handoff::{generate_handoff, HandoffContent};
-use crate::models::session::Session;
+use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::Stage;
+use crate::orchestrator::continuation::save_session;
 use crate::orchestrator::signals::read_merge_signal;
 use crate::orchestrator::spawner::{generate_crash_report, CrashReport};
 use crate::process::is_process_alive;
@@ -173,6 +174,23 @@ impl Handlers {
                 );
                 None
             }
+        }
+    }
+
+    /// Persist session status change to disk immediately
+    ///
+    /// Called when session status changes are detected (crash, completion, etc.)
+    /// to ensure the session file on disk reflects the current state without
+    /// waiting for event processing.
+    pub fn persist_session_status(&self, session: &Session, new_status: SessionStatus) {
+        let mut updated_session = session.clone();
+        updated_session.status = new_status;
+
+        if let Err(e) = save_session(&updated_session, &self.config.work_dir) {
+            eprintln!(
+                "Failed to persist session status for '{}': {}",
+                session.id, e
+            );
         }
     }
 }
