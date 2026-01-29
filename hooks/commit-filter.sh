@@ -109,10 +109,18 @@ find_nearest_claude_ancestor() {
 			cmdline=$(ps -o command= -p "$current_pid" 2>/dev/null || true)
 		fi
 
-		# Claude Code runs as node with "claude" in the path/args
+		# Claude Code runs as node with "claude" in the binary/args
+		# Exclude matches that are just hook scripts (paths containing .claude/hooks)
 		if echo "$cmdline" | grep -qi "claude"; then
-			echo "$current_pid"
-			return 0
+			if echo "$cmdline" | grep -q "\.claude/hooks"; then
+				# This is a hook script, not Claude Code - skip it
+				{
+					echo "DEBUG: Skipping PID $current_pid - hook script: $cmdline"
+				} >>"$DEBUG_LOG" 2>&1
+			else
+				echo "$current_pid"
+				return 0
+			fi
 		fi
 
 		# Get parent PID
@@ -124,6 +132,28 @@ find_nearest_claude_ancestor() {
 	done
 
 	echo ""
+	return 1
+}
+
+# Check if PID $1 is an ancestor of PID $2
+is_pid_ancestor_of() {
+	local ancestor_pid="$1"
+	local descendant_pid="$2"
+
+	local current_pid="$descendant_pid"
+	while [[ "$current_pid" != "1" && "$current_pid" != "0" && -n "$current_pid" ]]; do
+		if [[ "$current_pid" == "$ancestor_pid" ]]; then
+			return 0
+		fi
+
+		# Get parent PID
+		if [[ -r "/proc/$current_pid/stat" ]]; then
+			current_pid=$(awk '{print $4}' "/proc/$current_pid/stat" 2>/dev/null || true)
+		else
+			current_pid=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ' || true)
+		fi
+	done
+
 	return 1
 }
 
@@ -142,17 +172,31 @@ if [[ -n "${LOOM_MAIN_AGENT_PID:-}" ]]; then
 			echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID, PPID=$PPID, NEAREST_CLAUDE=$NEAREST_CLAUDE"
 		} >>"$DEBUG_LOG" 2>&1
 
-		# Check if this is a subagent (nearest Claude process doesn't match main agent PID)
-		# Main agent: nearest Claude = LOOM_MAIN_AGENT_PID (allow)
-		# Subagent: nearest Claude = subagent's PID ≠ LOOM_MAIN_AGENT_PID (block)
-		if [[ -n "$NEAREST_CLAUDE" && "$NEAREST_CLAUDE" != "$LOOM_MAIN_AGENT_PID" ]]; then
-			# Check if this is a git commit or loom stage complete command
-			if echo "$COMMAND" | grep -qiE 'git[[:space:]]+(commit|add[[:space:]]+-A|add[[:space:]]+\.)'; then
+		# Check if this is a subagent
+		# Main agent: LOOM_MAIN_AGENT_PID is an ancestor of (or equal to) NEAREST_CLAUDE
+		#   This happens because the wrapper sets LOOM_MAIN_AGENT_PID=$$ then exec's claude,
+		#   but claude may spawn node as a child rather than exec-ing it
+		# Subagent: NEAREST_CLAUDE is NOT a descendant of LOOM_MAIN_AGENT_PID
+		#   This happens when a subagent inherits LOOM_MAIN_AGENT_PID but runs under a different process tree
+		if [[ -n "$NEAREST_CLAUDE" ]]; then
+			if [[ "$NEAREST_CLAUDE" == "$LOOM_MAIN_AGENT_PID" ]] || is_pid_ancestor_of "$LOOM_MAIN_AGENT_PID" "$NEAREST_CLAUDE"; then
+				# Main agent - LOOM_MAIN_AGENT_PID is ancestor of our Claude process
 				{
-					echo "DEBUG: BLOCKED - Subagent attempting git operation"
+					echo "DEBUG: Main agent detected - LOOM_MAIN_AGENT_PID is ancestor of NEAREST_CLAUDE"
+				} >>"$DEBUG_LOG" 2>&1
+			else
+				# Subagent - our Claude process is not descended from LOOM_MAIN_AGENT_PID
+				{
+					echo "DEBUG: Subagent detected - NEAREST_CLAUDE is not descended from LOOM_MAIN_AGENT_PID"
 				} >>"$DEBUG_LOG" 2>&1
 
-				cat >&2 <<'EOF'
+				# Check if this is a git commit or loom stage complete command
+				if echo "$COMMAND" | grep -qiE 'git[[:space:]]+(commit|add[[:space:]]+-A|add[[:space:]]+\.)'; then
+					{
+						echo "DEBUG: BLOCKED - Subagent attempting git operation"
+					} >>"$DEBUG_LOG" 2>&1
+
+					cat >&2 <<'EOF'
 ⛔ BLOCKED: Subagent attempting git operation.
 
 You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
@@ -167,15 +211,15 @@ Your job is to:
 
 The main agent will commit your work after all subagents complete.
 EOF
-				exit 2
-			fi
+					exit 2
+				fi
 
-			if echo "$COMMAND" | grep -qiE 'loom[[:space:]]+stage[[:space:]]+complete'; then
-				{
-					echo "DEBUG: BLOCKED - Subagent attempting loom stage complete"
-				} >>"$DEBUG_LOG" 2>&1
+				if echo "$COMMAND" | grep -qiE 'loom[[:space:]]+stage[[:space:]]+complete'; then
+					{
+						echo "DEBUG: BLOCKED - Subagent attempting loom stage complete"
+					} >>"$DEBUG_LOG" 2>&1
 
-				cat >&2 <<'EOF'
+					cat >&2 <<'EOF'
 ⛔ BLOCKED: Subagent attempting to complete stage.
 
 You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
@@ -188,7 +232,8 @@ Your job is to:
 
 The main agent will complete the stage after all subagents finish.
 EOF
-				exit 2
+					exit 2
+				fi
 			fi
 		fi
 	fi
