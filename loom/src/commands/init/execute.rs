@@ -14,6 +14,45 @@ use super::cleanup::{
 };
 use super::plan_setup::initialize_with_plan;
 
+/// RAII guard that cleans up .work directory on drop unless disarmed.
+/// This ensures cleanup happens on ANY failure path, not just plan parsing.
+struct InitGuard {
+    repo_root: PathBuf,
+    work_created: bool,
+    disarmed: bool,
+}
+
+impl InitGuard {
+    fn new(repo_root: PathBuf) -> Self {
+        Self {
+            repo_root,
+            work_created: false,
+            disarmed: false,
+        }
+    }
+
+    fn mark_work_created(&mut self) {
+        self.work_created = true;
+    }
+
+    fn disarm(&mut self) {
+        self.disarmed = true;
+    }
+}
+
+impl Drop for InitGuard {
+    fn drop(&mut self) {
+        if self.work_created && !self.disarmed {
+            println!(
+                "  {} Cleaning up {} due to initialization failure",
+                "→".yellow().bold(),
+                ".work/".dimmed()
+            );
+            remove_work_directory_on_failure(&self.repo_root);
+        }
+    }
+}
+
 /// Initialize the .work/ directory structure
 ///
 /// # Arguments
@@ -41,8 +80,12 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
     println!("\n{}", "Initialize".bold());
     println!("{}", "─".repeat(40).dimmed());
 
+    // Create guard to ensure cleanup on any failure after .work is created
+    let mut guard = InitGuard::new(repo_root.clone());
+
     let work_dir = WorkDir::new(".")?;
     work_dir.initialize()?;
+    guard.mark_work_created();
     println!(
         "  {} Directory structure created {}",
         "✓".green().bold(),
@@ -78,28 +121,14 @@ pub fn execute(plan_path: Option<PathBuf>, clean: bool) -> Result<()> {
     println!("  {} Worktrees directory trusted", "✓".green().bold());
 
     if let Some(path) = plan_path {
-        match initialize_with_plan(&work_dir, &path) {
-            Ok(stage_count) => {
-                print_summary(Some(&path), stage_count);
-            }
-            Err(e) => {
-                println!(
-                    "\n  {} Plan parsing failed: {}",
-                    "✗".red().bold(),
-                    e.to_string().red()
-                );
-                println!(
-                    "  {} Cleaning up {}",
-                    "→".yellow().bold(),
-                    ".work/".dimmed()
-                );
-                remove_work_directory_on_failure(&repo_root);
-                return Err(e);
-            }
-        }
+        let stage_count = initialize_with_plan(&work_dir, &path)?;
+        print_summary(Some(&path), stage_count);
     } else {
         print_summary(None, 0);
     }
+
+    // Success - disarm the guard to prevent cleanup
+    guard.disarm();
 
     Ok(())
 }
