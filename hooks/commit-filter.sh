@@ -135,15 +135,37 @@ find_nearest_claude_ancestor() {
 	return 1
 }
 
-# Check if PID $1 is an ancestor of PID $2
-is_pid_ancestor_of() {
-	local ancestor_pid="$1"
-	local descendant_pid="$2"
+# Count Claude processes between two PIDs (exclusive of start, inclusive of end)
+# Returns the count. If end PID is not found, returns 999.
+count_claude_processes_between() {
+	local start_pid="$1"
+	local end_pid="$2"
+	local count=0
 
-	local current_pid="$descendant_pid"
+	local current_pid="$start_pid"
+	# Move to parent first (start is exclusive)
+	if [[ -r "/proc/$current_pid/stat" ]]; then
+		current_pid=$(awk '{print $4}' "/proc/$current_pid/stat" 2>/dev/null || true)
+	else
+		current_pid=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ' || true)
+	fi
+
 	while [[ "$current_pid" != "1" && "$current_pid" != "0" && -n "$current_pid" ]]; do
-		if [[ "$current_pid" == "$ancestor_pid" ]]; then
+		if [[ "$current_pid" == "$end_pid" ]]; then
+			echo "$count"
 			return 0
+		fi
+
+		# Check if this process is Claude Code (not a hook script)
+		local cmdline=""
+		if [[ -r "/proc/$current_pid/cmdline" ]]; then
+			cmdline=$(tr '\0' ' ' <"/proc/$current_pid/cmdline" 2>/dev/null || true)
+		else
+			cmdline=$(ps -o command= -p "$current_pid" 2>/dev/null || true)
+		fi
+
+		if echo "$cmdline" | grep -qi "claude" && ! echo "$cmdline" | grep -q "\.claude/hooks"; then
+			((count++))
 		fi
 
 		# Get parent PID
@@ -154,6 +176,7 @@ is_pid_ancestor_of() {
 		fi
 	done
 
+	echo "999" # End PID not found
 	return 1
 }
 
@@ -173,21 +196,31 @@ if [[ -n "${LOOM_MAIN_AGENT_PID:-}" ]]; then
 		} >>"$DEBUG_LOG" 2>&1
 
 		# Check if this is a subagent
-		# Main agent: LOOM_MAIN_AGENT_PID is an ancestor of (or equal to) NEAREST_CLAUDE
-		#   This happens because the wrapper sets LOOM_MAIN_AGENT_PID=$$ then exec's claude,
-		#   but claude may spawn node as a child rather than exec-ing it
-		# Subagent: NEAREST_CLAUDE is NOT a descendant of LOOM_MAIN_AGENT_PID
-		#   This happens when a subagent inherits LOOM_MAIN_AGENT_PID but runs under a different process tree
+		# Main agent: No other Claude process between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID
+		# Subagent: There's another Claude process in between (the main agent's Claude)
+		#
+		# Process tree for main agent:
+		#   wrapper (LOOM_MAIN_AGENT_PID) → claude CLI → node (NEAREST_CLAUDE)
+		#   Claude count between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: 0
+		#
+		# Process tree for subagent:
+		#   wrapper (LOOM_MAIN_AGENT_PID) → ... → main's node → ... → subagent's node (NEAREST_CLAUDE)
+		#   Claude count between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: 1+ (main agent's Claude)
 		if [[ -n "$NEAREST_CLAUDE" ]]; then
-			if [[ "$NEAREST_CLAUDE" == "$LOOM_MAIN_AGENT_PID" ]] || is_pid_ancestor_of "$LOOM_MAIN_AGENT_PID" "$NEAREST_CLAUDE"; then
-				# Main agent - LOOM_MAIN_AGENT_PID is ancestor of our Claude process
+			CLAUDE_COUNT=$(count_claude_processes_between "$NEAREST_CLAUDE" "$LOOM_MAIN_AGENT_PID")
+			{
+				echo "DEBUG: Claude processes between NEAREST_CLAUDE and LOOM_MAIN_AGENT_PID: $CLAUDE_COUNT"
+			} >>"$DEBUG_LOG" 2>&1
+
+			if [[ "$CLAUDE_COUNT" == "0" ]]; then
+				# Main agent - no other Claude process between us and the wrapper
 				{
-					echo "DEBUG: Main agent detected - LOOM_MAIN_AGENT_PID is ancestor of NEAREST_CLAUDE"
+					echo "DEBUG: Main agent detected - no intermediate Claude processes"
 				} >>"$DEBUG_LOG" 2>&1
 			else
-				# Subagent - our Claude process is not descended from LOOM_MAIN_AGENT_PID
+				# Subagent - there's another Claude process in between (the main agent)
 				{
-					echo "DEBUG: Subagent detected - NEAREST_CLAUDE is not descended from LOOM_MAIN_AGENT_PID"
+					echo "DEBUG: Subagent detected - $CLAUDE_COUNT intermediate Claude process(es)"
 				} >>"$DEBUG_LOG" 2>&1
 
 				# Check if this is a git commit or loom stage complete command
