@@ -121,6 +121,9 @@ impl Detection {
                                     stage_id: stage_id.clone(),
                                 });
 
+                                // Persist session status to file immediately
+                                handlers.persist_session_status(session, SessionStatus::Completed);
+
                                 self.last_session_states
                                     .insert(session.id.clone(), SessionStatus::Completed);
                                 continue;
@@ -134,6 +137,10 @@ impl Detection {
                             if let Some(stage) = stages.iter().find(|s| &s.id == stage_id) {
                                 if matches!(stage.status, StageStatus::Completed) {
                                     // Stage completed successfully, treat as normal completion
+                                    // Persist session status to file immediately
+                                    handlers
+                                        .persist_session_status(session, SessionStatus::Completed);
+
                                     self.last_session_states
                                         .insert(session.id.clone(), SessionStatus::Completed);
                                     continue;
@@ -149,6 +156,9 @@ impl Detection {
                         };
 
                         let crash_report_path = handlers.handle_session_crash(session, reason);
+
+                        // Persist session status to file immediately
+                        handlers.persist_session_status(session, SessionStatus::Crashed);
 
                         events.push(MonitorEvent::SessionCrashed {
                             session_id: session.id.clone(),
