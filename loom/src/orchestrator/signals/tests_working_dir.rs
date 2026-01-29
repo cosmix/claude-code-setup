@@ -134,3 +134,45 @@ fn test_stable_prefix_contains_working_dir_reminder() {
     assert!(prefix.contains("WORKTREE + working_dir"));
     assert!(prefix.contains("execution path"));
 }
+
+#[test]
+fn test_signal_contains_worktree_isolation_section() {
+    let session = create_test_session();
+    let stage = create_test_stage();
+    let worktree = create_test_worktree();
+    let embedded_context = EmbeddedContext::default();
+
+    let content = format_signal_content(
+        &session,
+        &stage,
+        &worktree,
+        &[],
+        None,
+        None,
+        &embedded_context,
+    );
+
+    // Check Worktree Isolation section header
+    assert!(content.contains("## Worktree Isolation"));
+
+    // Check it shows relative worktree path
+    assert!(content.contains(".worktrees/stage-1/"));
+
+    // Check ALLOWED list
+    assert!(content.contains("**ALLOWED:**"));
+    assert!(content.contains("Files within this worktree"));
+    assert!(content.contains("`.work/` directory (via symlink)"));
+    assert!(content.contains("Reading `CLAUDE.md` (symlinked)"));
+    assert!(content.contains("Using loom CLI commands"));
+
+    // Check FORBIDDEN list
+    assert!(content.contains("**FORBIDDEN:**"));
+    assert!(content.contains("Path traversal"));
+    assert!(content.contains("Git operations targeting main repo"));
+    assert!(content.contains("Direct modification of `.work/stages/` or `.work/sessions/`"));
+    assert!(content.contains("Attempting to merge your own branch"));
+
+    // Check guidance about stopping
+    assert!(content.contains("STOP"));
+    assert!(content.contains("orchestrator will handle cross-worktree operations"));
+}
