@@ -34,7 +34,7 @@ pub use signals::{
     RecoverySignalContent, SignalContent, SignalUpdates,
 };
 // Re-export crash reporting from spawner (until migrated to separate module)
-pub use spawner::{generate_crash_report, get_session_log_tail, CrashReport};
+pub use spawner::{generate_crash_report, CrashReport};
 // Re-export terminal functions (replaces legacy spawner exports)
 pub use terminal::native::NativeBackend;
 pub use terminal::{create_backend, BackendType, TerminalBackend};

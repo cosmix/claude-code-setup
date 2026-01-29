@@ -94,8 +94,7 @@ impl WorkDir {
         fs::create_dir_all(&self.root).context("Failed to create .work directory")?;
 
         let subdirs = [
-            "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
-            "crashes",
+            "signals", "handoffs", "archive", "stages", "sessions", "crashes",
         ];
 
         for subdir in &subdirs {
@@ -128,8 +127,7 @@ impl WorkDir {
 
     fn validate_structure(&self) -> Result<()> {
         let required_dirs = [
-            "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
-            "crashes",
+            "signals", "handoffs", "archive", "stages", "sessions", "crashes",
         ];
 
         for dir in &required_dirs {
@@ -149,14 +147,12 @@ impl WorkDir {
 
 This directory is managed by loom CLI and contains:
 
-- `runners/` - AI agent configurations and state
-- `tracks/` - Conversation thread metadata
 - `signals/` - Inter-agent communication
 - `handoffs/` - Context handoff records
 - `archive/` - Archived entities
 - `stages/` - Stage definitions and status
 - `sessions/` - Active session tracking
-- `logs/` - Session logs and crash reports
+- `crashes/` - Crash reports and diagnostics
 - `knowledge/` - Curated codebase knowledge (entry points, patterns, conventions)
 
 Do not manually edit these files unless you know what you're doing.
@@ -166,14 +162,6 @@ Do not manually edit these files unless you know what you're doing.
         fs::write(readme_path, readme_content).context("Failed to create README.md")?;
 
         Ok(())
-    }
-
-    pub fn runners_dir(&self) -> PathBuf {
-        self.root.join("runners")
-    }
-
-    pub fn tracks_dir(&self) -> PathBuf {
-        self.root.join("tracks")
     }
 
     pub fn signals_dir(&self) -> PathBuf {
@@ -194,10 +182,6 @@ Do not manually edit these files unless you know what you're doing.
 
     pub fn sessions_dir(&self) -> PathBuf {
         self.root.join("sessions")
-    }
-
-    pub fn logs_dir(&self) -> PathBuf {
-        self.root.join("logs")
     }
 
     pub fn crashes_dir(&self) -> PathBuf {
