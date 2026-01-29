@@ -316,6 +316,38 @@ pub(super) fn format_dynamic_section(
         &worktree.path.display()
     ));
 
+    // Worktree Isolation section with explicit boundaries
+    content.push_str("## Worktree Isolation\n\n");
+
+    // Show both relative and absolute paths
+    let relative_path = format!(".worktrees/{}/", stage.id);
+    content.push_str(&format!("You are working in: `{relative_path}`\n\n"));
+
+    // Try to get absolute path for clarity
+    if let Ok(absolute_path) = worktree.path.canonicalize() {
+        content.push_str(&format!(
+            "**Absolute path:** `{}`\n\n",
+            absolute_path.display()
+        ));
+    }
+
+    content.push_str("**ALLOWED:**\n");
+    content.push_str("- Files within this worktree\n");
+    content.push_str("- `.work/` directory (via symlink)\n");
+    content.push_str("- Reading `CLAUDE.md` (symlinked)\n");
+    content.push_str("- Using loom CLI commands\n\n");
+
+    content.push_str("**FORBIDDEN:**\n");
+    content.push_str("- Path traversal (`../../`, `../.worktrees/`)\n");
+    content.push_str("- Git operations targeting main repo (`git -C`, `--work-tree`)\n");
+    content.push_str("- Direct modification of `.work/stages/` or `.work/sessions/`\n");
+    content.push_str("- Attempting to merge your own branch (loom handles merges)\n\n");
+
+    content.push_str(
+        "If you need something outside your worktree, **STOP** and explain what you need.\n",
+    );
+    content.push_str("The orchestrator will handle cross-worktree operations.\n\n");
+
     // Embed plan overview if available
     if let Some(plan_overview) = &embedded_context.plan_overview {
         content.push_str("## Plan Overview\n\n");
