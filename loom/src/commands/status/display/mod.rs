@@ -1,4 +1,3 @@
-mod runners;
 mod sessions;
 mod stages;
 mod worktrees;
@@ -9,7 +8,6 @@ mod tests;
 use anyhow::Result;
 use std::fs;
 
-pub use runners::{display_runner_health, load_runners};
 pub use sessions::display_sessions;
 pub use stages::display_stages;
 pub use worktrees::display_worktrees;

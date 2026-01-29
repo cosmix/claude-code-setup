@@ -16,7 +16,6 @@
 //!
 //! - `CrashReport`
 //! - `generate_crash_report`
-//! - `get_session_log_tail`
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -26,29 +25,6 @@ use std::path::{Path, PathBuf};
 // ============================================================================
 // Crash Reporting (retained functionality)
 // ============================================================================
-
-/// Get the last N lines from a session log file
-///
-/// Returns the tail of the log file, useful for crash reports.
-/// Returns None if the log file doesn't exist or is empty.
-pub fn get_session_log_tail(logs_dir: &Path, stage_id: &str, lines: usize) -> Option<String> {
-    let log_path = logs_dir.join(format!("{stage_id}.log"));
-
-    if !log_path.exists() {
-        return None;
-    }
-
-    let content = std::fs::read_to_string(&log_path).ok()?;
-    if content.is_empty() {
-        return None;
-    }
-
-    let all_lines: Vec<&str> = content.lines().collect();
-    let start = all_lines.len().saturating_sub(lines);
-    let tail_lines: Vec<&str> = all_lines[start..].to_vec();
-
-    Some(tail_lines.join("\n"))
-}
 
 /// Content for a crash report
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,12 +83,11 @@ impl CrashReport {
 /// Creates a markdown file with crash diagnostics including:
 /// - Timestamp and session/stage info
 /// - Crash reason
-/// - Last N lines of session log output
-/// - Path to full log file for detailed investigation
+/// - Log tail if provided in the report
 pub fn generate_crash_report(
     report: &CrashReport,
     crashes_dir: &Path,
-    logs_dir: &Path,
+    _logs_dir: &Path,
 ) -> Result<PathBuf> {
     // Ensure crashes directory exists
     if !crashes_dir.exists() {
@@ -124,21 +99,11 @@ pub fn generate_crash_report(
         })?;
     }
 
-    // Get log tail if we have a stage_id and it's not already set
-    let log_tail = report.log_tail.clone().or_else(|| {
-        report
-            .stage_id
-            .as_ref()
-            .and_then(|stage_id| get_session_log_tail(logs_dir, stage_id, 100))
-    });
+    // Use log tail from report if provided
+    let log_tail = report.log_tail.clone();
 
-    // Determine log path
-    let log_path = report.log_path.clone().or_else(|| {
-        report
-            .stage_id
-            .as_ref()
-            .map(|stage_id| logs_dir.join(format!("{stage_id}.log")))
-    });
+    // Use log path from report if provided
+    let log_path = report.log_path.clone();
 
     // Generate filename with timestamp
     let timestamp = report.detected_at.format("%Y%m%d-%H%M%S");
@@ -225,54 +190,6 @@ pub fn generate_crash_report(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_get_session_log_tail_nonexistent() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let result = get_session_log_tail(temp.path(), "nonexistent-stage", 100);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_get_session_log_tail_empty_file() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let log_path = temp.path().join("empty-stage.log");
-        std::fs::write(&log_path, "").unwrap();
-
-        let result = get_session_log_tail(temp.path(), "empty-stage", 100);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_get_session_log_tail_small_file() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let log_path = temp.path().join("test-stage.log");
-        std::fs::write(&log_path, "line1\nline2\nline3").unwrap();
-
-        let result = get_session_log_tail(temp.path(), "test-stage", 100);
-        assert!(result.is_some());
-        let content = result.unwrap();
-        assert!(content.contains("line1"));
-        assert!(content.contains("line2"));
-        assert!(content.contains("line3"));
-    }
-
-    #[test]
-    fn test_get_session_log_tail_truncates() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let log_path = temp.path().join("big-stage.log");
-        let lines: Vec<String> = (1..=100).map(|i| format!("line{i}")).collect();
-        std::fs::write(&log_path, lines.join("\n")).unwrap();
-
-        let result = get_session_log_tail(temp.path(), "big-stage", 10);
-        assert!(result.is_some());
-        let content = result.unwrap();
-        // Should only have the last 10 lines (line91-line100)
-        assert!(!content.contains("line1\n"));
-        assert!(!content.contains("line90\n"));
-        assert!(content.contains("line91"));
-        assert!(content.contains("line100"));
-    }
 
     #[test]
     fn test_crash_report_new() {
