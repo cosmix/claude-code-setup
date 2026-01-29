@@ -10,5 +10,5 @@ mod status;
 #[cfg(test)]
 mod tests;
 
-pub use core::DaemonServer;
+pub use core::{DaemonServer, DaemonStatus};
 pub use status::collect_completion_summary;
