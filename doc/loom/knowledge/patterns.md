@@ -1106,7 +1106,7 @@ Files requiring validation:
 
 - `fs/stage_loading.rs` - validate stage_id after YAML parse
 - `fs/verifications.rs` - validate stage_id in store/load/delete
-- `fs/stage_files.rs` - defensive check in find_stage_file  
+- `fs/stage_files.rs` - defensive check in find_stage_file
 - `diagnosis/signal.rs` - validate session_id before path use
 
 ### Shell Command Security
@@ -1153,3 +1153,10 @@ When constructing shell commands with untrusted input (paths, stage IDs, command
 - **AppleScript strings**: Escape backslashes and double quotes with backslash prefix
 
 Location: `orchestrator/terminal/emulator.rs` - escape_applescript_string(), escape_shell_single_quote()
+
+## Promoted from Memory [2026-01-29 18:44]
+
+### Decisions
+
+- **Fixed shell injection vulnerabilities in MateTerminal and XTerm emulator commands by adding escape_shell_single_quote() function**
+  - *Rationale:* MateTerminal used unescaped single quotes allowing command injection. XTerm concatenated workdir directly into shell command. Both now properly escape using standard shell escaping pattern.

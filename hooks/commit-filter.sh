@@ -71,7 +71,7 @@ fi
 # Main agent sets LOOM_MAIN_AGENT_PID in wrapper script
 # Subagents inherit this var but have different $PPID
 
-if [[ -n "$LOOM_MAIN_AGENT_PID" ]]; then
+if [[ -n "${LOOM_MAIN_AGENT_PID:-}" ]]; then
 	{
 		echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID, PPID=$PPID"
 	} >>"$DEBUG_LOG" 2>&1
