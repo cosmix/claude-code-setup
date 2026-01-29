@@ -143,6 +143,12 @@ fn create_worktree_settings(main_settings: &Path, worktree_settings: &Path) -> R
 
     permissions.insert("defaultMode".to_string(), json!("acceptEdits"));
 
+    // Remove any stale LOOM_MAIN_AGENT_PID from copied settings
+    // This variable must be set dynamically by the wrapper script at runtime
+    if let Some(env) = obj.get_mut("env").and_then(|v| v.as_object_mut()) {
+        env.remove("LOOM_MAIN_AGENT_PID");
+    }
+
     // Write the merged settings
     let content =
         serde_json::to_string_pretty(&settings).with_context(|| "Failed to serialize settings")?;

@@ -4,24 +4,26 @@ use crate::fs::permissions::constants::{LOOM_PERMISSIONS, LOOM_PERMISSIONS_WORKT
 
 #[test]
 fn test_loom_permissions_constant() {
-    // Main repo includes all permissions (shared with worktrees via symlink)
+    // Main repo permissions - tightened to minimum necessary
     assert!(LOOM_PERMISSIONS.contains(&"Bash(loom:*)"));
-    // Now includes worktree permissions so settings can be symlinked
     assert!(LOOM_PERMISSIONS.contains(&"Read(.work/**)"));
     assert!(LOOM_PERMISSIONS.contains(&"Write(.work/**)"));
-    assert!(LOOM_PERMISSIONS.contains(&"Read(../../.work/**)"));
-    assert!(LOOM_PERMISSIONS.contains(&"Write(../../.work/**)"));
+    // Only CLAUDE.md files, not all of .claude/
+    assert!(LOOM_PERMISSIONS.contains(&"Read(.claude/CLAUDE.md)"));
+    assert!(LOOM_PERMISSIONS.contains(&"Read(~/.claude/CLAUDE.md)"));
+    // Loom hooks only, not all hooks
+    assert!(LOOM_PERMISSIONS.contains(&"Read(~/.claude/hooks/loom/**)"));
 }
 
 #[test]
 fn test_worktree_permissions_constant() {
-    // Worktree permissions should match main repo permissions
-    // (settings.json includes permissions for worktree access patterns)
+    // Worktree permissions - same tightened set
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.work/**)"));
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Write(.work/**)"));
-    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(../../.work/**)"));
-    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Write(../../.work/**)"));
-    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.claude/**)"));
-    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(~/.claude/**)"));
+    // Only CLAUDE.md files, not all of .claude/
+    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(.claude/CLAUDE.md)"));
+    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(~/.claude/CLAUDE.md)"));
+    // Loom hooks only
+    assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Read(~/.claude/hooks/loom/**)"));
     assert!(LOOM_PERMISSIONS_WORKTREE.contains(&"Bash(loom:*)"));
 }

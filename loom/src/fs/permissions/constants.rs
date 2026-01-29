@@ -68,33 +68,29 @@ pub const LOOM_HOOKS: &[(&str, &str)] = &[
 /// Includes worktree permissions so settings.json can be read by worktrees
 /// and all sessions share the same permission file (approvals propagate)
 pub const LOOM_PERMISSIONS: &[&str] = &[
-    // Read/write access via symlink path (for worktree sessions via symlink)
+    // Read/write access to loom state directory
     "Read(.work/**)",
     "Write(.work/**)",
-    // Read/write access via parent traversal (for worktree sessions via direct path)
-    "Read(../../.work/**)",
-    "Write(../../.work/**)",
-    // Read access to CLAUDE.md files (subagents need to read these explicitly)
-    "Read(.claude/**)",
-    "Read(~/.claude/**)",
+    // Read access to instruction files
+    "Read(.claude/CLAUDE.md)",
+    "Read(~/.claude/CLAUDE.md)",
+    // Read access to loom hooks (Claude Code needs to execute these)
+    "Read(~/.claude/hooks/loom/**)",
     // Loom CLI commands (use :* for prefix matching)
     "Bash(loom:*)",
 ];
 
 /// Loom permissions for WORKTREE context
-/// Includes both .work/** (symlink path as seen by Claude) and ../../.work/** (parent traversal)
-/// The symlink at .worktrees/stage-X/.work -> ../../.work means Claude sees paths as .work/**
-/// but the actual files are accessed via parent traversal
+/// Worktrees are at .worktrees/stage-X/ with symlink .work -> ../../.work
 pub const LOOM_PERMISSIONS_WORKTREE: &[&str] = &[
-    // Read/write access via symlink path (how Claude sees and requests the paths)
+    // Read/write access via symlink path (how Claude sees the paths)
     "Read(.work/**)",
     "Write(.work/**)",
-    // Read/write access via parent traversal (alternative direct access pattern)
-    "Read(../../.work/**)",
-    "Write(../../.work/**)",
-    // Read access to CLAUDE.md files (subagents need to read these explicitly)
-    "Read(.claude/**)",
-    "Read(~/.claude/**)",
+    // Read access to instruction files
+    "Read(.claude/CLAUDE.md)",
+    "Read(~/.claude/CLAUDE.md)",
+    // Read access to loom hooks (Claude Code needs to execute these)
+    "Read(~/.claude/hooks/loom/**)",
     // Loom CLI commands (use :* for prefix matching)
     "Bash(loom:*)",
 ];

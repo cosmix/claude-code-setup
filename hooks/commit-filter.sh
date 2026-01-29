@@ -71,6 +71,28 @@ fi
 # Main agent sets LOOM_MAIN_AGENT_PID in wrapper script
 # Subagents inherit this var but run under a different Claude process
 
+# Check if a PID is in our ancestor chain
+# Returns 0 if found, 1 if not
+is_ancestor() {
+	local target_pid="$1"
+	local current_pid="$$"
+
+	while [[ "$current_pid" != "1" && "$current_pid" != "0" && -n "$current_pid" ]]; do
+		if [[ "$current_pid" == "$target_pid" ]]; then
+			return 0
+		fi
+
+		# Get parent PID
+		if [[ -r "/proc/$current_pid/stat" ]]; then
+			current_pid=$(awk '{print $4}' "/proc/$current_pid/stat" 2>/dev/null || true)
+		else
+			current_pid=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ' || true)
+		fi
+	done
+
+	return 1
+}
+
 # Find the nearest Claude Code process ancestor
 # Returns its PID if found, empty string if not found
 find_nearest_claude_ancestor() {
@@ -106,24 +128,31 @@ find_nearest_claude_ancestor() {
 }
 
 if [[ -n "${LOOM_MAIN_AGENT_PID:-}" ]]; then
-	# Find the nearest Claude ancestor in our process tree
-	NEAREST_CLAUDE=$(find_nearest_claude_ancestor)
+	# First, validate that LOOM_MAIN_AGENT_PID is actually in our ancestor chain
+	# If it's not, it's stale (from a previous session) and should be ignored
+	if ! is_ancestor "$LOOM_MAIN_AGENT_PID"; then
+		{
+			echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID is NOT in ancestor chain - stale value, ignoring"
+		} >>"$DEBUG_LOG" 2>&1
+	else
+		# Find the nearest Claude ancestor in our process tree
+		NEAREST_CLAUDE=$(find_nearest_claude_ancestor)
 
-	{
-		echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID, PPID=$PPID, NEAREST_CLAUDE=$NEAREST_CLAUDE"
-	} >>"$DEBUG_LOG" 2>&1
+		{
+			echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID, PPID=$PPID, NEAREST_CLAUDE=$NEAREST_CLAUDE"
+		} >>"$DEBUG_LOG" 2>&1
 
-	# Check if this is a subagent (nearest Claude process doesn't match main agent PID)
-	# Main agent: nearest Claude = LOOM_MAIN_AGENT_PID (allow)
-	# Subagent: nearest Claude = subagent's PID ≠ LOOM_MAIN_AGENT_PID (block)
-	if [[ -n "$NEAREST_CLAUDE" && "$NEAREST_CLAUDE" != "$LOOM_MAIN_AGENT_PID" ]]; then
-		# Check if this is a git commit or loom stage complete command
-		if echo "$COMMAND" | grep -qiE 'git[[:space:]]+(commit|add[[:space:]]+-A|add[[:space:]]+\.)'; then
-			{
-				echo "DEBUG: BLOCKED - Subagent attempting git operation"
-			} >>"$DEBUG_LOG" 2>&1
+		# Check if this is a subagent (nearest Claude process doesn't match main agent PID)
+		# Main agent: nearest Claude = LOOM_MAIN_AGENT_PID (allow)
+		# Subagent: nearest Claude = subagent's PID ≠ LOOM_MAIN_AGENT_PID (block)
+		if [[ -n "$NEAREST_CLAUDE" && "$NEAREST_CLAUDE" != "$LOOM_MAIN_AGENT_PID" ]]; then
+			# Check if this is a git commit or loom stage complete command
+			if echo "$COMMAND" | grep -qiE 'git[[:space:]]+(commit|add[[:space:]]+-A|add[[:space:]]+\.)'; then
+				{
+					echo "DEBUG: BLOCKED - Subagent attempting git operation"
+				} >>"$DEBUG_LOG" 2>&1
 
-			cat >&2 <<'EOF'
+				cat >&2 <<'EOF'
 ⛔ BLOCKED: Subagent attempting git operation.
 
 You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
@@ -138,15 +167,15 @@ Your job is to:
 
 The main agent will commit your work after all subagents complete.
 EOF
-			exit 2
-		fi
+				exit 2
+			fi
 
-		if echo "$COMMAND" | grep -qiE 'loom[[:space:]]+stage[[:space:]]+complete'; then
-			{
-				echo "DEBUG: BLOCKED - Subagent attempting loom stage complete"
-			} >>"$DEBUG_LOG" 2>&1
+			if echo "$COMMAND" | grep -qiE 'loom[[:space:]]+stage[[:space:]]+complete'; then
+				{
+					echo "DEBUG: BLOCKED - Subagent attempting loom stage complete"
+				} >>"$DEBUG_LOG" 2>&1
 
-			cat >&2 <<'EOF'
+				cat >&2 <<'EOF'
 ⛔ BLOCKED: Subagent attempting to complete stage.
 
 You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
@@ -159,7 +188,8 @@ Your job is to:
 
 The main agent will complete the stage after all subagents finish.
 EOF
-			exit 2
+				exit 2
+			fi
 		fi
 	fi
 fi

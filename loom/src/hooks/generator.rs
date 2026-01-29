@@ -82,6 +82,13 @@ pub fn generate_hooks_settings(
         json!(config.work_dir.display().to_string()),
     );
 
+    // IMPORTANT: Remove any stale LOOM_MAIN_AGENT_PID from settings.json
+    // This variable must be set dynamically by the wrapper script (export LOOM_MAIN_AGENT_PID=$$)
+    // so it reflects the actual Claude process PID. A stale value from a previous session
+    // in settings.json would cause the commit-filter hook to incorrectly detect the main
+    // agent as a subagent.
+    env.remove("LOOM_MAIN_AGENT_PID");
+
     Ok(settings)
 }
 
