@@ -5,9 +5,21 @@ use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 /// Maximum number of concurrent client connections allowed.
 pub(super) const MAX_CONNECTIONS: usize = 100;
+
+/// Daemon status indicating process and socket state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DaemonStatus {
+    /// Daemon process not found
+    NotRunning,
+    /// Daemon process running and socket responsive
+    Running,
+    /// Daemon process exists but socket unreachable or unresponsive (hung state)
+    ProcessOnly,
+}
 
 /// Daemon server that listens on a Unix domain socket.
 pub struct DaemonServer {
@@ -56,18 +68,18 @@ impl DaemonServer {
         }
     }
 
-    /// Check if a daemon is already running.
+    /// Check daemon status with socket connectivity test.
     ///
     /// # Arguments
     /// * `work_dir` - The .work/ directory path
     ///
     /// # Returns
-    /// `true` if a daemon is running, `false` otherwise
-    pub fn is_running(work_dir: &Path) -> bool {
+    /// `DaemonStatus` indicating whether the daemon is running and responsive
+    pub fn check_status(work_dir: &Path) -> DaemonStatus {
         let pid_path = work_dir.join("orchestrator.pid");
         let socket_path = work_dir.join("orchestrator.sock");
 
-        // Both PID file and socket must exist for daemon to be considered running
+        // Check if socket file exists
         if !socket_path.exists() {
             // No socket means daemon is not ready to accept connections
             // Clean up stale PID file if it exists
@@ -75,32 +87,60 @@ impl DaemonServer {
                 if let Some(pid) = Self::read_pid(work_dir) {
                     let pid_exists = i32::try_from(pid)
                         .map(|p| unsafe { libc::kill(p, 0) == 0 })
-                        .unwrap_or(false); // PID too large, assume not running
+                        .unwrap_or(false);
                     if !pid_exists {
                         let _ = std::fs::remove_file(&pid_path);
                     }
                 }
             }
-            return false;
+            return DaemonStatus::NotRunning;
         }
 
+        // Check if PID file exists and process is alive
         if let Some(pid) = Self::read_pid(work_dir) {
-            // Check if process exists by sending signal 0
             let pid_exists = i32::try_from(pid)
                 .map(|p| unsafe { libc::kill(p, 0) == 0 })
-                .unwrap_or(false); // PID too large, assume not running
+                .unwrap_or(false);
+
             if !pid_exists {
                 // PID file exists but process is dead, clean up stale files
                 let _ = std::fs::remove_file(&pid_path);
                 let _ = std::fs::remove_file(&socket_path);
-                return false;
+                return DaemonStatus::NotRunning;
             }
-            true
+
+            // Process is alive, now test socket connectivity
+            match UnixStream::connect(&socket_path) {
+                Ok(stream) => {
+                    // Set a short timeout for the connectivity test
+                    let _ = stream.set_read_timeout(Some(Duration::from_millis(100)));
+                    // Connection succeeded - daemon is responsive
+                    DaemonStatus::Running
+                }
+                Err(_) => {
+                    // Process alive but socket unreachable/unresponsive
+                    DaemonStatus::ProcessOnly
+                }
+            }
         } else {
             // Socket exists but no PID file - clean up stale socket
             let _ = std::fs::remove_file(&socket_path);
-            false
+            DaemonStatus::NotRunning
         }
+    }
+
+    /// Check if a daemon is already running.
+    ///
+    /// # Arguments
+    /// * `work_dir` - The .work/ directory path
+    ///
+    /// # Returns
+    /// `true` if a daemon is running (either responsive or hung), `false` otherwise
+    pub fn is_running(work_dir: &Path) -> bool {
+        matches!(
+            Self::check_status(work_dir),
+            DaemonStatus::Running | DaemonStatus::ProcessOnly
+        )
     }
 
     /// Read the PID from the PID file.

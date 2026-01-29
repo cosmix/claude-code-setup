@@ -4,6 +4,10 @@ use crate::daemon::DaemonServer;
 use crate::fs::work_dir::WorkDir;
 use anyhow::{Context, Result};
 use colored::Colorize;
+use nix::sys::signal::{kill, Signal};
+use nix::unistd::Pid;
+use std::thread;
+use std::time::Duration;
 
 /// Execute the stop command to gracefully shut down the daemon
 pub fn execute() -> Result<()> {
@@ -15,10 +19,55 @@ pub fn execute() -> Result<()> {
     }
 
     println!("{} Stopping daemon...", "→".cyan().bold());
-    DaemonServer::stop(work_dir.root()).context("Failed to stop daemon")?;
 
-    println!("{} Daemon stopped", "✓".green().bold());
-    Ok(())
+    // Try graceful shutdown via socket first
+    match DaemonServer::stop(work_dir.root()) {
+        Ok(()) => {
+            println!("{} Daemon stopped", "✓".green().bold());
+            Ok(())
+        }
+        Err(e) => {
+            // Check if daemon process still exists
+            if let Some(pid) = DaemonServer::read_pid(work_dir.root()) {
+                // Socket communication failed but process is alive - try SIGTERM
+                println!(
+                    "{} Daemon not responding, sending SIGTERM...",
+                    "!".yellow().bold()
+                );
+
+                if let Err(kill_err) = kill(Pid::from_raw(pid as i32), Signal::SIGTERM) {
+                    eprintln!("{} Failed to send SIGTERM: {}", "✗".red().bold(), kill_err);
+                    return Err(e).context("Failed to stop daemon");
+                }
+
+                // Wait briefly for process to terminate
+                let mut attempts = 0;
+                let max_attempts = 10; // 1 second total
+                while attempts < max_attempts {
+                    thread::sleep(Duration::from_millis(100));
+
+                    // Check if process is gone
+                    let still_alive = unsafe { libc::kill(pid as i32, 0) == 0 };
+                    if !still_alive {
+                        break;
+                    }
+                    attempts += 1;
+                }
+
+                // Clean up stale files
+                let socket_path = work_dir.root().join("orchestrator.sock");
+                let pid_path = work_dir.root().join("orchestrator.pid");
+                let _ = std::fs::remove_file(&socket_path);
+                let _ = std::fs::remove_file(&pid_path);
+
+                println!("{} Daemon terminated via SIGTERM", "✓".green().bold());
+                Ok(())
+            } else {
+                // Process is already gone, socket communication failed for another reason
+                Err(e).context("Daemon not responding (process not found)")
+            }
+        }
+    }
 }
 
 #[cfg(test)]
