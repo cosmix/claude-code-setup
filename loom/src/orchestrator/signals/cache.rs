@@ -121,6 +121,14 @@ pub fn generate_stable_prefix() -> String {
         "- **Use specialized agents** - security-engineer, senior-infrastructure-engineer, etc.\n",
     );
     content.push_str("- **Use TodoWrite** to plan and track progress\n\n");
+    content.push_str("**Subagent Restrictions (CRITICAL - PREVENTS LOST WORK):**\n\n");
+    content.push_str("When spawning subagents via Task tool, they MUST be told:\n");
+    content.push_str("- ⛔ **NEVER run `git commit`** - only the main agent commits\n");
+    content.push_str(
+        "- ⛔ **NEVER run `loom stage complete`** - only the main agent completes stages\n",
+    );
+    content.push_str("- ⛔ **NEVER run `git add -A` or `git add .`** - only specific files\n");
+    content.push_str("- Subagents write code and report results; main agent handles git\n\n");
     content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");

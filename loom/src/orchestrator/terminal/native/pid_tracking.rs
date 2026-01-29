@@ -316,6 +316,9 @@ cd '{}' || {{ echo "Failed to cd to working directory"; exit 1; }}
 export LOOM_SESSION_ID="{session_id}"
 export LOOM_STAGE_ID="{stage_id}"
 export LOOM_WORK_DIR="{work_dir}"
+# CRITICAL: LOOM_MAIN_AGENT_PID allows hooks to detect subagents
+# Subagents inherit this var but have different $PPID - hooks can compare
+export LOOM_MAIN_AGENT_PID=$$
 
 {cd_section}# Write our PID to the tracking file
 echo $$ > "{pid_file}"
@@ -396,6 +399,8 @@ mod tests {
         assert!(content.contains("LOOM_STAGE_ID"));
         assert!(content.contains(stage_id));
         assert!(content.contains("LOOM_WORK_DIR"));
+        // Check main agent PID tracking for subagent detection
+        assert!(content.contains("LOOM_MAIN_AGENT_PID"));
 
         // Check executable
         #[cfg(unix)]

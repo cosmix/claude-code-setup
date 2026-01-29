@@ -237,9 +237,36 @@ If you `cd` into subdirectories, return first. Path shown in signal file under "
 
 The stop hook BLOCKS exit if uncommitted changes exist or stage is still "Executing".
 
-### 5. SUBAGENT INJECTION
+### 5. SUBAGENT RESTRICTIONS (CRITICAL - PREVENTS LOST WORK)
 
-First line of EVERY subagent prompt: `** READ CLAUDE.md IMMEDIATELY AND FOLLOW ALL ITS RULES. **`
+**⛔ SUBAGENTS MUST NEVER:**
+
+1. **Run `git commit`** - Only the main agent commits
+2. **Run `loom stage complete`** - Only the main agent completes stages
+3. **Run `git add -A` or `git add .`** - No bulk staging
+
+**Why?** Subagent commits cause LOST WORK:
+- Subagent commits partial work before main agent coordinates everything
+- Subagent marks stage complete before other subagents finish
+- Main agent loses track of what's been committed
+
+**Subagents SHOULD:**
+- Write code to their assigned files
+- Run tests to verify their work
+- Report completion status to the main agent
+- Let the main agent handle ALL git operations and stage completion
+
+**SUBAGENT INJECTION - First line of EVERY subagent prompt:**
+
+```text
+** READ CLAUDE.md IMMEDIATELY AND FOLLOW ALL ITS RULES. **
+
+⛔ SUBAGENT RESTRICTIONS - YOU ARE A SUBAGENT:
+- NEVER run git commit - the main agent will commit your work
+- NEVER run loom stage complete - the main agent will complete the stage
+- NEVER run git add -A or git add . - the main agent handles staging
+- DO write code, run tests, and report results back
+```
 
 ### 6. EXECUTING PARALLEL SUBAGENTS (MANDATORY)
 
@@ -255,6 +282,12 @@ If your stage has an `EXECUTION PLAN` block with subagents, you MUST execute it 
 
 ```text
 ** READ CLAUDE.md IMMEDIATELY AND FOLLOW ALL ITS RULES. **
+
+⛔ SUBAGENT RESTRICTIONS - YOU ARE A SUBAGENT:
+- NEVER run git commit - the main agent will commit your work
+- NEVER run loom stage complete - the main agent will complete the stage
+- NEVER run git add -A or git add . - the main agent handles staging
+- DO write code, run tests, and report results back
 
 ## Assignment: [specific task from execution plan]
 ## Files You Own: [paths - EXCLUSIVE write access]
@@ -315,10 +348,16 @@ Skills expand to detailed prompts with domain expertise. Use `/skill-name` synta
 
 #### Delegation Pattern
 
-When delegating to subagents, include skill hints:
+When delegating to subagents, include skill hints AND restrictions:
 
 ```text
 ** READ CLAUDE.md FILES IMMEDIATELY AND FOLLOW ALL THEIR RULES. **
+
+⛔ SUBAGENT RESTRICTIONS - YOU ARE A SUBAGENT:
+- NEVER run git commit - the main agent will commit your work
+- NEVER run loom stage complete - the main agent will complete the stage
+- NEVER run git add -A or git add . - the main agent handles staging
+- DO write code, run tests, and report results back
 
 ## Assignment: [task]
 ## Relevant Skills: /auth, /testing (use if applicable)
@@ -691,9 +730,11 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 
 ```text
 Response with multiple tool calls:
-  Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection]\n\n## Assignment: X\n## Files You Own: path/a/**\n...")
-  Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection]\n\n## Assignment: Y\n## Files You Own: path/b/**\n...")
+  Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection + SUBAGENT RESTRICTIONS]\n\n## Assignment: X\n## Files You Own: path/a/**\n...")
+  Task(subagent_type="software-engineer", prompt="[CLAUDE.md injection + SUBAGENT RESTRICTIONS]\n\n## Assignment: Y\n## Files You Own: path/b/**\n...")
 ```
+
+**⛔ REMINDER: Subagent prompts MUST include the SUBAGENT RESTRICTIONS block (see Rule 5).**
 
 **WRONG:** One subagent at a time (sequential)
 **CORRECT:** All subagents in one message (parallel)

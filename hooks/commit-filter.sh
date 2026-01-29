@@ -66,6 +66,65 @@ if [[ -z "$COMMAND" ]]; then
 	exit 0
 fi
 
+# === SUBAGENT COMMIT PREVENTION ===
+# Block git commits from subagents (per ISSUES.md #3)
+# Main agent sets LOOM_MAIN_AGENT_PID in wrapper script
+# Subagents inherit this var but have different $PPID
+
+if [[ -n "$LOOM_MAIN_AGENT_PID" ]]; then
+	{
+		echo "DEBUG: LOOM_MAIN_AGENT_PID=$LOOM_MAIN_AGENT_PID, PPID=$PPID"
+	} >>"$DEBUG_LOG" 2>&1
+
+	# Check if this is a subagent (PPID doesn't match main agent PID)
+	if [[ "$PPID" != "$LOOM_MAIN_AGENT_PID" ]]; then
+		# Check if this is a git commit or loom stage complete command
+		if echo "$COMMAND" | grep -qiE 'git[[:space:]]+(commit|add[[:space:]]+-A|add[[:space:]]+\.)'; then
+			{
+				echo "DEBUG: BLOCKED - Subagent attempting git operation"
+			} >>"$DEBUG_LOG" 2>&1
+
+			cat >&2 <<'EOF'
+⛔ BLOCKED: Subagent attempting git operation.
+
+You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
+- NEVER run `git commit` - only the main agent commits
+- NEVER run `git add -A` or `git add .` - main agent handles staging
+
+Your job is to:
+1. Write code to your assigned files
+2. Run tests to verify your work
+3. Report results back to the main agent
+4. Let the main agent handle ALL git operations
+
+The main agent will commit your work after all subagents complete.
+EOF
+			exit 2
+		fi
+
+		if echo "$COMMAND" | grep -qiE 'loom[[:space:]]+stage[[:space:]]+complete'; then
+			{
+				echo "DEBUG: BLOCKED - Subagent attempting loom stage complete"
+			} >>"$DEBUG_LOG" 2>&1
+
+			cat >&2 <<'EOF'
+⛔ BLOCKED: Subagent attempting to complete stage.
+
+You are a SUBAGENT (spawned via Task tool). Per CLAUDE.md rules:
+- NEVER run `loom stage complete` - only the main agent completes stages
+
+Your job is to:
+1. Complete your assigned work
+2. Report results back to the main agent
+3. Let the main agent handle stage completion
+
+The main agent will complete the stage after all subagents finish.
+EOF
+			exit 2
+		fi
+	fi
+fi
+
 # === CLAUDE ATTRIBUTION CHECK ===
 # Block git commits with Co-Authored-By lines mentioning Claude/Anthropic (per CLAUDE.md rule 8)
 
