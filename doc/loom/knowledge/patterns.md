@@ -1160,3 +1160,10 @@ Location: `orchestrator/terminal/emulator.rs` - escape_applescript_string(), esc
 
 - **Fixed shell injection vulnerabilities in MateTerminal and XTerm emulator commands by adding escape_shell_single_quote() function**
   - *Rationale:* MateTerminal used unescaped single quotes allowing command injection. XTerm concatenated workdir directly into shell command. Both now properly escape using standard shell escaping pattern.
+
+## Promoted from Memory [2026-01-29 21:33]
+
+### Notes
+
+- Integration verification passed for worktree isolation enforcement: All acceptance criteria met (cargo test, clippy, build). Sandbox defaults include deny rules for path traversal. Signal generation includes Worktree Isolation section with ALLOWED and FORBIDDEN lists. Hook enforcement validates bash commands and file paths.
+- Goal-backward verification truths were prose descriptions instead of shell commands. Manually verified: 1) Sandbox defaults in types.rs:155-179 include deny_read with ../../** and ../.worktrees/**, deny_write with ../../** and .work/stages/**, .work/sessions/**. 2) Signal format/sections.rs includes Worktree Isolation section. 3) hooks/validators/bash.rs validates git -C, path traversal, cross-worktree access.
