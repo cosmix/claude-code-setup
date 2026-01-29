@@ -180,7 +180,35 @@ Include a visual execution diagram:
 
 Stages in `[a, b]` notation run concurrently.
 
-### 7. Loom Metadata Format
+### 7. Goal-Backward Verification (MANDATORY - VALIDATED)
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  ⚠️ STANDARD STAGES MUST HAVE VERIFICATION FIELDS                   │
+│                                                                     │
+│  Every stage with `stage_type: standard` MUST define at least ONE:  │
+│                                                                     │
+│  • truths     - Shell commands that return exit 0 if behavior works │
+│  • artifacts  - Files that must exist with real implementation      │
+│  • wiring     - Code patterns proving integration                   │
+│                                                                     │
+│  ⛔ `loom init` REJECTS plans that violate this requirement         │
+│                                                                     │
+│  Knowledge and integration-verify stages are EXEMPT.                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this is validated:** We have had MANY instances where tests pass but the feature is never wired up. These fields catch that.
+
+**Quick Reference:**
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `truths` | Observable behaviors | `"myapp --help"`, `"curl -f localhost:8080"` |
+| `artifacts` | Files that must exist | `"src/feature.rs"`, `"tests/feature_test.rs"` |
+| `wiring` | Integration patterns | `source: "src/main.rs"`, `pattern: "mod feature"` |
+
+### 8. Loom Metadata Format
 
 Plans contain embedded YAML wrapped in HTML comments:
 
@@ -224,6 +252,27 @@ loom:
 ````
 
 **YAML Formatting Rules:**
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  ⛔ NEVER PUT TRIPLE BACKTICKS INSIDE YAML DESCRIPTIONS             │
+│                                                                     │
+│  This BREAKS the YAML parser and causes validation to fail with    │
+│  confusing errors (e.g., "missing truths/artifacts" when they      │
+│  exist but weren't parsed).                                        │
+│                                                                     │
+│  ❌ WRONG:  description: |                                          │
+│               Here's an example:                                    │
+│               ```markdown                                           │
+│               ## Title                                              │
+│               ```                                                   │
+│                                                                     │
+│  ✅ CORRECT: description: |                                         │
+│               Here's an example:                                    │
+│                 ## Title                                            │
+│                 Content here (plain indented text)                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 | Rule                     | Correct                 | Incorrect             |
 | ------------------------ | ----------------------- | --------------------- |
@@ -314,9 +363,13 @@ This is a very common mistake. ALL path fields resolve relative to `working_dir`
 
 **Rule:** If `working_dir: "loom"`, write paths as if you're already IN `loom/`.
 
-### 8. Goal-Backward Verification (REQUIRED)
+### 9. Goal-Backward Verification Details
 
-**Every stage MUST have at least ONE of: truths, artifacts, or wiring.**
+**Every `standard` stage MUST have at least ONE of: truths, artifacts, or wiring.**
+
+⛔ **This is VALIDATED by `loom init` — plans will be REJECTED if standard stages lack these fields.**
+
+Knowledge and integration-verify stages are exempt (they have different purposes).
 
 These fields verify the feature actually works, not just that tests pass:
 
@@ -345,7 +398,7 @@ wiring:
 
 **Minimum requirement:** At least ONE field with at least ONE entry. More is better for critical stages.
 
-### 9. Knowledge Bootstrap Stage (First)
+### 10. Knowledge Bootstrap Stage (First)
 
 Captures codebase understanding before implementation:
 
@@ -393,7 +446,7 @@ Captures codebase understanding before implementation:
 
 **Skip ONLY if:** `doc/loom/knowledge/` already populated or user explicitly states knowledge exists.
 
-### 10. Integration Verify Stage (Last)
+### 11. Integration Verify Stage (Last)
 
 Verifies all work integrates correctly after merges AND that the feature actually works:
 
@@ -482,7 +535,7 @@ Verifies all work integrates correctly after merges AND that the feature actuall
 | **Wiring verification** | **Features must be connected to actually work**    |
 | **Functional proof**    | **Smoke test proves the feature is usable**        |
 
-### 11. Memory Recording in Stage Descriptions
+### 12. Memory Recording in Stage Descriptions
 
 **Every stage description should remind agents to record memory.** Memory persists insights across sessions and prevents repeated mistakes.
 
@@ -518,7 +571,7 @@ description: |
 | Decision documentation | Records WHY choices were made, not just what was done |
 | Learning transfer | Memory → Knowledge transfer makes lessons permanent |
 
-### 12. Memory vs Knowledge Rules
+### 13. Memory vs Knowledge Rules
 
 **CRITICAL: Different stages have different recording permissions.**
 
@@ -550,7 +603,7 @@ During implementation stages, you MUST:
 
 **Exception:** If you discover a CRITICAL MISTAKE that would block other stages, record it immediately with `loom knowledge update mistakes "..."` AND document why in your commit message.
 
-### 13. Plan Document Structure
+### 14. Plan Document Structure
 
 **Plans have TWO sections: human-readable content FIRST, YAML metadata LAST.**
 
@@ -580,7 +633,7 @@ During implementation stages, you MUST:
 | Maintainability | Humans can review/edit the readable section easily |
 | Machine processing | YAML at bottom still enables loom CLI parsing |
 
-### 14. After Writing Plan
+### 15. After Writing Plan
 
 1. Write plan to `doc/plans/PLAN-<name>.md`
 2. **STOP** - Do NOT implement
@@ -600,7 +653,7 @@ During implementation stages, you MUST:
 5. **Testable Acceptance**: Every acceptance criterion must be a runnable command
 6. **Bookend Compliance**: Always include knowledge-bootstrap first and integration-verify last
 7. **Working Directory**: Every stage must declare its `working_dir` explicitly
-8. **Goal-Backward Verification**: Every stage MUST have at least one of `truths`, `artifacts`, or `wiring`
+8. **Goal-Backward Verification**: Every `standard` stage MUST have at least one of `truths`, `artifacts`, or `wiring` (VALIDATED - plans will be REJECTED without this)
 
 ## Examples
 
