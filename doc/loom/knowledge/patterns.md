@@ -1016,7 +1016,39 @@ Key hooks:
 
 - commit-guard.sh (Stop): Blocks exit if uncommitted changes or stage incomplete
 - prefer-modern-tools.sh (PreToolUse): Blocks grep/find, suggests Grep/Glob tools
-- commit-filter.sh (PreToolUse): Blocks commits with Claude/Anthropic attribution
+- commit-filter.sh (PreToolUse): Blocks commits with Claude/Anthropic attribution AND subagent commits
+
+### Subagent Commit Prevention (CRITICAL)
+
+**Problem:** Subagents spawned via Task tool were committing partial work or calling `loom stage complete`, causing LOST WORK.
+
+**Solution:** Three-layer defense:
+
+1. **Documentation** (CLAUDE.md.template Rule 5): Subagent restrictions in every Task prompt
+2. **Signal injection** (cache.rs): Subagent restrictions in stable prefix
+3. **Hook enforcement** (commit-filter.sh): Blocks git commit and loom stage complete from subagents
+
+**Detection mechanism:**
+
+- Wrapper script (pid_tracking.rs) exports `LOOM_MAIN_AGENT_PID=$$`
+- Main agent: `$PPID == $LOOM_MAIN_AGENT_PID` (hook's parent is main agent)
+- Subagent: `$PPID != $LOOM_MAIN_AGENT_PID` (hook's parent is subagent, not main)
+- Hook compares $PPID to $LOOM_MAIN_AGENT_PID to detect subagent context
+
+**Blocked operations for subagents:**
+
+- `git commit` (any form)
+- `git add -A` or `git add .` (bulk staging)
+- `loom stage complete` (stage completion)
+
+**Allowed for subagents:**
+
+- Writing code to assigned files
+- Running tests
+- Reporting results back to main agent
+- Reading files
+
+Config env vars: LOOM_STAGE_ID, LOOM_SESSION_ID, LOOM_WORK_DIR, LOOM_MAIN_AGENT_PID
 
 ## Git Hooks (continued)
 
@@ -1039,7 +1071,7 @@ Hook events logged to: .work/hooks/events.jsonl (JSON Lines format)
 - skill-trigger.sh (UserPromptSubmit): Suggests skills based on prompt keywords
 - skill-index-builder.sh: Builds keyword index from SKILL.md files
 
-Config in .claude/settings.json with env vars: LOOM_STAGE_ID, LOOM_SESSION_ID, LOOM_WORK_DIR
+Config in .claude/settings.json with env vars: LOOM_STAGE_ID, LOOM_SESSION_ID, LOOM_WORK_DIR, LOOM_MAIN_AGENT_PID
 
 ## Signal Cache System
 
@@ -1063,3 +1095,61 @@ Signal sections for LLM cache optimization:
 
 Hash computed via SHA-256 (first 16 hex chars) for cache debugging.
 Stable prefixes are deterministic across invocations to maximize KV-cache hits.
+
+## Security Validation Patterns (2026-01-29)
+
+### Input Validation at Boundaries
+
+CRITICAL: All IDs used in path construction MUST be validated with validate_id() from crate::validation.
+
+Files requiring validation:
+
+- `fs/stage_loading.rs` - validate stage_id after YAML parse
+- `fs/verifications.rs` - validate stage_id in store/load/delete
+- `fs/stage_files.rs` - defensive check in find_stage_file  
+- `diagnosis/signal.rs` - validate session_id before path use
+
+### Shell Command Security
+
+When building shell commands for terminal spawning:
+
+- NEVER concatenate user input directly into command strings
+- Use argument arrays instead of shell string interpolation
+- Single quotes in content need escaping (MateTerminal)
+- Working directories should be validated paths, not string concatenation (XTerm)
+
+### Release Asset Security
+
+Current state: Only binary files are signature-verified via minisign.
+
+Gap: Non-binary release assets lack verification:
+
+- CLAUDE.md.template
+- agents.zip
+- skills.zip
+
+Recommended: Add SHA256 checksum verification for all release assets.
+
+### Environment Variable Expansion
+
+When expanding ${VAR} in strings, use positional/indexed replacement:
+
+- WRONG: content.replace(var_pattern, value) - affects ALL occurrences
+- RIGHT: Replace only at matched position to handle overlapping names ($FOO vs $FOOBAR)
+
+### Race Condition Prevention
+
+Lock acquisition patterns should use atomic operations:
+
+- File locks: Use flock/fcntl with proper error handling
+- Sequence numbers: Use atomic increment or lock file
+
+## Shell String Escaping Pattern
+
+When constructing shell commands with untrusted input (paths, stage IDs, commands):
+
+- **Single-quoted strings**: Escape single quotes with pattern `'\''` (end quote, escaped quote, start quote)
+- **Double-quoted strings**: Escape backslashes and double quotes
+- **AppleScript strings**: Escape backslashes and double quotes with backslash prefix
+
+Location: `orchestrator/terminal/emulator.rs` - escape_applescript_string(), escape_shell_single_quote()
