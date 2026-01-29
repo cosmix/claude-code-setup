@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use crate::parser::frontmatter::extract_yaml_frontmatter;
+
 use super::matcher::{match_skills, normalize_text};
 use super::types::{SkillMatch, SkillMetadata};
 
@@ -86,28 +88,8 @@ impl SkillIndex {
 
     /// Parse YAML frontmatter from skill file content
     fn parse_frontmatter(content: &str) -> Result<SkillMetadata> {
-        // Find frontmatter delimiters
-        let lines: Vec<&str> = content.lines().collect();
-
-        if lines.is_empty() || lines[0].trim() != "---" {
-            anyhow::bail!("Missing opening frontmatter delimiter");
-        }
-
-        // Find closing delimiter
-        let end_idx = lines
-            .iter()
-            .skip(1)
-            .position(|line| line.trim() == "---")
-            .ok_or_else(|| anyhow::anyhow!("Missing closing frontmatter delimiter"))?
-            + 1;
-
-        // Extract YAML content
-        let yaml_content = lines[1..end_idx].join("\n");
-
-        let metadata: SkillMetadata =
-            serde_yaml::from_str(&yaml_content).context("Failed to parse YAML frontmatter")?;
-
-        Ok(metadata)
+        let yaml = extract_yaml_frontmatter(content)?;
+        serde_yaml::from_value(yaml).context("Failed to parse SkillMetadata from frontmatter")
     }
 
     /// Add a skill to the index
