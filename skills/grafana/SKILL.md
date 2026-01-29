@@ -4,7 +4,7 @@ description: |
   Observability visualization with Grafana and LGTM stack. Dashboard design, panel configuration, alerting, variables/templating, and data sources.
 
   USE WHEN: Creating Grafana dashboards, configuring panels and visualizations, writing LogQL/TraceQL queries, setting up Grafana data sources, configuring dashboard variables and templates, building Grafana alerts.
-  DO NOT USE: For writing PromQL queries (use /prometheus), for alerting rule strategy (use /prometheus), for general observability architecture (use senior-infrastructure-engineer).
+  DO NOT USE: For writing PromQL queries (use /prometheus), for alerting rule strategy (use /prometheus), for general observability architecture (use senior-software-engineer with infrastructure focus).
 
   TRIGGERS: grafana, dashboard, panel, visualization, logql, traceql, loki, tempo, mimir, data source, annotation, variable, template, row, stat, graph, table, heatmap, gauge, bar chart, pie chart, time series, logs panel, traces panel, LGTM stack.
 triggers:
@@ -65,9 +65,8 @@ This skill covers setup, configuration, dashboard creation, panel design, queryi
 
 ### Who Uses This Skill
 
-- **senior-infrastructure-engineer** (PRIMARY): Production observability setup, LGTM stack deployment, dashboard architecture
+- **senior-software-engineer** (PRIMARY): Production observability setup, LGTM stack deployment, dashboard architecture (use infrastructure skills for deployment)
 - **software-engineer**: Application dashboards, service metrics visualization
-- **devops-engineer**: Infrastructure monitoring, deployment dashboards
 
 ## LGTM Stack Components
 

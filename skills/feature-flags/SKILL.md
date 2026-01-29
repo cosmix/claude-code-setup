@@ -14,8 +14,8 @@ Feature flags (also called feature toggles or feature gates) enable runtime cont
 
 - **senior-software-engineer** - Feature flag strategy, architecture decisions, rollout planning
 - **software-engineer** - Implements feature flags, integrations, and flag evaluation logic
-- **security-engineer** - Feature flag security, access controls, audit logging
-- **senior-infrastructure-engineer** - Feature flag infrastructure, distributed systems, caching strategies
+- **senior-software-engineer** - Feature flag security, access controls, audit logging
+- **senior-software-engineer** - Feature flag infrastructure, distributed systems, caching strategies
 
 ## Key Concepts
 
@@ -1289,8 +1289,8 @@ Use the feature-flags skill for:
 | ------------------------------ | ------------------------------ | --------------------------------------------------- |
 | Design flag architecture       | senior-software-engineer       | Strategic decisions on flag types, rollout strategy |
 | Implement flag service         | software-engineer              | Build evaluation logic, integrations                |
-| Review flag security           | security-engineer              | Access controls, audit logging, sensitive data      |
-| Scale flag infrastructure      | senior-infrastructure-engineer | Distributed caching, performance, failover          |
+| Review flag security           | senior-software-engineer              | Access controls, audit logging, sensitive data      |
+| Scale flag infrastructure      | senior-software-engineer | Distributed caching, performance, failover          |
 | Integrate LaunchDarkly/Unleash | software-engineer              | SDK integration, webhook setup                      |
 | Plan ML model rollout          | senior-software-engineer       | Performance routing, fallback strategy              |
 | Implement cleanup automation   | software-engineer              | Code scanning, impact analysis                      |

@@ -6,7 +6,6 @@ use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::parser::frontmatter::parse_from_markdown;
 
-use super::checkpoints::CheckpointWatcher;
 use super::config::MonitorConfig;
 use super::detection::Detection;
 use super::events::MonitorEvent;
@@ -18,7 +17,6 @@ pub struct Monitor {
     config: MonitorConfig,
     pub(super) detection: Detection,
     pub(super) handlers: Handlers,
-    pub(super) checkpoint_watcher: CheckpointWatcher,
     pub(super) heartbeat_watcher: HeartbeatWatcher,
 }
 
@@ -28,7 +26,6 @@ impl Monitor {
         Self {
             handlers: Handlers::new(config.clone()),
             detection: Detection::new(),
-            checkpoint_watcher: CheckpointWatcher::new(),
             heartbeat_watcher,
             config,
         }
@@ -46,18 +43,6 @@ impl Monitor {
             self.detection
                 .detect_session_changes(&sessions, &stages, &self.handlers),
         );
-
-        // Poll for checkpoint events
-        let checkpoint_results = self.checkpoint_watcher.poll(&self.config.work_dir);
-        for result in checkpoint_results {
-            events.push(MonitorEvent::CheckpointCreated {
-                session_id: result.session_id,
-                task_id: result.task_id,
-                verification_passed: result.verification_passed,
-                warnings: result.warnings,
-                stage_complete: result.stage_complete,
-            });
-        }
 
         // Poll for heartbeat updates and detect hung sessions
         events.extend(self.detection.detect_heartbeat_events(

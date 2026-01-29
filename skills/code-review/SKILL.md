@@ -12,10 +12,12 @@ This skill provides thorough code review capabilities across multiple domains, a
 
 ## Agent Assignment
 
-- **senior-software-engineer** (Opus) - Architecture, design patterns, complex logic review
-- **security-engineer** (Opus) - Security vulnerabilities, authentication, authorization, data protection
-- **senior-infrastructure-engineer** (Opus) - Infrastructure code (Terraform, K8s, Docker), deployment, scaling
+When performing code reviews, consider using specialized skills for domain-specific expertise:
+
+- **senior-software-engineer** (Opus) - Architecture, design patterns, complex logic review, security review (use `/security-audit` skill), infrastructure review
 - **software-engineer** (Sonnet) - Responds to review feedback, implements fixes
+
+For specialized reviews, use relevant skills such as `/security-audit` for security concerns, `/concurrency` for thread safety, `/data-validation` for input validation, etc.
 
 ## Instructions
 

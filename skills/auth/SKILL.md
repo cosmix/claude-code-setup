@@ -77,7 +77,7 @@ This skill covers comprehensive authentication and authorization strategies for 
 - Planning token rotation, refresh strategies, or session lifecycle
 - Making cross-cutting security decisions
 
-**security-engineer (Opus)** - Request review when:
+**senior-software-engineer (Opus)** - Request review when:
 
 - Implementing password hashing or credential storage
 - Handling sensitive tokens (refresh tokens, API keys)
@@ -85,9 +85,6 @@ This skill covers comprehensive authentication and authorization strategies for 
 - Adding MFA or step-up authentication
 - Dealing with PII, compliance, or regulatory requirements
 - ANY authentication/authorization implementation before production
-
-**senior-infrastructure-engineer (Opus)** - Consult when:
-
 - Setting up identity providers (Keycloak, Auth0, Cognito)
 - Configuring SSO, SAML, or OIDC integrations
 - Scaling session storage (Redis clusters, distributed sessions)
@@ -565,7 +562,7 @@ async function verifyMFA(userId: string, code: string): Promise<boolean> {
 
 ## Security Considerations
 
-**Critical Security Checklist** (for security-engineer review):
+**Critical Security Checklist** (for senior-software-engineer review):
 
 1. **Credential Storage**
    - Never log passwords, tokens, or API keys

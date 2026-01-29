@@ -65,8 +65,8 @@ Use this skill when the user requests:
 - API redesign requiring migration paths
 - Cross-cutting refactoring with unclear scope
 - Performance optimization requiring profiling
-- Infrastructure refactoring (delegate to senior-infrastructure-engineer)
-- Security-sensitive refactoring (delegate to security-engineer)
+- Infrastructure refactoring (use infrastructure-related skills like /terraform, /kubernetes)
+- Security-sensitive refactoring (use /security-audit and /threat-model skills)
 
 ## Instructions
 

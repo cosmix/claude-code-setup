@@ -18,7 +18,7 @@ Loom solves these problems with three integrated components:
 | Component    | Purpose                                          |
 | ------------ | ------------------------------------------------ |
 | **loom CLI** | Manages persistent work state across sessions    |
-| **Agents**   | 4 specialized AI agents (2 Opus, 2 Sonnet)       |
+| **Agents**   | 3 specialized AI agents (2 Opus, 1 Sonnet)       |
 | **Skills**   | Reusable knowledge modules loaded dynamically    |
 
 Together, they implement the **Signal Principle**: *"If you have a signal, answer it."* Agents check for pending signals on startup and resume work automatically.
@@ -136,7 +136,7 @@ bash install.sh
 
 | Location              | Contents                              |
 | --------------------- | ------------------------------------- |
-| `~/.claude/agents/`   | 4 specialized AI agents               |
+| `~/.claude/agents/`   | 3 specialized AI agents               |
 | `~/.claude/skills/`   | Reusable knowledge modules            |
 | `~/.claude/CLAUDE.md` | Orchestration rules and configuration |
 | `~/.local/bin/loom`   | Loom CLI binary                       |
@@ -278,12 +278,11 @@ Run `loom verify <stage-id>` to check all layers.
 
 ## Agent Hierarchy
 
-| Agent                            | Model  | Purpose                                           |
-| -------------------------------- | ------ | ------------------------------------------------- |
-| `senior-software-engineer`       | Opus   | Architecture, design patterns, complex debugging  |
-| `software-engineer`              | Sonnet | Feature implementation, bug fixes, tests          |
-| `security-engineer`              | Opus   | Security review, threat modeling, audits          |
-| `senior-infrastructure-engineer` | Opus   | Cloud architecture, IaC, Kubernetes, CI/CD        |
+| Agent                      | Model  | Purpose                                              |
+| -------------------------- | ------ | ---------------------------------------------------- |
+| `senior-software-engineer` | Opus   | Architecture, design patterns, complex debugging     |
+| `software-engineer`        | Sonnet | Feature implementation, bug fixes, tests             |
+| `code-reviewer`            | Opus   | Read-only code review, security review, architecture |
 
 ## Skills Library
 

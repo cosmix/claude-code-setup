@@ -65,17 +65,8 @@ fn setup_loom(repo_root: &Path, plan_content: &str) -> Result<()> {
     // Create .work directory structure
     let loom_work_dir = repo_root.join(".work");
     let subdirs = [
-        "runners",
-        "tracks",
-        "signals",
-        "handoffs",
-        "archive",
-        "stages",
-        "sessions",
-        "logs",
+        "runners", "tracks", "signals", "handoffs", "archive", "stages", "sessions", "logs",
         "crashes",
-        "checkpoints",
-        "task-state",
     ];
 
     for subdir in &subdirs {

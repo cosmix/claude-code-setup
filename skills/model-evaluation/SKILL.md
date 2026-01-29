@@ -29,9 +29,7 @@ Use this skill when you need to:
 
 **When to Escalate:**
 
-- **senior-software-engineer (Opus)**: For ML system architecture decisions, model selection strategies, complex evaluation pipeline design
-- **security-engineer (Opus)**: For adversarial robustness evaluation, model poisoning detection, security-aware metrics
-- **senior-infrastructure-engineer (Opus)**: For distributed evaluation infrastructure, large-scale benchmarking, production monitoring architecture
+- **senior-software-engineer (Opus)**: For ML system architecture decisions, model selection strategies, complex evaluation pipeline design, distributed evaluation infrastructure, large-scale benchmarking, production monitoring architecture, adversarial robustness evaluation, model poisoning detection, security-aware metrics (use /security-audit and /threat-model skills for security concerns)
 
 **Complementary Skills:**
 

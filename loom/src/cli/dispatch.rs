@@ -1,17 +1,15 @@
 use anyhow::Result;
-use loom::checkpoints::CheckpointStatus;
 use loom::commands::{
-    checkpoint, clean, diagnose, graph, hooks, init, knowledge, map, memory, merge, repair, resume,
-    run, sandbox, self_update, sessions, stage, status, stop, verify, worktree_cmd,
+    clean, diagnose, graph, hooks, init, knowledge, map, memory, merge, repair, resume, run,
+    sandbox, self_update, sessions, stage, status, stop, verify, worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::types::{
-    CheckpointCommands, Cli, Commands, GraphCommands, HooksCommands, KnowledgeCommands,
-    MemoryCommands, OutputCommands, SandboxCommands, SessionsCommands, StageCommands,
-    WorktreeCommands,
+    Cli, Commands, GraphCommands, HooksCommands, KnowledgeCommands, MemoryCommands, OutputCommands,
+    SandboxCommands, SessionsCommands, StageCommands, WorktreeCommands,
 };
 
 pub fn dispatch(command: Commands) -> Result<()> {
@@ -142,19 +140,6 @@ pub fn dispatch(command: Commands) -> Result<()> {
             overwrite,
         } => map::execute(deep, focus, overwrite),
         Commands::Stop => stop::execute(),
-        Commands::Checkpoint { command } => match command {
-            CheckpointCommands::Create {
-                task_id,
-                status,
-                force,
-                outputs,
-                notes,
-            } => {
-                let status = status.parse::<CheckpointStatus>()?;
-                checkpoint::execute(task_id, status, force, outputs, notes)
-            }
-            CheckpointCommands::List { session } => checkpoint::list(session),
-        },
         Commands::Diagnose { stage_id } => diagnose::execute(&stage_id),
         Commands::Verify { stage_id, suggest } => verify::execute(&stage_id, suggest),
         Commands::Completions { shell } => {

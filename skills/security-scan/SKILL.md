@@ -35,7 +35,7 @@ This skill provides quick, routine security checks that should be run frequently
 - **After dependency updates**: Verify no new CVEs
 - **Quick sanity checks**: Fast verification during development
 
-For comprehensive security work, use the `security-audit` skill or invoke the `security-engineer` agent.
+For comprehensive security work, use the `security-audit` skill or escalate to the `senior-software-engineer` agent with `/security-audit` and `/threat-model` skills.
 
 ## Quick Scan Checklist
 
@@ -397,7 +397,7 @@ snyk test --all-projects --severity-threshold=high
 
 ## Escalation
 
-Escalate to full `security-audit` or `security-engineer` when:
+Escalate to full `security-audit` skill or `senior-software-engineer` agent (with `/security-audit` and `/threat-model` skills) when:
 
 - Critical findings discovered
 - Unusual or complex vulnerabilities

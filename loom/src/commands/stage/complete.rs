@@ -1,12 +1,10 @@
 //! Stage completion logic
 
 use anyhow::{Context, Result};
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::fs::permissions::sync_worktree_permissions;
 use crate::fs::session_files::find_session_for_stage;
-use crate::fs::task_state::read_task_state_if_exists;
 use crate::fs::work_dir::load_config;
 use crate::git::worktree::{find_repo_root_from_cwd, find_worktree_root_from_cwd};
 use crate::models::stage::{StageStatus, StageType};
@@ -14,7 +12,6 @@ use crate::plan::parser::parse_plan;
 use crate::plan::schema::StageDefinition;
 use crate::verify::criteria::run_acceptance;
 use crate::verify::goal_backward::run_goal_backward_verification;
-use crate::verify::task_verification::run_task_verifications;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
 use super::acceptance_runner::resolve_acceptance_dir;
@@ -220,54 +217,8 @@ pub fn complete(
         return Ok(());
     }
 
-    // If --no-verify was used, skip task verifications and merge
+    // If --no-verify was used, skip verifications and merge
     if !no_verify {
-        // Run task verifications if task state exists
-        if let Some(task_state) = read_task_state_if_exists(work_dir, &stage_id)? {
-            println!("Running task verifications...");
-            let worktree_path = working_dir.as_deref().unwrap_or(Path::new("."));
-
-            // Collect all verification rules from tasks
-            let all_rules: Vec<_> = task_state
-                .tasks
-                .iter()
-                .flat_map(|t| t.verification.iter().cloned())
-                .collect();
-
-            if !all_rules.is_empty() {
-                // Build outputs map from stage outputs (convert Value to String)
-                let outputs: HashMap<String, String> = stage
-                    .outputs
-                    .iter()
-                    .map(|o| {
-                        let value_str = match &o.value {
-                            serde_json::Value::String(s) => s.clone(),
-                            other => other.to_string(),
-                        };
-                        (o.key.clone(), value_str)
-                    })
-                    .collect();
-
-                let task_results = run_task_verifications(&all_rules, worktree_path, &outputs);
-                let all_tasks_passed = task_results.iter().all(|r| r.passed);
-
-                if !all_tasks_passed {
-                    stage.try_complete_with_failures()?;
-                    save_stage(&stage, work_dir)?;
-                    println!(
-                        "Stage '{stage_id}' completed with failures - task verifications did not pass"
-                    );
-                    for result in &task_results {
-                        if !result.passed {
-                            println!("  Task verification FAILED: {}", result.message);
-                        }
-                    }
-                    return Ok(());
-                }
-                println!("All task verifications passed!");
-            }
-        }
-
         // Run goal-backward verification (truths, artifacts, wiring)
         if let Some(stage_def) = load_stage_definition_from_plan(&stage_id, work_dir)? {
             let has_goal_checks = !stage_def.truths.is_empty()

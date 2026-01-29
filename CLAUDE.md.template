@@ -662,11 +662,10 @@ Use the Task tool to spawn specialized agents for complex work:
 | Agent | Use Cases |
 | ----- | --------- |
 | `senior-software-engineer` | Architecture design, complex debugging, design patterns, code review, test strategy |
-| `senior-infrastructure-engineer` | Cloud architecture, Terraform/IaC, Kubernetes, Helm, CI/CD pipelines, monitoring |
-| `security-engineer` | Threat modeling, vulnerability analysis, security audits, penetration testing |
 | `software-engineer` | Feature implementation, bug fixes, tests, data pipelines, documentation |
+| `code-reviewer` | Read-only code review, security review, architecture review (cannot modify files) |
 
-**Agent Selection:** Security → security-engineer | Infrastructure → senior-infrastructure-engineer | Architecture/patterns → senior-software-engineer | Standard implementation → software-engineer | Exploration → Explore agent
+**Agent Selection:** Architecture/patterns/strategy → senior-software-engineer | Standard implementation → software-engineer | Code review (read-only) → code-reviewer | Exploration → Explore agent | Use skills for domain expertise (`/security-audit`, `/kubernetes`, `/terraform`, etc.)
 
 #### Skills by Domain
 

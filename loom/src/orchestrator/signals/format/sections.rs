@@ -7,7 +7,7 @@ use crate::skills::SkillMatch;
 use super::super::types::{DependencyStatus, EmbeddedContext, SandboxSummary};
 use super::helpers::{
     extract_tasks_from_stage, format_dependency_outputs, format_dependency_table,
-    format_structured_handoff, format_task_progression,
+    format_structured_handoff,
 };
 
 /// SEMI-STABLE section: Changes per stage, not per session
@@ -486,11 +486,6 @@ pub(super) fn format_recitation_section(
             }
             content.push('\n');
         }
-    }
-
-    // Task progression section (if task state is available)
-    if let Some(task_state) = &embedded_context.task_state {
-        content.push_str(&format_task_progression(task_state));
     }
 
     // Immediate tasks - recited at end for attention

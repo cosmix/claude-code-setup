@@ -10,7 +10,6 @@
 //! - Crashed sessions (PID dead)
 //! - Hung sessions (PID alive but no heartbeat update for threshold duration)
 
-pub mod checkpoints;
 mod config;
 mod context;
 pub mod core;
@@ -23,10 +22,6 @@ pub mod heartbeat;
 #[cfg(test)]
 mod tests;
 
-pub use checkpoints::{
-    generate_correction_guidance, generate_next_task_injection, CheckpointProcessResult,
-    CheckpointWatcher, NextTaskInfo,
-};
 pub use config::MonitorConfig;
 pub use context::{context_health, context_usage_percent, ContextHealth};
 pub use core::Monitor;

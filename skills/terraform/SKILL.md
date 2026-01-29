@@ -20,7 +20,7 @@ This skill covers comprehensive Terraform and OpenTofu infrastructure management
 
 **Preferred Tool: OpenTofu** - OpenTofu is the open-source fork of Terraform maintained by the Linux Foundation. Prefer `tofu` commands over `terraform` when available. The syntax and configuration are fully compatible.
 
-**Primary User: senior-infrastructure-engineer** - This skill supports the senior-infrastructure-engineer agent for all Terraform architecture and implementation work.
+**Primary User: senior-software-engineer** - This skill supports the senior-software-engineer agent for all Terraform architecture and implementation work (infrastructure focus).
 
 ## Instructions
 

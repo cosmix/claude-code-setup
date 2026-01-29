@@ -1,9 +1,8 @@
 //! Dynamic shell completions for loom CLI.
 //!
 //! This module provides context-aware tab-completion for plan files,
-//! stage IDs, session IDs, knowledge files, memory entry types, and checkpoint statuses.
+//! stage IDs, session IDs, knowledge files, and memory entry types.
 
-mod checkpoint;
 mod knowledge;
 mod memory;
 mod plans;
@@ -16,7 +15,6 @@ mod tests;
 use anyhow::Result;
 use std::path::Path;
 
-pub use checkpoint::complete_checkpoint_statuses;
 pub use knowledge::complete_knowledge_files;
 pub use memory::{complete_memory_entry_types, complete_memory_promote_entry_types};
 pub use plans::complete_plan_files;
@@ -122,14 +120,6 @@ pub fn complete_dynamic(ctx: &CompletionContext) -> Result<()> {
             if ctx.cmdline.contains("memory") && ctx.cmdline.contains("promote") =>
         {
             complete_knowledge_files(prefix)?
-        }
-
-        // Checkpoint --session flag completion
-        "--session" if ctx.cmdline.contains("checkpoint") => complete_session_ids(cwd, prefix)?,
-
-        // Checkpoint create --status completion
-        "--status" if ctx.cmdline.contains("checkpoint") && ctx.cmdline.contains("create") => {
-            complete_checkpoint_statuses(prefix)?
         }
 
         // Stage subcommands that take stage_id (all in one pattern)

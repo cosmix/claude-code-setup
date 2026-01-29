@@ -157,30 +157,6 @@ fn test_complete_memory_promote_entry_types_with_prefix() {
     assert!(results.contains(&"all".to_string()));
 }
 
-// Checkpoint status completion tests
-
-#[test]
-fn test_complete_checkpoint_statuses_all() {
-    let results = complete_checkpoint_statuses("").unwrap();
-    assert_eq!(results.len(), 3);
-    assert!(results.contains(&"completed".to_string()));
-    assert!(results.contains(&"blocked".to_string()));
-    assert!(results.contains(&"needs_help".to_string()));
-}
-
-#[test]
-fn test_complete_checkpoint_statuses_with_prefix() {
-    let results = complete_checkpoint_statuses("co").unwrap();
-    assert_eq!(results.len(), 1);
-    assert!(results.contains(&"completed".to_string()));
-}
-
-#[test]
-fn test_complete_checkpoint_statuses_no_match() {
-    let results = complete_checkpoint_statuses("xyz").unwrap();
-    assert_eq!(results.len(), 0);
-}
-
 // Integration tests for complete_dynamic routing
 
 #[test]
@@ -242,38 +218,6 @@ fn test_complete_dynamic_memory_promote_target() {
         cmdline: "loom memory promote note".to_string(),
         current_word: "".to_string(),
         prev_word: "note".to_string(),
-    };
-
-    assert!(complete_dynamic(&ctx).is_ok());
-}
-
-#[test]
-fn test_complete_dynamic_checkpoint_session_flag() {
-    let temp_dir = setup_test_workspace();
-    let root = temp_dir.path();
-
-    let ctx = CompletionContext {
-        cwd: root.to_string_lossy().to_string(),
-        shell: "bash".to_string(),
-        cmdline: "loom checkpoint create --session".to_string(),
-        current_word: "session".to_string(),
-        prev_word: "--session".to_string(),
-    };
-
-    assert!(complete_dynamic(&ctx).is_ok());
-}
-
-#[test]
-fn test_complete_dynamic_checkpoint_create_status() {
-    let temp_dir = setup_test_workspace();
-    let root = temp_dir.path();
-
-    let ctx = CompletionContext {
-        cwd: root.to_string_lossy().to_string(),
-        shell: "bash".to_string(),
-        cmdline: "loom checkpoint create --status".to_string(),
-        current_word: "".to_string(),
-        prev_word: "--status".to_string(),
     };
 
     assert!(complete_dynamic(&ctx).is_ok());

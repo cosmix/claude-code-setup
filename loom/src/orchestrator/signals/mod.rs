@@ -23,7 +23,7 @@ pub use recovery_parsing::read_recovery_signal;
 pub use recovery_types::{LastHeartbeatInfo, RecoveryReason, RecoverySignalContent};
 pub use types::{
     BaseConflictSignalContent, DependencyStatus, EmbeddedContext, MergeConflictSignalContent,
-    MergeSignalContent, SignalContent, SignalUpdates, TaskStatus,
+    MergeSignalContent, SignalContent, SignalUpdates,
 };
 
 // Re-export public functions

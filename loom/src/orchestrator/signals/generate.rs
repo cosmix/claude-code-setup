@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use crate::fs::knowledge::KnowledgeDir;
 use crate::fs::memory::format_memory_for_signal;
-use crate::fs::task_state::read_task_state_if_exists;
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::ParsedHandoff;
 use crate::models::session::Session;
@@ -146,7 +145,7 @@ pub fn build_embedded_context_with_stage(
 pub fn build_embedded_context_with_stage_and_session(
     work_dir: &Path,
     handoff_file: Option<&str>,
-    stage_id: Option<&str>,
+    _stage_id: Option<&str>,
     session_id: Option<&str>,
 ) -> EmbeddedContext {
     let mut context = EmbeddedContext::default();
@@ -179,13 +178,6 @@ pub fn build_embedded_context_with_stage_and_session(
     let project_root = work_dir.parent().unwrap_or(work_dir);
     let knowledge = KnowledgeDir::new(project_root);
     context.knowledge_has_content = knowledge.has_content();
-
-    // Read task state if stage_id is provided
-    if let Some(stage_id) = stage_id {
-        if let Ok(Some(task_state)) = read_task_state_if_exists(work_dir, stage_id) {
-            context.task_state = Some(task_state);
-        }
-    }
 
     // Read recent memory entries for recitation (Manus pattern - last 10 entries)
     // This keeps important session context in the attention window

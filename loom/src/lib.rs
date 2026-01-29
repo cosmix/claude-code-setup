@@ -1,4 +1,3 @@
-pub mod checkpoints;
 pub mod commands;
 pub mod completions;
 pub mod daemon;

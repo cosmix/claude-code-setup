@@ -166,7 +166,6 @@ fn test_format_signal_content_with_embedded_context() {
         parsed_handoff: None,
         plan_overview: Some("# Plan Title\n\n## Overview\nThis plan does X.".to_string()),
         knowledge_has_content: false,
-        task_state: None,
         memory_content: None,
         skill_recommendations: Vec::new(),
         context_budget: None,

@@ -197,12 +197,6 @@ pub enum Commands {
     /// Stop the running daemon
     Stop,
 
-    /// Signal task completion with a checkpoint
-    Checkpoint {
-        #[command(subcommand)]
-        command: CheckpointCommands,
-    },
-
     /// Diagnose a failed stage with Claude Code
     Diagnose {
         /// Stage ID to diagnose (alphanumeric, dash, underscore only; max 128 characters)
@@ -307,37 +301,4 @@ pub enum HooksCommands {
 
     /// List available loom hooks and their status
     List,
-}
-
-#[derive(Subcommand)]
-pub enum CheckpointCommands {
-    /// Create a checkpoint to signal task completion
-    Create {
-        /// Task ID (alphanumeric, dash, underscore only; max 128 characters)
-        #[arg(value_parser = clap_id_validator)]
-        task_id: String,
-
-        /// Status of the task (completed, blocked, needs_help)
-        #[arg(short, long, default_value = "completed")]
-        status: String,
-
-        /// Force checkpoint even if verification fails or checkpoint exists
-        #[arg(short, long)]
-        force: bool,
-
-        /// Output key=value pairs (can be repeated)
-        #[arg(short, long = "output", value_name = "KEY=VALUE")]
-        outputs: Vec<String>,
-
-        /// Optional notes about the task
-        #[arg(short, long)]
-        notes: Option<String>,
-    },
-
-    /// List checkpoints for the current session
-    List {
-        /// Session ID (defaults to current session)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
-    },
 }

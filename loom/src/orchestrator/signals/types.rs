@@ -1,4 +1,3 @@
-use crate::checkpoints::{TaskDefinition, TaskState};
 use crate::handoff::git_handoff::GitHistory;
 use crate::handoff::schema::HandoffV2;
 use crate::models::stage::StageOutput;
@@ -32,8 +31,6 @@ pub struct EmbeddedContext {
     pub plan_overview: Option<String>,
     /// Whether the knowledge directory has meaningful content
     pub knowledge_has_content: bool,
-    /// Task state for the stage (if tasks are defined)
-    pub task_state: Option<TaskState>,
     /// Recent memory entries for recitation (Manus pattern - keeps context in attention)
     pub memory_content: Option<String>,
     /// Skill recommendations based on stage description matching
@@ -44,14 +41,6 @@ pub struct EmbeddedContext {
     pub context_usage: Option<f32>,
     /// Merged sandbox configuration summary for display in signal
     pub sandbox_summary: Option<SandboxSummary>,
-}
-
-/// Information about a task's lock status
-#[derive(Debug, Clone)]
-pub struct TaskStatus {
-    pub task: TaskDefinition,
-    pub is_unlocked: bool,
-    pub is_completed: bool,
 }
 
 #[derive(Debug, Clone)]

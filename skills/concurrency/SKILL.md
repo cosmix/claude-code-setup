@@ -15,8 +15,8 @@ When implementing concurrency, delegate to the appropriate specialist:
 
 1. **senior-software-engineer** (Opus) - Architectural decisions for concurrent systems, choosing between threading models, designing message-passing vs shared-state architectures
 2. **software-engineer** (Sonnet) - Implementing concurrent code following established patterns, writing async functions, worker pools, rate limiters
-3. **security-engineer** (Opus) - Identifying race conditions, time-of-check-time-of-use vulnerabilities, reviewing lock ordering for deadlocks
-4. **senior-infrastructure-engineer** (Opus) - Distributed systems concurrency, consistency models, distributed locks, saga patterns
+3. **senior-software-engineer** (Opus) - Identifying race conditions, time-of-check-time-of-use vulnerabilities, reviewing lock ordering for deadlocks
+4. **senior-software-engineer** (Opus) - Distributed systems concurrency, consistency models, distributed locks, saga patterns
 
 ## Instructions
 

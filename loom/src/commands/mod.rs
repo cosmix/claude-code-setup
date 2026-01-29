@@ -1,4 +1,3 @@
-pub mod checkpoint;
 pub mod clean;
 pub mod common;
 pub mod diagnose;
