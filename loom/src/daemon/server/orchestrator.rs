@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use crate::commands::run::mark_plan_done_if_all_merged;
+use crate::fs::mark_plan_done_if_all_merged;
 use crate::fs::parse_base_branch_from_config;
 use crate::fs::work_dir::WorkDir;
 use crate::orchestrator::terminal::BackendType;

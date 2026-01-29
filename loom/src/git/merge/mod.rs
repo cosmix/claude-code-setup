@@ -1,10 +1,15 @@
 //! Git merge operations for integrating worktree branches
 
+mod status;
+
 use anyhow::{bail, Context, Result};
 use std::path::Path;
 use std::process::Command;
 
 use super::branch::{branch_exists, branch_name_for_stage, current_branch, is_ancestor_of};
+
+// Re-export status types for use by other modules
+pub use status::{build_merge_report, check_merge_state, MergeState, MergeStatusReport};
 
 /// Result of a merge operation
 #[derive(Debug, Clone)]

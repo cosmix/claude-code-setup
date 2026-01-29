@@ -13,7 +13,7 @@ use crate::plan::schema::SandboxConfig;
 
 use super::checks::check_for_uncommitted_changes;
 use super::graph_loader::build_execution_graph;
-use super::plan_lifecycle;
+use crate::fs::plan_lifecycle;
 
 /// Execute plan stages in foreground (for --foreground flag)
 /// Usage: loom run --foreground [--manual] [--max-parallel <n>] [--watch] [--no-merge]

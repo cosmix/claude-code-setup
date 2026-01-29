@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use serde_json::{json, Value};
 use std::path::Path;
 
-use crate::orchestrator::hooks::{setup_hooks_for_worktree, HooksConfig};
+use crate::hooks::{setup_hooks_for_worktree, HooksConfig};
 
 /// Creates or restores the .work symlink in a worktree.
 ///

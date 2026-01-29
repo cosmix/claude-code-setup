@@ -1,6 +1,7 @@
 pub mod knowledge;
 pub mod memory;
 pub mod permissions;
+pub mod plan_lifecycle;
 pub mod session_files;
 pub mod stage_files;
 pub mod stage_loading;
@@ -25,6 +26,12 @@ pub use session_files::{find_session_for_stage, find_sessions_for_stage};
 pub use verifications::{
     delete_verification, list_verifications, load_verification, store_verification, GapRecord,
     VerificationRecord,
+};
+
+// Re-export plan lifecycle utilities
+pub use plan_lifecycle::{
+    all_stages_merged, mark_plan_done_if_all_merged, mark_plan_in_progress, DONE_PREFIX,
+    IN_PROGRESS_PREFIX,
 };
 
 /// Parse base_branch from config.toml in a work directory.
