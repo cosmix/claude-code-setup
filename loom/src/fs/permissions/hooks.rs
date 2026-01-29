@@ -55,6 +55,33 @@ pub fn loom_hooks_config() -> Value {
                         "command": format!("{}/git-add-guard.sh", hooks_dir)
                     }
                 ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": format!("{}/worktree-isolation.sh", hooks_dir)
+                    }
+                ]
+            },
+            {
+                "matcher": "Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": format!("{}/worktree-isolation.sh", hooks_dir)
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": format!("{}/worktree-isolation.sh", hooks_dir)
+                    }
+                ]
             }
         ],
         "PostToolUse": [

@@ -43,6 +43,9 @@ pub const HOOK_LEARNING_VALIDATOR: &str = include_str!("../../../../hooks/learni
 /// GitAddGuard hook - blocks dangerous git add patterns (git add -A, git add ., git add .work)
 pub const HOOK_GIT_ADD_GUARD: &str = include_str!("../../../../hooks/git-add-guard.sh");
 
+/// WorktreeIsolation hook - enforces worktree boundaries (blocks git -C, path traversal, cross-worktree access)
+pub const HOOK_WORKTREE_ISOLATION: &str = include_str!("../../../../hooks/worktree-isolation.sh");
+
 /// All loom hook scripts with their filenames (installed to ~/.claude/hooks/loom/)
 /// All hooks are installed to the loom/ subdirectory to keep them separate from user hooks.
 pub const LOOM_HOOKS: &[(&str, &str)] = &[
@@ -59,6 +62,7 @@ pub const LOOM_HOOKS: &[(&str, &str)] = &[
     ("prefer-modern-tools.sh", HOOK_PREFER_MODERN_TOOLS),
     ("commit-filter.sh", HOOK_COMMIT_FILTER),
     ("git-add-guard.sh", HOOK_GIT_ADD_GUARD),
+    ("worktree-isolation.sh", HOOK_WORKTREE_ISOLATION),
     // Skill suggestion hooks
     ("skill-index-builder.sh", HOOK_SKILL_INDEX_BUILDER),
     ("skill-trigger.sh", HOOK_SKILL_TRIGGER),
