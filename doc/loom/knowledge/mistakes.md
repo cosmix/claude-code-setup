@@ -353,3 +353,14 @@ Solutions: 1) Use ./target/debug/loom path, 2) Accept failures until merge,
 - Integration verification for code-review stage feature passed: 187 tests, clippy clean, build succeeds, plan parsing works with explicit stage_type field
 - Discovery: Validation exempts CodeReview from goal-backward checks using explicit stage_type field only. ID/name pattern detection happens in create_stage_from_definition (after validation). Plans should use stage_type: code-review explicitly.
 - Verified code-review warning: 'Code review stage has no dependencies' appears correctly when code-review stage defined without dependencies
+
+## Promoted from Memory [2026-02-04 20:10]
+
+### Notes
+
+- Integration verification passed for sandbox configuration fix: All 1113 tests pass, clippy clean, build succeeds. Verified: sandbox.enabled format, network.allowedDomains array, no dangerouslyDisableSandbox, worktree-file-guard.sh hook registered and properly exports LOOM_WORKTREE_PATH
+
+### Decisions
+
+- **Verified sandbox configuration is complete and correct**
+  - _Rationale:_ Plan schema tests (56), parsing tests (82), and sandbox tests (27) all pass, confirming backward compatibility
