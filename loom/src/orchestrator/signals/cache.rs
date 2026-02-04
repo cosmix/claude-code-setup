@@ -108,19 +108,11 @@ pub fn generate_stable_prefix() -> String {
     );
     content.push_str("- **No path escaping** - do not use `../..`, `cd` to parent directories, or absolute paths outside worktree\n\n");
     content.push_str("**Delegation & Efficiency (CRITICAL):**\n\n");
-    content.push_str(
-        "**Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE.**\n\n",
-    );
-    content.push_str(
-        "- **Use PARALLEL subagents** - spawn multiple appropriate subagents concurrently when tasks are independent\n",
-    );
-    content.push_str(
-        "- **Use Skills** - check if /auth, /testing, /ci-cd, /logging-observability apply\n",
-    );
-    content.push_str(
-        "- **Use specialized agents** - security-engineer, senior-infrastructure-engineer, etc.\n",
-    );
-    content.push_str("- **Use TodoWrite** to plan and track progress\n\n");
+    content.push_str("**USE THE TASK TOOL** to spawn parallel subagents for multi-part work:\n");
+    content.push_str("- Independent file changes, multiple components, tests + implementation → spawn parallel subagents\n");
+    content.push_str("- Pattern: `Task(subagent_type=\"software-engineer\", prompt=\"...\")` - send MULTIPLE in ONE message\n");
+    content.push_str("- Agents: `software-engineer`, `senior-software-engineer`, `Explore`\n");
+    content.push_str("- Skills: /auth, /testing, /ci-cd, /logging-observability\n\n");
     content.push_str("**Subagent Restrictions (CRITICAL - PREVENTS LOST WORK):**\n\n");
     content.push_str("When spawning subagents via Task tool, they MUST be told:\n");
     content.push_str("- ⛔ **NEVER run `git commit`** - only the main agent commits\n");
@@ -188,9 +180,8 @@ pub fn generate_code_review_stable_prefix() -> String {
 
     // Fixed header for code review stages
     content.push_str("## Code Review Context\n\n");
-    content.push_str(
-        "You are running a **code review stage** in an **isolated git worktree**.\n\n",
-    );
+    content
+        .push_str("You are running a **code review stage** in an **isolated git worktree**.\n\n");
     content.push_str("**Code Review Mission:**\n\n");
     content.push_str("1. **REVIEW** the code for quality, security, and correctness issues\n");
     content.push_str("2. **FIX** issues you find - don't just report them\n");
@@ -214,7 +205,8 @@ pub fn generate_code_review_stable_prefix() -> String {
 
     // Review workflow
     content.push_str("**Review + Fix Workflow:**\n\n");
-    content.push_str("1. **Spawn review subagents** in parallel (security, architecture, testing)\n");
+    content
+        .push_str("1. **Spawn review subagents** in parallel (security, architecture, testing)\n");
     content.push_str("2. **Collect findings** from each specialized review\n");
     content.push_str("3. **Prioritize issues** by severity and impact\n");
     content.push_str("4. **Fix critical issues** directly in code\n");
@@ -238,18 +230,17 @@ pub fn generate_code_review_stable_prefix() -> String {
     );
 
     content.push_str("## Execution Rules\n\n");
-    content.push_str("Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules. Key reminders:\n\n");
+    content.push_str(
+        "Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules. Key reminders:\n\n",
+    );
 
     // Delegation emphasis for code review
     content.push_str("**Delegation & Efficiency (CRITICAL for Code Review):**\n\n");
-    content.push_str(
-        "**ALWAYS spawn specialized agents in PARALLEL for comprehensive review:**\n\n",
-    );
+    content
+        .push_str("**ALWAYS spawn specialized agents in PARALLEL for comprehensive review:**\n\n");
     content.push_str("| Agent | Focus Area | Invoke |\n");
     content.push_str("|-------|------------|--------|\n");
-    content.push_str(
-        "| `security-engineer` | Vulnerabilities, injection, auth | Task tool |\n",
-    );
+    content.push_str("| `security-engineer` | Vulnerabilities, injection, auth | Task tool |\n");
     content.push_str(
         "| `senior-software-engineer` | Architecture, patterns, maintainability | Task tool |\n",
     );
@@ -279,7 +270,9 @@ pub fn generate_code_review_stable_prefix() -> String {
     content.push_str(
         "- **Record findings**: `loom memory note \"security: found SQL injection in...\"`\n",
     );
-    content.push_str("- **Record decisions**: `loom memory decision \"refactored X\" --context \"why\"`\n");
+    content.push_str(
+        "- **Record decisions**: `loom memory decision \"refactored X\" --context \"why\"`\n",
+    );
     content.push_str("- **Promote patterns**: `loom knowledge update patterns \"## Pattern\"`\n");
     content.push_str("- **Record mistakes**: `loom knowledge update mistakes \"## Issue\"`\n\n");
 
@@ -356,19 +349,11 @@ pub fn generate_knowledge_stable_prefix() -> String {
         "Follow your `~/.claude/CLAUDE.md` and project `CLAUDE.md` rules. Key reminders:\n\n",
     );
     content.push_str("**Delegation & Efficiency (CRITICAL):**\n\n");
-    content.push_str(
-        "**Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE.**\n\n",
-    );
-    content.push_str(
-        "- **Use PARALLEL subagents** - spawn multiple appropriate subagents concurrently when tasks are independent\n",
-    );
-    content.push_str(
-        "- **Use Skills** - check if /auth, /testing, /ci-cd, /logging-observability apply\n",
-    );
-    content.push_str(
-        "- **Use specialized agents** - security-engineer, senior-infrastructure-engineer, etc.\n",
-    );
-    content.push_str("- **Use TodoWrite** to plan and track progress\n\n");
+    content.push_str("**USE THE TASK TOOL** to spawn parallel subagents for exploration:\n");
+    content.push_str("- Different codebase areas, multiple knowledge files, independent research → spawn parallel Explore agents\n");
+    content.push_str("- Pattern: `Task(subagent_type=\"Explore\", prompt=\"...\")` - send MULTIPLE in ONE message\n");
+    content.push_str("- Agents: `Explore`, `software-engineer`, `senior-software-engineer`\n");
+    content.push_str("- Skills: /auth, /testing, /ci-cd, /logging-observability\n\n");
     content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");
@@ -452,10 +437,10 @@ mod tests {
         assert!(prefix.contains("## Execution Rules"));
         assert!(prefix.contains("STAY IN THIS WORKTREE"));
         assert!(prefix.contains("git add <specific-files>"));
-        // Critical: parallel subagents guidance must be verbatim
-        assert!(prefix.contains(
-            "Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE."
-        ));
+        // Critical: Task tool guidance
+        assert!(prefix.contains("USE THE TASK TOOL"));
+        assert!(prefix.contains("Task(subagent_type="));
+        assert!(prefix.contains("MULTIPLE in ONE message"));
         // Critical: worktree root directory reminder for loom stage complete
         assert!(prefix.contains(
             "Before running `loom stage complete`, ensure you are at the worktree root directory"
@@ -463,7 +448,7 @@ mod tests {
         // Critical: specific skill examples
         assert!(prefix.contains("/auth"));
         assert!(prefix.contains("/testing"));
-        assert!(prefix.contains("security-engineer"));
+        assert!(prefix.contains("software-engineer"));
     }
 
     #[test]
@@ -485,14 +470,14 @@ mod tests {
         assert!(prefix.contains("## Execution Rules"));
         assert!(prefix.contains("loom knowledge update"));
         assert!(prefix.contains("loom stage complete"));
-        // Critical: parallel subagents guidance must be verbatim
-        assert!(prefix.contains(
-            "Parallel subagents and appropriate skills should be used WHEREVER POSSIBLE."
-        ));
+        // Critical: Task tool guidance
+        assert!(prefix.contains("USE THE TASK TOOL"));
+        assert!(prefix.contains("Task(subagent_type="));
+        assert!(prefix.contains("MULTIPLE in ONE message"));
         // Critical: specific skill examples
         assert!(prefix.contains("/auth"));
         assert!(prefix.contains("/testing"));
-        assert!(prefix.contains("security-engineer"));
+        assert!(prefix.contains("Explore"));
     }
 
     #[test]

@@ -285,6 +285,15 @@ The stop hook BLOCKS exit if uncommitted changes exist or stage is still "Execut
 
 ### 6. EXECUTING PARALLEL SUBAGENTS (MANDATORY)
 
+**⚠️ USE THE TASK TOOL FOR ALL MULTI-PART WORK**
+
+The Task tool spawns parallel subagents. For ANY non-trivial work, you SHOULD spawn parallel subagents:
+
+- **Independent file changes** → parallel subagents (one per file/component)
+- **Multiple implementation areas** → parallel subagents
+- **Tests alongside implementation** → parallel subagents
+- **Exploration of different code areas** → parallel Explore agents
+
 **⚠️ EXECUTION PLAN IN STAGE DESCRIPTION = MANDATORY DIRECTIVE**
 
 If your stage has an `EXECUTION PLAN` block with subagents, you MUST execute it exactly.
