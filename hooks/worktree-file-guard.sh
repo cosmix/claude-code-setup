@@ -18,8 +18,18 @@
 # Environment:
 #   LOOM_STAGE_ID - Current stage ID (set by loom)
 #   LOOM_WORKTREE_PATH - Absolute path to current worktree
+#   LOOM_DEBUG - Set to 1 to enable debug logging (optional)
 
 set -euo pipefail
+
+# Debug logging helper - only writes if LOOM_DEBUG=1
+# Uses user-specific log file to avoid multi-user security issues
+DEBUG_LOG="${TMPDIR:-/tmp}/worktree-file-guard-debug-$(id -u).log"
+debug_log() {
+    if [[ "${LOOM_DEBUG:-}" == "1" ]]; then
+        echo "$@" >>"$DEBUG_LOG" 2>&1
+    fi
+}
 
 # Read JSON input from stdin
 if command -v gtimeout &>/dev/null; then
@@ -30,24 +40,18 @@ else
     INPUT_JSON=$(cat 2>/dev/null || true)
 fi
 
-# Debug logging
-DEBUG_LOG="/tmp/worktree-file-guard-debug.log"
-{
-    echo "=== $(date) worktree-file-guard ==="
-    echo "INPUT_JSON: $INPUT_JSON"
-    echo "LOOM_STAGE_ID: ${LOOM_STAGE_ID:-unset}"
-    echo "LOOM_WORKTREE_PATH: ${LOOM_WORKTREE_PATH:-unset}"
-    echo "PWD: $(pwd)"
-} >>"$DEBUG_LOG" 2>&1
+debug_log "=== $(date) worktree-file-guard ==="
+debug_log "INPUT_JSON: $INPUT_JSON"
+debug_log "LOOM_STAGE_ID: ${LOOM_STAGE_ID:-unset}"
+debug_log "LOOM_WORKTREE_PATH: ${LOOM_WORKTREE_PATH:-unset}"
+debug_log "PWD: $(pwd)"
 
 # Parse tool_name and tool_input from JSON
 TOOL_NAME=$(echo "$INPUT_JSON" | jq -r '.tool_name // empty' 2>/dev/null || true)
 TOOL_INPUT=$(echo "$INPUT_JSON" | jq -r '.tool_input // empty' 2>/dev/null || true)
 
-{
-    echo "TOOL_NAME: $TOOL_NAME"
-    echo "TOOL_INPUT: $TOOL_INPUT"
-} >>"$DEBUG_LOG" 2>&1
+debug_log "TOOL_NAME: $TOOL_NAME"
+debug_log "TOOL_INPUT: $TOOL_INPUT"
 
 # Only run in loom worktrees (check for stage ID)
 if [[ -z "${LOOM_STAGE_ID:-}" ]]; then
@@ -64,7 +68,7 @@ if [[ -z "$WORKTREE_PATH" ]]; then
         WORKTREE_PATH="${CURRENT_DIR%%/.worktrees/*}/.worktrees/${BASH_REMATCH[1]}"
     else
         # Cannot determine boundary, allow operation
-        echo "No worktree path, allowing" >>"$DEBUG_LOG" 2>&1
+        debug_log "No worktree path, allowing"
         exit 0
     fi
 fi
@@ -74,9 +78,7 @@ if [[ -d "$WORKTREE_PATH" ]]; then
     WORKTREE_PATH=$(cd "$WORKTREE_PATH" && pwd -P)
 fi
 
-{
-    echo "Resolved WORKTREE_PATH: $WORKTREE_PATH"
-} >>"$DEBUG_LOG" 2>&1
+debug_log "Resolved WORKTREE_PATH: $WORKTREE_PATH"
 
 # === PATH VALIDATION ===
 # Check if a path is within allowed boundaries
@@ -91,7 +93,7 @@ validate_path() {
 
     # Always allow ~/.claude/ for config access
     if [[ "$target_path" =~ ^~/\.claude/ ]] || [[ "$target_path" =~ ^"$HOME"/.claude/ ]]; then
-        echo "Allowing ~/.claude/ path" >>"$DEBUG_LOG" 2>&1
+        debug_log "Allowing ~/.claude/ path"
         return 0
     fi
 
@@ -145,20 +147,18 @@ EOF
         target_path=$(cd "$(dirname "$target_path")" 2>/dev/null && pwd -P)/$(basename "$target_path")
     fi
 
-    {
-        echo "Validating: original='$original_path' resolved='$target_path'"
-    } >>"$DEBUG_LOG" 2>&1
+    debug_log "Validating: original='$original_path' resolved='$target_path'"
 
     # Allow access to .work directory (shared state via symlink)
     # .work/ should be a symlink to ../../.work in worktrees
     if [[ "$target_path" =~ /\.work/ ]] || [[ "$target_path" =~ ^\.work/ ]]; then
-        echo "Allowing .work/ path" >>"$DEBUG_LOG" 2>&1
+        debug_log "Allowing .work/ path"
         return 0
     fi
 
     # Check if path is within worktree boundary
     if [[ "$target_path" = "$WORKTREE_PATH"* ]]; then
-        echo "Path within worktree boundary" >>"$DEBUG_LOG" 2>&1
+        debug_log "Path within worktree boundary"
         return 0
     fi
 
@@ -231,7 +231,7 @@ case "$TOOL_NAME" in
         FILE_PATH=$(extract_path "$TOOL_NAME" "$TOOL_INPUT")
         if [[ -n "$FILE_PATH" ]]; then
             if ! validate_path "$FILE_PATH"; then
-                echo "BLOCKED: $TOOL_NAME path failed validation: $FILE_PATH" >>"$DEBUG_LOG" 2>&1
+                debug_log "BLOCKED: $TOOL_NAME path failed validation: $FILE_PATH"
                 exit 2
             fi
         fi
@@ -242,5 +242,5 @@ case "$TOOL_NAME" in
         ;;
 esac
 
-echo "Allowing operation" >>"$DEBUG_LOG" 2>&1
+debug_log "Allowing operation"
 exit 0
