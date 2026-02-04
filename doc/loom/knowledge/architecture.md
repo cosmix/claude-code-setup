@@ -493,6 +493,7 @@ Three-layer defense against subagent conflicts:
 ## CodeReview Stage Type
 
 New stage type for code review. YAML: stage_type: code-review
+
 - Enum: StageType::CodeReview (models/stage/types.rs:26)
 - Sandbox: Special handling (sandbox/config.rs:69-73)
 - Validation: Exempt from goal-backward checks (validation.rs:362, 471)

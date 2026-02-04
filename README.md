@@ -30,7 +30,7 @@ Pleaes note: As loom is still under active development, you need to use the `dev
 1. Clone the repo
 2. `bash ./dev-install.sh`
 3. Then:
-   
+
 ```bash
 
 # Initialize and run

@@ -353,5 +353,3 @@ Solutions: 1) Use ./target/debug/loom path, 2) Accept failures until merge,
 - Integration verification for code-review stage feature passed: 187 tests, clippy clean, build succeeds, plan parsing works with explicit stage_type field
 - Discovery: Validation exempts CodeReview from goal-backward checks using explicit stage_type field only. ID/name pattern detection happens in create_stage_from_definition (after validation). Plans should use stage_type: code-review explicitly.
 - Verified code-review warning: 'Code review stage has no dependencies' appears correctly when code-review stage defined without dependencies
-
-
