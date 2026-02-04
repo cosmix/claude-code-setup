@@ -8,8 +8,9 @@ use crate::fs::session_files::find_session_for_stage;
 use crate::fs::work_dir::load_config;
 use crate::git::worktree::{find_repo_root_from_cwd, find_worktree_root_from_cwd};
 use crate::models::stage::{StageStatus, StageType};
-use crate::plan::parser::parse_plan;
-use crate::plan::schema::StageDefinition;
+use crate::plan::parser::{parse_plan, ParsedPlan};
+use crate::plan::schema::{ChangeImpactConfig, ChangeImpactPolicy, StageDefinition};
+use crate::verify::baseline::compare_to_baseline;
 use crate::verify::criteria::run_acceptance;
 use crate::verify::goal_backward::run_goal_backward_verification;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
@@ -19,11 +20,8 @@ use super::knowledge_complete::complete_knowledge_stage;
 use super::progressive_complete::complete_with_merge;
 use super::session::cleanup_session_resources;
 
-/// Load stage definition from the active plan
-fn load_stage_definition_from_plan(
-    stage_id: &str,
-    work_dir: &Path,
-) -> Result<Option<StageDefinition>> {
+/// Load the full parsed plan from config
+fn load_parsed_plan(work_dir: &Path) -> Result<Option<ParsedPlan>> {
     // Load config to get plan source path
     let config = match load_config(work_dir)? {
         Some(config) => config,
@@ -39,8 +37,31 @@ fn load_stage_definition_from_plan(
     let parsed_plan = parse_plan(&source_path)
         .with_context(|| format!("Failed to parse plan: {}", source_path.display()))?;
 
+    Ok(Some(parsed_plan))
+}
+
+/// Load stage definition from the active plan
+fn load_stage_definition_from_plan(
+    stage_id: &str,
+    work_dir: &Path,
+) -> Result<Option<StageDefinition>> {
+    let parsed_plan = match load_parsed_plan(work_dir)? {
+        Some(plan) => plan,
+        None => return Ok(None),
+    };
+
     // Find the stage definition by ID
     Ok(parsed_plan.stages.into_iter().find(|s| s.id == stage_id))
+}
+
+/// Load change impact config from the active plan
+fn load_change_impact_config(work_dir: &Path) -> Result<Option<ChangeImpactConfig>> {
+    let parsed_plan = match load_parsed_plan(work_dir)? {
+        Some(plan) => plan,
+        None => return Ok(None),
+    };
+
+    Ok(parsed_plan.metadata.loom.change_impact)
 }
 
 /// Mark a stage as complete, optionally running acceptance criteria.
@@ -266,6 +287,72 @@ pub fn complete(
                     return Ok(());
                 }
                 println!("Goal-backward verification passed!");
+            }
+        }
+
+        // Run change impact comparison if configured
+        if let Some(change_impact_config) = load_change_impact_config(work_dir)? {
+            if change_impact_config.policy != ChangeImpactPolicy::Skip {
+                println!("Running change impact comparison...");
+                let comparison_dir = acceptance_dir.as_deref();
+
+                match compare_to_baseline(
+                    &stage_id,
+                    &change_impact_config,
+                    comparison_dir,
+                    work_dir,
+                ) {
+                    Ok(impact) => {
+                        if !impact.comparison_succeeded {
+                            eprintln!(
+                                "Warning: Change impact comparison failed to run, continuing anyway"
+                            );
+                        } else {
+                            // Print summary
+                            println!("  {}", impact.summary());
+
+                            // Print details if there are new failures
+                            if impact.has_new_failures() {
+                                println!("  New failures detected:");
+                                for failure in &impact.new_failures {
+                                    println!("    - {}", failure);
+                                }
+                            }
+
+                            if !impact.fixed_failures.is_empty() {
+                                println!("  Fixed failures:");
+                                for fixed in &impact.fixed_failures {
+                                    println!("    + {}", fixed);
+                                }
+                            }
+
+                            // Check policy and fail if necessary
+                            if impact.has_new_failures()
+                                && change_impact_config.policy == ChangeImpactPolicy::Fail
+                            {
+                                stage.try_complete_with_failures()?;
+                                save_stage(&stage, work_dir)?;
+                                println!(
+                                    "Stage '{stage_id}' completed with failures - new failures introduced"
+                                );
+                                println!(
+                                    "  Run 'loom stage retry {stage_id}' to try again after fixing issues"
+                                );
+                                return Ok(());
+                            }
+
+                            if impact.has_new_failures()
+                                && change_impact_config.policy == ChangeImpactPolicy::Warn
+                            {
+                                eprintln!("⚠️  Warning: New failures introduced, but continuing due to 'warn' policy");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        // No baseline exists or comparison failed - just warn and continue
+                        eprintln!("Warning: Change impact comparison skipped: {e}");
+                    }
+                }
             }
         }
 

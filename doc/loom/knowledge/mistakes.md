@@ -364,3 +364,15 @@ Solutions: 1) Use ./target/debug/loom path, 2) Accept failures until merge,
 
 - **Verified sandbox configuration is complete and correct**
   - _Rationale:_ Plan schema tests (56), parsing tests (82), and sandbox tests (27) all pass, confirming backward compatibility
+
+## Promoted from Memory [2026-02-04 21:17]
+
+### Notes
+
+- Comparison runs in complete.rs after goal-backward verification passes but before merge. If new_failures > 0 and policy == Fail, stage completion fails with CompletedWithFailures status.
+- baseline module uses regex patterns for failure/warning detection - supports multiple patterns and deduplicates matches
+
+### Decisions
+
+- **Store baseline JSON in .work/stages/{stage-id}/baseline.json**
+  - _Rationale:_ Using stage-specific subdirectory keeps baseline data colocated with stage state and allows for easy cleanup when stages are removed
