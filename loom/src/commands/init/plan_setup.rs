@@ -6,7 +6,7 @@ use crate::models::stage::{Stage, StageStatus, StageType};
 use crate::plan::parser::parse_plan;
 use crate::plan::schema::{
     check_code_review_recommendations, check_knowledge_recommendations,
-    check_sandbox_recommendations, StageDefinition,
+    check_sandbox_recommendations, StageDefinition, StageSandboxConfig,
 };
 use crate::verify::serialize_stage_to_markdown;
 use anyhow::{Context, Result};
@@ -82,8 +82,12 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
         println!("  {} {}", "⚠".yellow().bold(), warning.yellow());
     }
 
+    // Auto-insert code-review stage before integration-verify if not present
+    let mut stages = parsed_plan.stages.clone();
+    let stages = auto_insert_code_review_stage(&mut stages);
+
     // Check for code-review-related recommendations (non-fatal warnings)
-    let code_review_warnings = check_code_review_recommendations(&parsed_plan.stages);
+    let code_review_warnings = check_code_review_recommendations(&stages);
     for warning in &code_review_warnings {
         println!("  {} {}", "⚠".yellow().bold(), warning.yellow());
     }
@@ -115,8 +119,7 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
         "config.toml".dimmed()
     );
 
-    let stage_deps: Vec<StageDependencies> = parsed_plan
-        .stages
+    let stage_deps: Vec<StageDependencies> = stages
         .iter()
         .map(|s| StageDependencies {
             id: s.id.clone(),
@@ -131,7 +134,7 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
         fs::create_dir_all(&stages_dir).context("Failed to create stages directory")?;
     }
 
-    let stage_count = parsed_plan.stages.len();
+    let stage_count = stages.len();
     println!(
         "\n{} {}",
         "Stages".bold(),
@@ -139,14 +142,9 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
     );
     println!("{}", "─".repeat(40).dimmed());
 
-    let max_id_len = parsed_plan
-        .stages
-        .iter()
-        .map(|s| s.id.len())
-        .max()
-        .unwrap_or(0);
+    let max_id_len = stages.iter().map(|s| s.id.len()).max().unwrap_or(0);
 
-    for stage_def in &parsed_plan.stages {
+    for stage_def in &stages {
         let stage = create_stage_from_definition(stage_def, &parsed_plan.id);
         let depth = depths.get(&stage.id).copied().unwrap_or(0);
         let stage_path = stage_file_path(&stages_dir, depth, &stage.id);
@@ -173,6 +171,123 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
     }
 
     Ok(stage_count)
+}
+
+/// Auto-insert a code-review stage before integration-verify if not present.
+///
+/// Returns the (potentially modified) list of stages.
+fn auto_insert_code_review_stage(stages: &mut Vec<StageDefinition>) -> Vec<StageDefinition> {
+    // Check if there's an integration-verify stage
+    let integration_verify_idx = stages.iter().position(|s| {
+        s.stage_type == StageType::IntegrationVerify
+            || s.id.to_lowercase().contains("integration-verify")
+            || s.name.to_lowercase().contains("integration verify")
+    });
+
+    // Check if there's already a code-review stage
+    let has_code_review = stages.iter().any(|s| {
+        s.stage_type == StageType::CodeReview
+            || s.id.to_lowercase().contains("code-review")
+            || s.name.to_lowercase().contains("code review")
+    });
+
+    // If integration-verify exists but code-review doesn't, insert code-review
+    if let Some(iv_idx) = integration_verify_idx {
+        if !has_code_review {
+            let integration_verify = &stages[iv_idx];
+            let working_dir = integration_verify.working_dir.clone();
+
+            // Create code-review stage
+            let code_review =
+                create_code_review_stage(stages, &integration_verify.id, &working_dir);
+
+            println!(
+                "  {} Auto-inserting {} stage before integration-verify",
+                "✓".green().bold(),
+                "code-review".cyan().bold()
+            );
+
+            // Update integration-verify to depend on code-review instead of its current deps
+            let old_deps = stages[iv_idx].dependencies.clone();
+            stages[iv_idx].dependencies = vec!["code-review".to_string()];
+
+            // Insert code-review before integration-verify with the old deps
+            let mut code_review = code_review;
+            code_review.dependencies = old_deps;
+            stages.insert(iv_idx, code_review);
+        }
+    }
+
+    stages.clone()
+}
+
+/// Create a default code-review stage that depends on all non-special stages.
+///
+/// This stage is auto-inserted before integration-verify if not present.
+fn create_code_review_stage(
+    stages: &[StageDefinition],
+    integration_verify_id: &str,
+    working_dir: &str,
+) -> StageDefinition {
+    // Find all stages that integration-verify depends on (these are the implementation stages)
+    let integration_verify_stage = stages
+        .iter()
+        .find(|s| s.id == integration_verify_id)
+        .expect("integration-verify stage must exist");
+
+    // Code review depends on all the same stages that integration-verify depends on
+    let dependencies = integration_verify_stage.dependencies.clone();
+
+    StageDefinition {
+        id: "code-review".to_string(),
+        name: "Code Review".to_string(),
+        description: Some(
+            r#"Automated code review stage for security and quality analysis.
+
+Use parallel subagents to perform comprehensive review:
+
+PARALLEL SUBAGENT 1 - Security Review:
+  - Check for security vulnerabilities (OWASP Top 10)
+  - Review input validation and sanitization
+  - Check for hardcoded secrets or credentials
+  - Verify authentication and authorization patterns
+
+PARALLEL SUBAGENT 2 - Architecture Review:
+  - Review code structure and organization
+  - Check for proper separation of concerns
+  - Verify error handling patterns
+  - Review API design consistency
+
+PARALLEL SUBAGENT 3 - Code Quality Review:
+  - Check for code duplication
+  - Review test coverage for new code
+  - Verify edge case handling
+  - Check for proper logging and observability
+
+FIX any issues found - do not just report them.
+
+MEMORY RECORDING (use memory ONLY - never knowledge):
+- Record issues found: loom memory note "Found: description"
+- Record fixes applied: loom memory decision "Fixed X by Y" --context "why""#
+                .to_string(),
+        ),
+        dependencies,
+        parallel_group: None,
+        acceptance: vec![
+            "cargo clippy --all-targets -- -D warnings".to_string(),
+            "cargo test".to_string(),
+        ],
+        setup: vec![],
+        files: vec![],
+        auto_merge: None,
+        working_dir: working_dir.to_string(),
+        stage_type: StageType::CodeReview,
+        truths: vec![],
+        artifacts: vec![],
+        wiring: vec![],
+        context_budget: None,
+        sandbox: StageSandboxConfig::default(),
+    }
 }
 
 /// Detect the stage type from the definition.
