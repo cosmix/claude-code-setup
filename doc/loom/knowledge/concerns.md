@@ -46,3 +46,9 @@ Key duplications needing consolidation:
 ### Debug Output in Production
 
 `eprintln!` statements with 'Debug:' prefix in production code (complete.rs, orchestrator.rs). Should use tracing crate with log levels.
+
+## ReDoS Potential in Plan Pattern Regex
+
+User-provided regex patterns in plan files (failure_patterns, wiring patterns) are compiled and executed without complexity checks. While mitigated by trust model (plan authors = trusted), consider adding regex timeout or complexity limits for defense in depth.
+
+Files: src/verify/baseline/capture.rs:76-79, src/verify/baseline/compare.rs:155-158

@@ -505,3 +505,68 @@ New stage type for code review. YAML: stage_type: code-review
 - Detection: Requires explicit stage_type field in plan YAML. ID/name detection happens after validation.
 
 ## CodeReview Test Verification Entry
+
+## Goal-Backward Verification Deep Dive
+
+Entry: run_goal_backward_verification(stage_def, working_dir) at verify/goal_backward/mod.rs:22-45
+
+Sequence: 1) verify_truths() - 30s timeout 2) verify_artifacts() - stub detection 3) verify_wiring() - regex patterns
+
+Returns: GoalBackwardResult::Passed | GapsFound { gaps } | HumanNeeded { checks }
+
+### Gap Types (result.rs:5-18)
+
+TruthFailed - command non-zero exit
+ArtifactMissing - no files match glob
+ArtifactStub - contains TODO/FIXME/unimplemented!
+ArtifactEmpty - file empty
+WiringBroken - pattern not in source
+
+### Stub Detection (artifacts.rs:11-20)
+
+Blocked patterns: TODO, FIXME, unimplemented!(), todo!(), panic!(not implemented), pass # TODO, raise NotImplementedError, throw new Error(Not implemented)
+
+## Stage Completion Flow (complete.rs)
+
+1. Load stage (line 59)
+2. Route knowledge stages (62-64)
+3. Run acceptance if !no_verify (146-176)
+4. Run goal-backward verification (237-270)
+5. Progressive merge (278)
+6. Mark completed, trigger dependents
+
+### Baseline Injection Points (NO BASELINE EXISTS)
+
+Current verification is forward-only, no state capture.
+
+Injection points in complete.rs:
+
+- Line 154: Pre-acceptance
+- Line 169: Post-acceptance  
+- Line 246: Pre-goal-backward
+- Line 268: Post-goal-backward
+- Lines 249-267: On failure
+
+## Validation Exemptions (validation.rs:361-375)
+
+Goal-backward checks required ONLY for StageType::Standard.
+
+Exempt: Knowledge, IntegrationVerify, CodeReview stages.
+
+Standard stages MUST define: truths OR artifacts OR wiring (at least one).
+
+### Validation Limits
+
+Truths: max 20/stage, each max 500 chars
+Artifacts: max 100/stage, no path traversal
+Wiring: source relative only, pattern must be valid regex, description required
+
+Gaps: No ReDoS protection, glob syntax not validated, no pattern-matches check.
+
+## Enhanced Goal-Backward Verification (2026-02)
+
+TruthCheck (truths.rs) - Extended success criteria: exit_code, stdout_contains, stdout_not_contains, stderr_empty, description
+
+WiringTest (wiring_tests.rs) - Command-based integration tests with SuccessCriteria struct for runtime wiring verification
+
+Baseline (verify/baseline/) - Change impact detection: capture.rs, compare.rs, types.rs. Config: baseline_command, failure_patterns, policy

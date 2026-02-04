@@ -1323,3 +1323,10 @@ linux block (line 100-105):
 - linux.enableWeakerNested: for container/VM compatibility
 
 **Note:** Previous patterns.md entry at lines 1271-1296 is OUTDATED and should be disregarded.
+
+## Promoted from Memory [2026-02-04 20:22]
+
+### Decisions
+
+- **extend truths vs new field: EXTEND existing truths field for baseline capture - StageOutput structure (types.rs:76-84) already supports arbitrary JSON via serde_json::Value, can store baseline data without schema changes**
+  - _Rationale:_ Need to decide how to store baseline data. Existing infrastructure supports extension.
