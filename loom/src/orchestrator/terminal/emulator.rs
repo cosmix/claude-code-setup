@@ -46,6 +46,7 @@ pub enum TerminalEmulator {
     // macOS terminals
     TerminalApp,
     ITerm2,
+    Ghostty,
 }
 
 impl TerminalEmulator {
@@ -66,6 +67,7 @@ impl TerminalEmulator {
             // macOS terminals use osascript to launch via AppleScript
             Self::TerminalApp => "osascript",
             Self::ITerm2 => "osascript",
+            Self::Ghostty => "ghostty",
         }
     }
 
@@ -83,6 +85,7 @@ impl TerminalEmulator {
             "mate-terminal" => Some(Self::MateTerminal),
             "xterm" => Some(Self::XTerm),
             "urxvt" => Some(Self::Urxvt),
+            "ghostty" => Some(Self::Ghostty),
             _ => None,
         }
     }
@@ -92,6 +95,7 @@ impl TerminalEmulator {
         match name {
             "Terminal" | "Terminal.app" => Some(Self::TerminalApp),
             "iTerm" | "iTerm2" | "iTerm.app" | "iTerm2.app" => Some(Self::ITerm2),
+            "Ghostty" | "Ghostty.app" | "ghostty" => Some(Self::Ghostty),
             // Fall back to binary matching for non-macOS terminals
             _ => Self::from_binary(name),
         }
@@ -263,6 +267,17 @@ end tell"#
                 );
                 command.arg("-e").arg(script);
             }
+            Self::Ghostty => {
+                command
+                    .arg("--title")
+                    .arg(title)
+                    .arg("--working-directory")
+                    .arg(workdir)
+                    .arg("-e")
+                    .arg("bash")
+                    .arg("-c")
+                    .arg(cmd);
+            }
         }
 
         command
@@ -284,6 +299,7 @@ end tell"#
             Self::Urxvt => "urxvt",
             Self::TerminalApp => "Terminal.app",
             Self::ITerm2 => "iTerm2",
+            Self::Ghostty => "Ghostty",
         }
     }
 }

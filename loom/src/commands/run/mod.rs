@@ -52,6 +52,12 @@ pub fn execute_background(
         return Ok(());
     }
 
+    // Detect terminal BEFORE daemonizing (daemon loses terminal context after fork)
+    // Store in environment variable so it can be read back after the fork
+    if let Ok(terminal) = crate::orchestrator::terminal::native::detect_terminal() {
+        std::env::set_var("LOOM_TERMINAL", terminal.display_name());
+    }
+
     let daemon_config = DaemonConfig {
         manual_mode: manual,
         max_parallel,

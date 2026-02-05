@@ -16,12 +16,22 @@ use super::super::emulator::TerminalEmulator;
 /// Detect the available terminal emulator (Linux)
 ///
 /// Priority:
+/// 0. LOOM_TERMINAL environment variable (set before daemon fork to preserve terminal choice)
 /// 1. TERMINAL environment variable (user preference)
 /// 2. gsettings/dconf default terminal (GNOME/Cosmic DE settings)
 /// 3. xdg-terminal-exec (emerging standard)
 /// 4. Common terminals: kitty, alacritty, etc.
 #[cfg(target_os = "linux")]
 pub fn detect_terminal() -> Result<TerminalEmulator> {
+    // 0. Check LOOM_TERMINAL environment variable first (set before daemon fork to preserve terminal choice)
+    if let Ok(terminal_name) = std::env::var("LOOM_TERMINAL") {
+        if !terminal_name.is_empty() {
+            if let Some(emulator) = TerminalEmulator::from_name(&terminal_name) {
+                return Ok(emulator);
+            }
+        }
+    }
+
     // 1. Check TERMINAL environment variable (user preference)
     if let Ok(terminal) = std::env::var("TERMINAL") {
         if !terminal.is_empty() && which::which(&terminal).is_ok() {
@@ -114,6 +124,7 @@ fn get_gsettings_terminal() -> Option<String> {
 /// Detect the available terminal emulator (macOS)
 ///
 /// Priority:
+/// 0. LOOM_TERMINAL environment variable (set before daemon fork to preserve terminal choice)
 /// 1. TERMINAL environment variable (user preference)
 /// 2. Currently running terminal (detected via parent process)
 /// 3. Cross-platform terminals (kitty, alacritty, wezterm)
@@ -124,6 +135,15 @@ fn get_gsettings_terminal() -> Option<String> {
 /// parent process chain which is deterministic and stable.
 #[cfg(target_os = "macos")]
 pub fn detect_terminal() -> Result<TerminalEmulator> {
+    // 0. Check LOOM_TERMINAL environment variable first (set before daemon fork to preserve terminal choice)
+    if let Ok(terminal_name) = std::env::var("LOOM_TERMINAL") {
+        if !terminal_name.is_empty() {
+            if let Some(emulator) = TerminalEmulator::from_name(&terminal_name) {
+                return Ok(emulator);
+            }
+        }
+    }
+
     // 1. Check TERMINAL environment variable (user preference)
     if let Ok(terminal) = std::env::var("TERMINAL") {
         if !terminal.is_empty() {
@@ -148,6 +168,7 @@ pub fn detect_terminal() -> Result<TerminalEmulator> {
 
     // 3. Check for cross-platform terminals that work on macOS
     let candidates = [
+        TerminalEmulator::Ghostty,
         TerminalEmulator::Kitty,
         TerminalEmulator::Alacritty,
         TerminalEmulator::Wezterm,
@@ -160,7 +181,11 @@ pub fn detect_terminal() -> Result<TerminalEmulator> {
     }
 
     // 4. Check for installed macOS native terminals
-    // Prefer iTerm2 if installed, otherwise fall back to Terminal.app
+    // Prefer Ghostty and iTerm2 if installed, otherwise fall back to Terminal.app
+    if Path::new("/Applications/Ghostty.app").exists() {
+        return Ok(TerminalEmulator::Ghostty);
+    }
+
     if Path::new("/Applications/iTerm.app").exists() {
         return Ok(TerminalEmulator::ITerm2);
     }
@@ -287,6 +312,7 @@ fn match_process_to_terminal(process_name: &str) -> Option<TerminalEmulator> {
     match process_name {
         "iTerm2" | "iTerm" => Some(TerminalEmulator::ITerm2),
         "Terminal" => Some(TerminalEmulator::TerminalApp),
+        "ghostty" | "Ghostty" => Some(TerminalEmulator::Ghostty),
         "kitty" => Some(TerminalEmulator::Kitty),
         "alacritty" | "Alacritty" => Some(TerminalEmulator::Alacritty),
         "wezterm" | "wezterm-gui" | "WezTerm" => Some(TerminalEmulator::Wezterm),
@@ -342,5 +368,48 @@ mod tests {
             result.is_some(),
             "Should detect a running terminal on macOS"
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_loom_terminal_env_var_takes_precedence() {
+        // Test that LOOM_TERMINAL environment variable takes precedence over all other detection
+        // Save and clear any existing LOOM_TERMINAL
+        let original = std::env::var("LOOM_TERMINAL").ok();
+
+        std::env::set_var("LOOM_TERMINAL", "Ghostty");
+        let result = detect_terminal();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TerminalEmulator::Ghostty);
+
+        // Test with iTerm2
+        std::env::set_var("LOOM_TERMINAL", "iTerm2");
+        let result = detect_terminal();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TerminalEmulator::ITerm2);
+
+        // Test with kitty
+        std::env::set_var("LOOM_TERMINAL", "kitty");
+        let result = detect_terminal();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), TerminalEmulator::Kitty);
+
+        // Restore original value or remove if it didn't exist
+        if let Some(val) = original {
+            std::env::set_var("LOOM_TERMINAL", val);
+        } else {
+            std::env::remove_var("LOOM_TERMINAL");
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_loom_terminal_env_var_invalid() {
+        // Test that invalid LOOM_TERMINAL falls back to regular detection
+        std::env::set_var("LOOM_TERMINAL", "invalid-terminal-name");
+        let result = detect_terminal();
+        // Should fall back to regular detection and still find something
+        assert!(result.is_ok());
+        std::env::remove_var("LOOM_TERMINAL");
     }
 }

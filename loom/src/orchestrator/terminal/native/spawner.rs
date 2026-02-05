@@ -11,8 +11,16 @@ use super::super::emulator::TerminalEmulator;
 use super::pid_tracking;
 
 // Terminal spawning timing constants
-const CLAUDE_STARTUP_DELAY_MS: u64 = 500;
-const PID_DISCOVERY_TIMEOUT_SECS: u64 = 3;
+// Note: macOS terminals via AppleScript need more time to:
+// 1. Launch the terminal app
+// 2. Open a window
+// 3. Start the shell
+// 4. Execute the wrapper script
+// 5. Write the PID file
+const CLAUDE_STARTUP_DELAY_MS: u64 = 1000; // Increased from 500ms
+const PID_DISCOVERY_TIMEOUT_SECS: u64 = 5; // Increased from 3s
+const PID_FILE_RETRY_DELAY_MS: u64 = 200;
+const PID_FILE_MAX_RETRIES: u32 = 10; // Total 2s of retries
 
 /// Spawn a background thread to reap a child process when it exits.
 ///
@@ -63,14 +71,21 @@ pub fn spawn_in_terminal(
 
     // If PID tracking is enabled, try to resolve the actual Claude PID
     if let (Some(work_dir), Some(stage_id)) = (work_dir, stage_id) {
-        // Wait for the PID file to be created by the wrapper script
+        // Wait initial delay for terminal to start
         thread::sleep(Duration::from_millis(CLAUDE_STARTUP_DELAY_MS));
 
-        // Try to read the PID from the PID file
-        if let Some(claude_pid) = pid_tracking::read_pid_file(work_dir, stage_id) {
-            // Verify the PID is actually alive
-            if pid_tracking::check_pid_alive(claude_pid) {
-                return Ok(claude_pid);
+        // Try to read the PID from the PID file with retries
+        // The wrapper script may take time to execute and write the PID
+        for retry in 0..PID_FILE_MAX_RETRIES {
+            if let Some(claude_pid) = pid_tracking::read_pid_file(work_dir, stage_id) {
+                // Verify the PID is actually alive
+                if pid_tracking::check_pid_alive(claude_pid) {
+                    return Ok(claude_pid);
+                }
+            }
+
+            if retry < PID_FILE_MAX_RETRIES - 1 {
+                thread::sleep(Duration::from_millis(PID_FILE_RETRY_DELAY_MS));
             }
         }
 

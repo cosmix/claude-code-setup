@@ -22,7 +22,7 @@ use crate::models::worktree::Worktree;
 pub use detection::detect_terminal;
 pub use pid_tracking::{check_pid_alive, cleanup_stage_files, read_pid_file};
 pub use spawner::spawn_in_terminal;
-pub use window_ops::{close_window_by_title, window_exists_by_title};
+pub use window_ops::{close_window_by_title, close_window_by_title_for_terminal, window_exists_by_title, window_exists_by_title_for_terminal};
 
 /// Find the absolute path to the claude binary
 ///
@@ -353,7 +353,7 @@ impl TerminalBackend for NativeBackend {
         // that use a server process, where killing by PID would kill all windows.
         if let Some(stage_id) = &session.stage_id {
             let title = format!("loom-{stage_id}");
-            if close_window_by_title(&title) {
+            if close_window_by_title_for_terminal(&title, &self.terminal) {
                 // Clean up tracking files after closing the window
                 cleanup_stage_files(&self.work_dir, stage_id);
                 return Ok(());
@@ -424,7 +424,7 @@ impl TerminalBackend for NativeBackend {
         // Final fallback: check if window still exists
         if let Some(stage_id) = &session.stage_id {
             let title = format!("loom-{stage_id}");
-            if window_exists_by_title(&title) {
+            if window_exists_by_title_for_terminal(&title, &self.terminal) {
                 return Ok(true);
             }
         }

@@ -3,6 +3,7 @@
 //! Provides functions for closing and focusing terminal windows.
 
 use std::process::Command;
+use crate::orchestrator::terminal::emulator::TerminalEmulator;
 
 /// Close a window by its title using wmctrl or xdotool (Linux).
 ///
@@ -56,56 +57,174 @@ pub fn close_window_by_title(title: &str) -> bool {
     false
 }
 
+/// Helper function to execute AppleScript and return a boolean result
+#[cfg(target_os = "macos")]
+fn execute_applescript_bool(script: &str) -> bool {
+    Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .output()
+        .map(|out| {
+            if out.status.success() {
+                String::from_utf8_lossy(&out.stdout).trim() == "true"
+            } else {
+                false
+            }
+        })
+        .unwrap_or(false)
+}
+
+/// Close a Terminal.app window by title (macOS)
+#[cfg(target_os = "macos")]
+fn close_terminal_app_window(escaped_title: &str) -> bool {
+    let script = format!(
+        r#"tell application "Terminal"
+    if it is running then
+        set windowList to every window whose name contains "{}"
+        if (count of windowList) > 0 then
+            repeat with w in windowList
+                close w
+            end repeat
+            return true
+        end if
+    end if
+    return false
+end tell"#,
+        escaped_title
+    );
+
+    execute_applescript_bool(&script)
+}
+
+/// Close an iTerm2 window by title (macOS)
+#[cfg(target_os = "macos")]
+fn close_iterm2_window(escaped_title: &str) -> bool {
+    let script = format!(
+        r#"tell application "iTerm2"
+    if it is running then
+        set windowList to every window whose name contains "{}"
+        if (count of windowList) > 0 then
+            repeat with w in windowList
+                close w
+            end repeat
+            return true
+        end if
+    end if
+    return false
+end tell"#,
+        escaped_title
+    );
+
+    execute_applescript_bool(&script)
+}
+
+/// Close a cross-platform terminal window by title (macOS)
+///
+/// For terminals like Ghostty, Kitty, Alacritty, and Wezterm that run on multiple platforms,
+/// use macOS's standard window closing API via AppleScript.
+#[cfg(target_os = "macos")]
+fn close_cross_platform_terminal_window(escaped_title: &str, terminal: &TerminalEmulator) -> bool {
+    let app_name = match terminal {
+        TerminalEmulator::Ghostty => "Ghostty",
+        TerminalEmulator::Kitty => "kitty",
+        TerminalEmulator::Alacritty => "Alacritty",
+        TerminalEmulator::Wezterm => "WezTerm",
+        _ => return false,
+    };
+
+    let script = format!(
+        r#"tell application "{}"
+    if it is running then
+        set windowList to every window whose name contains "{}"
+        if (count of windowList) > 0 then
+            repeat with w in windowList
+                close w
+            end repeat
+            return true
+        end if
+    end if
+    return false
+end tell"#,
+        app_name, escaped_title
+    );
+
+    execute_applescript_bool(&script)
+}
+
+/// Close a window by title for a specific terminal emulator (macOS).
+///
+/// This is the preferred method when you know which terminal is being used.
+/// Returns `true` if the window was successfully closed, `false` otherwise.
+#[cfg(target_os = "macos")]
+pub fn close_window_by_title_for_terminal(title: &str, terminal: &TerminalEmulator) -> bool {
+    let escaped_title = title.replace('"', "\\\"");
+
+    match terminal {
+        TerminalEmulator::TerminalApp => {
+            close_terminal_app_window(&escaped_title)
+        }
+        TerminalEmulator::ITerm2 => {
+            close_iterm2_window(&escaped_title)
+        }
+        TerminalEmulator::Ghostty | TerminalEmulator::Kitty |
+        TerminalEmulator::Alacritty | TerminalEmulator::Wezterm => {
+            close_cross_platform_terminal_window(&escaped_title, terminal)
+        }
+        _ => false,
+    }
+}
+
 /// Close a window by its title using AppleScript (macOS).
 ///
-/// This is the preferred method for closing terminal windows because it works
-/// correctly for all terminal emulators, including Terminal.app and iTerm2.
+/// This function tries to determine the terminal from LOOM_TERMINAL env var,
+/// then falls back to trying all known terminals.
 ///
 /// Returns `true` if the window was successfully closed, `false` otherwise.
 #[cfg(target_os = "macos")]
 pub fn close_window_by_title(title: &str) -> bool {
-    // Escape quotes in title for AppleScript
-    let escaped_title = title.replace('"', "\\\"");
-
-    // Try Terminal.app first
-    let terminal_script = format!(
-        r#"tell application "Terminal"
-    set windowList to every window whose name contains "{}"
-    repeat with w in windowList
-        close w
-    end repeat
-end tell"#,
-        escaped_title
-    );
-
-    let result = Command::new("osascript")
-        .arg("-e")
-        .arg(&terminal_script)
-        .output();
-
-    if let Ok(out) = result {
-        if out.status.success() {
-            return true;
+    // Try to determine which terminal to use from LOOM_TERMINAL env var
+    if let Ok(terminal_name) = std::env::var("LOOM_TERMINAL") {
+        if let Some(terminal) = TerminalEmulator::from_name(&terminal_name) {
+            if close_window_by_title_for_terminal(title, &terminal) {
+                return true;
+            }
         }
     }
 
-    // Try iTerm2
-    let iterm_script = format!(
-        r#"tell application "iTerm2"
-    set windowList to every window whose name contains "{}"
-    repeat with w in windowList
-        close w
-    end repeat
-end tell"#,
-        escaped_title
-    );
+    // Fallback: try all known terminals
+    let escaped_title = title.replace('"', "\\\"");
 
-    Command::new("osascript")
-        .arg("-e")
-        .arg(&iterm_script)
-        .output()
-        .map(|out| out.status.success())
-        .unwrap_or(false)
+    // Try Terminal.app
+    if close_terminal_app_window(&escaped_title) {
+        return true;
+    }
+
+    // Try iTerm2
+    if close_iterm2_window(&escaped_title) {
+        return true;
+    }
+
+    // Try Ghostty
+    if close_cross_platform_terminal_window(&escaped_title, &TerminalEmulator::Ghostty) {
+        return true;
+    }
+
+    // Try Kitty
+    if close_cross_platform_terminal_window(&escaped_title, &TerminalEmulator::Kitty) {
+        return true;
+    }
+
+    // Try Alacritty
+    if close_cross_platform_terminal_window(&escaped_title, &TerminalEmulator::Alacritty) {
+        return true;
+    }
+
+    // Try Wezterm
+    if close_cross_platform_terminal_window(&escaped_title, &TerminalEmulator::Wezterm) {
+        return true;
+    }
+
+    false
 }
 
 /// Check if a window with the given title exists (Linux)
@@ -157,17 +276,10 @@ pub fn window_exists_by_title(title: &str) -> bool {
     false
 }
 
-/// Check if a window with the given title exists (macOS)
-///
-/// Uses AppleScript to check if a window with the given title exists in
-/// Terminal.app or iTerm2. Returns true if found, false otherwise.
+/// Check if a Terminal.app window exists by title (macOS)
 #[cfg(target_os = "macos")]
-pub fn window_exists_by_title(title: &str) -> bool {
-    // Escape quotes in title for AppleScript
-    let escaped_title = title.replace('"', "\\\"");
-
-    // Check Terminal.app
-    let terminal_script = format!(
+fn terminal_app_window_exists(escaped_title: &str) -> bool {
+    let script = format!(
         r#"tell application "Terminal"
     set windowList to every window whose name contains "{}"
     return (count of windowList) > 0
@@ -175,21 +287,13 @@ end tell"#,
         escaped_title
     );
 
-    if let Ok(out) = Command::new("osascript")
-        .arg("-e")
-        .arg(&terminal_script)
-        .output()
-    {
-        if out.status.success() {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            if stdout.trim() == "true" {
-                return true;
-            }
-        }
-    }
+    execute_applescript_bool(&script)
+}
 
-    // Check iTerm2
-    let iterm_script = format!(
+/// Check if an iTerm2 window exists by title (macOS)
+#[cfg(target_os = "macos")]
+fn iterm2_window_exists(escaped_title: &str) -> bool {
+    let script = format!(
         r#"tell application "iTerm2"
     set windowList to every window whose name contains "{}"
     return (count of windowList) > 0
@@ -197,15 +301,101 @@ end tell"#,
         escaped_title
     );
 
-    if let Ok(out) = Command::new("osascript")
-        .arg("-e")
-        .arg(&iterm_script)
-        .output()
-    {
-        if out.status.success() {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            return stdout.trim() == "true";
+    execute_applescript_bool(&script)
+}
+
+/// Check if a cross-platform terminal window exists by title (macOS)
+#[cfg(target_os = "macos")]
+fn cross_platform_terminal_window_exists(escaped_title: &str, terminal: &TerminalEmulator) -> bool {
+    let app_name = match terminal {
+        TerminalEmulator::Ghostty => "Ghostty",
+        TerminalEmulator::Kitty => "kitty",
+        TerminalEmulator::Alacritty => "Alacritty",
+        TerminalEmulator::Wezterm => "WezTerm",
+        _ => return false,
+    };
+
+    let script = format!(
+        r#"tell application "{}"
+    set windowList to every window whose name contains "{}"
+    return (count of windowList) > 0
+end tell"#,
+        app_name, escaped_title
+    );
+
+    execute_applescript_bool(&script)
+}
+
+/// Check if a window with the given title exists for a specific terminal (macOS)
+///
+/// Uses AppleScript to check if a window with the given title exists.
+/// Returns true if found, false otherwise.
+#[cfg(target_os = "macos")]
+pub fn window_exists_by_title_for_terminal(title: &str, terminal: &TerminalEmulator) -> bool {
+    let escaped_title = title.replace('"', "\\\"");
+
+    match terminal {
+        TerminalEmulator::TerminalApp => {
+            terminal_app_window_exists(&escaped_title)
         }
+        TerminalEmulator::ITerm2 => {
+            iterm2_window_exists(&escaped_title)
+        }
+        TerminalEmulator::Ghostty | TerminalEmulator::Kitty |
+        TerminalEmulator::Alacritty | TerminalEmulator::Wezterm => {
+            cross_platform_terminal_window_exists(&escaped_title, terminal)
+        }
+        _ => false,
+    }
+}
+
+/// Check if a window with the given title exists (macOS)
+///
+/// Uses AppleScript to check if a window with the given title exists.
+/// Tries LOOM_TERMINAL env var first, then falls back to trying all known terminals.
+/// Returns true if found, false otherwise.
+#[cfg(target_os = "macos")]
+pub fn window_exists_by_title(title: &str) -> bool {
+    // Try to determine which terminal to use from LOOM_TERMINAL env var
+    if let Ok(terminal_name) = std::env::var("LOOM_TERMINAL") {
+        if let Some(terminal) = TerminalEmulator::from_name(&terminal_name) {
+            if window_exists_by_title_for_terminal(title, &terminal) {
+                return true;
+            }
+        }
+    }
+
+    // Fallback: try all known terminals
+    let escaped_title = title.replace('"', "\\\"");
+
+    // Check Terminal.app
+    if terminal_app_window_exists(&escaped_title) {
+        return true;
+    }
+
+    // Check iTerm2
+    if iterm2_window_exists(&escaped_title) {
+        return true;
+    }
+
+    // Check Ghostty
+    if cross_platform_terminal_window_exists(&escaped_title, &TerminalEmulator::Ghostty) {
+        return true;
+    }
+
+    // Check Kitty
+    if cross_platform_terminal_window_exists(&escaped_title, &TerminalEmulator::Kitty) {
+        return true;
+    }
+
+    // Check Alacritty
+    if cross_platform_terminal_window_exists(&escaped_title, &TerminalEmulator::Alacritty) {
+        return true;
+    }
+
+    // Check Wezterm
+    if cross_platform_terminal_window_exists(&escaped_title, &TerminalEmulator::Wezterm) {
+        return true;
     }
 
     false

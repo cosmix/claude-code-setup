@@ -67,6 +67,37 @@ pub fn read_pid_file(work_dir: &Path, stage_id: &str) -> Option<u32> {
         .and_then(|s| s.trim().parse().ok())
 }
 
+/// Wait for a PID file to appear and contain a valid, alive PID.
+///
+/// # Arguments
+/// * `work_dir` - The .work directory path
+/// * `stage_id` - The stage identifier
+/// * `timeout` - Maximum time to wait
+/// * `poll_interval` - How often to check
+///
+/// # Returns
+/// The PID if found and alive within the timeout, None otherwise
+#[allow(dead_code)] // Available for monitor to use in the future
+pub fn wait_for_pid_file(
+    work_dir: &Path,
+    stage_id: &str,
+    timeout: Duration,
+    poll_interval: Duration,
+) -> Option<u32> {
+    let deadline = std::time::Instant::now() + timeout;
+
+    while std::time::Instant::now() < deadline {
+        if let Some(pid) = read_pid_file(work_dir, stage_id) {
+            if check_pid_alive(pid) {
+                return Some(pid);
+            }
+        }
+        thread::sleep(poll_interval);
+    }
+
+    None
+}
+
 /// Remove the PID file for a stage
 pub fn remove_pid_file(work_dir: &Path, stage_id: &str) {
     let path = pid_file_path(work_dir, stage_id);
