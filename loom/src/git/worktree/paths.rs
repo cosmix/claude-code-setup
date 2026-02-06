@@ -42,7 +42,15 @@ pub fn find_repo_root_from_cwd(cwd: &Path) -> Option<PathBuf> {
     if let Some(idx) = path_str.find(worktrees_marker) {
         // Extract the repo root (everything before .worktrees/)
         let repo_root_str = &path_str[..idx];
-        let repo_root = PathBuf::from(repo_root_str.trim_end_matches('/'));
+        let trimmed_root = repo_root_str.trim_end_matches('/');
+
+        // Handle empty path (worktree marker at start of relative path)
+        let repo_root = if trimmed_root.is_empty() {
+            // Worktree path is relative - resolve against current directory
+            PathBuf::from(".")
+        } else {
+            PathBuf::from(trimmed_root)
+        };
 
         // Attempt to canonicalize if the path exists
         if repo_root.exists() {
@@ -204,10 +212,10 @@ mod tests {
     #[test]
     fn test_find_repo_root_from_cwd_relative_worktree() {
         let path = PathBuf::from(".worktrees/stage-1/src/main.rs");
-        // For relative paths in worktree, should return empty path (before .worktrees)
-        // which becomes an empty PathBuf
+        // For relative paths in worktree, should return "." (current directory)
+        // since the worktree marker is at the start
         let result = find_repo_root_from_cwd(&path);
-        assert_eq!(result, Some(PathBuf::from("")));
+        assert_eq!(result, Some(PathBuf::from(".")));
     }
 
     #[test]

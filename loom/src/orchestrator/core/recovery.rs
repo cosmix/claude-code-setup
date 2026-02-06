@@ -118,16 +118,34 @@ impl Recovery for Orchestrator {
                         self.graph.set_node_merged(&stage.id, stage.merged);
                         // Now mark as completed - this triggers update_ready_status() which
                         // will see the correct merged value set above
-                        let _ = self.graph.mark_completed(&stage.id);
+                        if let Err(e) = self.graph.mark_completed(&stage.id) {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::Queued => {
                         // Sync Ready status from stage files to graph
                         // This handles stages marked Ready by `loom verify` -> trigger_dependents()
-                        let _ = self.graph.mark_queued(&stage.id);
+                        if let Err(e) = self.graph.mark_queued(&stage.id) {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::Executing => {
                         // Mark as executing in graph to track active sessions
-                        let _ = self.graph.mark_executing(&stage.id);
+                        if let Err(e) = self.graph.mark_executing(&stage.id) {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::Blocked => {
                         // Check if the blocked stage is eligible for automatic retry
@@ -150,7 +168,13 @@ impl Recovery for Orchestrator {
                                     self.graph.get_node(&stage.id).map(|n| n.status.clone());
 
                                 // Update graph first
-                                let _ = self.graph.mark_queued(&stage.id);
+                                if let Err(e) = self.graph.mark_queued(&stage.id) {
+                                    tracing::warn!(
+                                        "Failed to sync graph status for stage {}: {}",
+                                        stage.id,
+                                        e
+                                    );
+                                }
 
                                 // Now save the file
                                 if let Err(e) = self.save_stage(&stage) {
@@ -164,37 +188,92 @@ impl Recovery for Orchestrator {
                             }
                         } else {
                             // Not eligible for retry, just mark as blocked in graph
-                            let _ = self.graph.mark_status(&stage.id, StageStatus::Blocked);
+                            if let Err(e) = self.graph.mark_status(&stage.id, StageStatus::Blocked)
+                            {
+                                tracing::warn!(
+                                    "Failed to sync graph status for stage {}: {}",
+                                    stage.id,
+                                    e
+                                );
+                            }
                         }
                     }
                     StageStatus::WaitingForInput => {
-                        let _ = self
+                        if let Err(e) = self
                             .graph
-                            .mark_status(&stage.id, StageStatus::WaitingForInput);
+                            .mark_status(&stage.id, StageStatus::WaitingForInput)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::NeedsHandoff => {
-                        let _ = self.graph.mark_status(&stage.id, StageStatus::NeedsHandoff);
+                        if let Err(e) = self.graph.mark_status(&stage.id, StageStatus::NeedsHandoff)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::MergeConflict => {
-                        let _ = self
+                        if let Err(e) = self
                             .graph
-                            .mark_status(&stage.id, StageStatus::MergeConflict);
+                            .mark_status(&stage.id, StageStatus::MergeConflict)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::CompletedWithFailures => {
-                        let _ = self
+                        if let Err(e) = self
                             .graph
-                            .mark_status(&stage.id, StageStatus::CompletedWithFailures);
+                            .mark_status(&stage.id, StageStatus::CompletedWithFailures)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::MergeBlocked => {
-                        let _ = self.graph.mark_status(&stage.id, StageStatus::MergeBlocked);
+                        if let Err(e) = self.graph.mark_status(&stage.id, StageStatus::MergeBlocked)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::Skipped => {
-                        let _ = self.graph.mark_status(&stage.id, StageStatus::Skipped);
+                        if let Err(e) = self.graph.mark_status(&stage.id, StageStatus::Skipped) {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                     StageStatus::WaitingForDeps => {
-                        let _ = self
+                        if let Err(e) = self
                             .graph
-                            .mark_status(&stage.id, StageStatus::WaitingForDeps);
+                            .mark_status(&stage.id, StageStatus::WaitingForDeps)
+                        {
+                            tracing::warn!(
+                                "Failed to sync graph status for stage {}: {}",
+                                stage.id,
+                                e
+                            );
+                        }
                     }
                 }
             }
@@ -313,7 +392,13 @@ impl Recovery for Orchestrator {
                             // Update graph first - only if not in terminal state
                             let graph_updated = if let Some(node) = self.graph.get_node(stage_id) {
                                 if node.status != StageStatus::Completed {
-                                    let _ = self.graph.mark_queued(stage_id);
+                                    if let Err(e) = self.graph.mark_queued(stage_id) {
+                                        tracing::warn!(
+                                            "Failed to sync graph status for stage {}: {}",
+                                            stage_id,
+                                            e
+                                        );
+                                    }
                                     true
                                 } else {
                                     false

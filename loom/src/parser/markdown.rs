@@ -51,7 +51,10 @@ impl MarkdownDocument {
         // Find the end of frontmatter to extract body
         let mut end_idx = 0;
         for (idx, line) in lines.iter().enumerate().skip(1) {
-            if line.trim().starts_with("---") {
+            // The closing delimiter must be exactly "---" or "..." (after trimming)
+            // This prevents matching YAML content like "--- # comment" or "----"
+            let trimmed = line.trim();
+            if trimmed == "---" || trimmed == "..." {
                 end_idx = idx;
                 break;
             }

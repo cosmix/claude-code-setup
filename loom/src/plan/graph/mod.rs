@@ -188,6 +188,27 @@ impl ExecutionGraph {
             .nodes
             .get_mut(stage_id)
             .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
+
+        if !node.status.can_transition_to(&status) {
+            tracing::warn!(
+                "Invalid graph transition for stage {}: {:?} -> {:?}, forcing update",
+                stage_id,
+                node.status,
+                status
+            );
+        }
+
+        node.status = status;
+        Ok(())
+    }
+
+    /// Force a status update without transition validation.
+    /// Use this only for recovery and synchronization operations.
+    pub fn force_status(&mut self, stage_id: &str, status: StageStatus) -> Result<()> {
+        let node = self
+            .nodes
+            .get_mut(stage_id)
+            .ok_or_else(|| anyhow::anyhow!("Stage not found: {stage_id}"))?;
         node.status = status;
         Ok(())
     }
