@@ -14,6 +14,22 @@ use nix::unistd::Pid;
 /// - Process exists but we lack permission (`EPERM`)
 /// - Process does not exist (`ESRCH`)
 ///
+/// # PID Reuse Warning
+///
+/// **RACE CONDITION HAZARD**: This function is subject to PID reuse races. Between the time
+/// you check if a PID is alive and the time you act on that information, the process may
+/// have exited and the OS may have reassigned that PID to a new, unrelated process.
+///
+/// This means `is_process_alive(pid) == true` only tells you "a process with this PID exists
+/// right now", NOT "the process I'm tracking is still running". The new process may be
+/// completely unrelated to the one you're monitoring.
+///
+/// **Safe usage patterns:**
+/// - Only use this for informational purposes (logging, diagnostics)
+/// - DO NOT use this as the sole basis for sending signals or making state transitions
+/// - Prefer tracking processes via process handles or file locks when possible
+/// - If you must use PIDs, combine with additional identity checks (start time, parent PID, etc.)
+///
 /// # Arguments
 /// * `pid` - The process ID to check
 ///

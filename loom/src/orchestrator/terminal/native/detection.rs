@@ -129,10 +129,6 @@ fn get_gsettings_terminal() -> Option<String> {
 /// 2. Currently running terminal (detected via parent process)
 /// 3. Cross-platform terminals (kitty, alacritty, wezterm)
 /// 4. iTerm2 or Terminal.app (check for installed apps)
-///
-/// Note: We explicitly avoid detect_running_terminal() because it's non-deterministic
-/// when multiple terminal apps are running simultaneously. Instead, we prefer the
-/// parent process chain which is deterministic and stable.
 #[cfg(target_os = "macos")]
 pub fn detect_terminal() -> Result<TerminalEmulator> {
     // 0. Check LOOM_TERMINAL environment variable first (set before daemon fork to preserve terminal choice)
@@ -251,61 +247,6 @@ fn detect_parent_terminal() -> Option<TerminalEmulator> {
     None
 }
 
-/// Detect running terminal apps on macOS
-///
-/// Checks which terminal applications are currently running.
-///
-/// NOTE: This function is intentionally unused because it's non-deterministic
-/// when multiple terminals are running. Kept for potential debugging use.
-#[cfg(target_os = "macos")]
-#[allow(dead_code)]
-fn detect_running_terminal() -> Option<TerminalEmulator> {
-    // Use ps to find running terminal processes
-    let output = Command::new("ps")
-        .args(["-axc", "-o", "comm="])
-        .output()
-        .ok()?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Check for terminals in order of preference
-    let terminal_checks = [
-        ("iTerm2", TerminalEmulator::ITerm2),
-        ("kitty", TerminalEmulator::Kitty),
-        ("alacritty", TerminalEmulator::Alacritty),
-        ("wezterm-gui", TerminalEmulator::Wezterm),
-        ("WezTerm", TerminalEmulator::Wezterm),
-        ("Terminal", TerminalEmulator::TerminalApp),
-    ];
-
-    for (process_name, terminal) in terminal_checks {
-        if stdout.lines().any(|line| line.trim() == process_name) {
-            // For cross-platform terminals, verify they're actually installed
-            match terminal {
-                TerminalEmulator::Kitty
-                | TerminalEmulator::Alacritty
-                | TerminalEmulator::Wezterm => {
-                    if which::which(terminal.binary()).is_ok() {
-                        return Some(terminal);
-                    }
-                }
-                // For macOS-native terminals, just check the app exists
-                TerminalEmulator::ITerm2 => {
-                    if Path::new("/Applications/iTerm.app").exists() {
-                        return Some(terminal);
-                    }
-                }
-                TerminalEmulator::TerminalApp => {
-                    return Some(terminal);
-                }
-                _ => {}
-            }
-        }
-    }
-
-    None
-}
-
 /// Match a process name to a terminal emulator
 #[cfg(target_os = "macos")]
 fn match_process_to_terminal(process_name: &str) -> Option<TerminalEmulator> {
@@ -355,19 +296,6 @@ mod tests {
             Some(TerminalEmulator::Wezterm)
         );
         assert_eq!(match_process_to_terminal("unknown"), None);
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn test_detect_running_terminal_finds_current() {
-        // This test verifies that detect_running_terminal can find a terminal
-        // when run from within a terminal. It should find at least one.
-        let result = detect_running_terminal();
-        // We expect to find something since we're running in a terminal
-        assert!(
-            result.is_some(),
-            "Should detect a running terminal on macOS"
-        );
     }
 
     #[cfg(target_os = "macos")]

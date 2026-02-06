@@ -1,6 +1,5 @@
 //! Tests for session operations
 
-use super::super::complete::cleanup_terminal_for_stage;
 use super::super::session::cleanup_session_resources;
 use super::setup_work_dir;
 use crate::fs::session_files::find_session_for_stage;
@@ -9,7 +8,6 @@ use crate::orchestrator::continuation::session_to_markdown;
 use crate::parser::frontmatter::parse_from_markdown;
 use chrono::Utc;
 use std::fs;
-use std::path::Path;
 
 #[test]
 fn test_session_from_markdown_valid() {
@@ -137,11 +135,6 @@ last_active: "2024-01-01T00:00:00Z"
     let result = find_session_for_stage("test-stage", &work_dir);
 
     assert_eq!(result, None);
-}
-
-#[test]
-fn test_cleanup_terminal_for_stage_does_not_fail() {
-    cleanup_terminal_for_stage("test-stage", None, Path::new(".work"));
 }
 
 #[test]

@@ -20,7 +20,7 @@ use crate::models::stage::Stage;
 use crate::models::worktree::Worktree;
 
 pub use detection::detect_terminal;
-pub use pid_tracking::{check_pid_alive, cleanup_stage_files, read_pid_file};
+pub use pid_tracking::{cleanup_stage_files, read_pid_file};
 pub use spawner::spawn_in_terminal;
 pub use window_ops::{
     close_window_by_title, close_window_by_title_for_terminal, window_exists_by_title,
@@ -402,7 +402,7 @@ impl TerminalBackend for NativeBackend {
         if let Some(stage_id) = &session.stage_id {
             if let Some(current_pid) = read_pid_file(&self.work_dir, stage_id) {
                 // We have a PID from the tracking file, check if it's alive
-                if check_pid_alive(current_pid) {
+                if crate::process::is_process_alive(current_pid) {
                     return Ok(true);
                 }
                 // PID file exists but process is dead - clean up and continue checking

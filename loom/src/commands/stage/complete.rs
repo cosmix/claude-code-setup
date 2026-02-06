@@ -88,55 +88,8 @@ pub fn complete(
     let mut stage = stage;
 
     // Handle --force-unsafe: bypass state machine and mark as completed directly
-    // Merged flag semantics for this path:
-    // - merged=true ONLY if --assume-merged is provided (manual merge assumed)
-    // - merged=false otherwise (manual merge needed, dependents won't trigger)
     if force_unsafe {
-        eprintln!();
-        eprintln!("⚠️  WARNING: Using --force-unsafe bypasses state machine validation!");
-        eprintln!("⚠️  This can corrupt dependency tracking and cause unexpected behavior.");
-        eprintln!("⚠️  Use only for manual recovery scenarios.");
-        eprintln!();
-
-        println!(
-            "Force-completing stage '{}' (was: {:?})",
-            stage_id, stage.status
-        );
-
-        // INTENTIONAL STATE MACHINE BYPASS: This is a manual recovery command
-        // that allows administrators to force completion from any state.
-        // This is the ONLY place where direct status assignment is acceptable.
-        stage.status = StageStatus::Completed;
-
-        // Only set merged=true if explicitly requested via --assume-merged
-        if assume_merged {
-            stage.merged = true;
-            println!("  → Stage marked as merged (manual merge assumed)");
-        } else {
-            stage.merged = false;
-            eprintln!();
-            eprintln!("⚠️  WARNING: Stage NOT marked as merged (--assume-merged not provided).");
-            eprintln!("⚠️  Dependent stages will NOT be automatically triggered.");
-            eprintln!("⚠️  If you manually merged the branch, re-run with --assume-merged to trigger dependents.");
-            eprintln!();
-        }
-
-        save_stage(&stage, work_dir)?;
-        println!("Stage '{stage_id}' force-completed!");
-
-        // Only trigger dependent stages if merged=true (i.e., --assume-merged was used)
-        if stage.merged {
-            let triggered = trigger_dependents(&stage_id, work_dir)
-                .context("Failed to trigger dependent stages")?;
-
-            if !triggered.is_empty() {
-                println!("Triggered {} dependent stage(s):", triggered.len());
-                for dep_id in &triggered {
-                    println!("  → {dep_id}");
-                }
-            }
-        }
-        return Ok(());
+        return handle_force_unsafe_completion(stage, &stage_id, assume_merged, work_dir);
     }
 
     // Resolve session_id: CLI arg > stage.session field > scan sessions directory
@@ -161,11 +114,99 @@ pub fn complete(
     // If stage has a working_dir set, join it with the worktree root
     // Special case: "." means use the worktree root directly
     let acceptance_dir: Option<PathBuf> =
-        resolve_acceptance_dir(working_dir.as_deref(), stage.working_dir.as_deref());
+        resolve_acceptance_dir(working_dir.as_deref(), stage.working_dir.as_deref())?;
 
-    // Sync worktree permissions to main repo BEFORE acceptance criteria
-    // This ensures permissions are synced even if acceptance fails, allowing
-    // approved permissions to persist for retry attempts
+    // Sync worktree permissions before running acceptance criteria
+    sync_worktree_permissions(&working_dir, &acceptance_dir);
+
+    // Run acceptance criteria phase
+    let acceptance_result =
+        run_acceptance_phase(&stage, &stage_id, no_verify, acceptance_dir.as_deref())?;
+
+    // Cleanup session resources (update session status, remove signal)
+    if let Some(ref sid) = session_id {
+        cleanup_session_resources(&stage_id, sid, work_dir);
+    }
+
+    // Handle acceptance failure - mark as CompletedWithFailures and exit early
+    // (but not for --no-verify which is a deliberate skip)
+    if acceptance_result == Some(false) {
+        stage.try_complete_with_failures()?;
+        save_stage(&stage, work_dir)?;
+        println!("Stage '{stage_id}' completed with failures - acceptance criteria did not pass");
+        println!("  Run 'loom stage retry {stage_id}' to try again after fixing issues");
+        return Ok(());
+    }
+
+    // Run verification and merge phase
+    run_verification_phase(&mut stage, &stage_id, no_verify, &acceptance_dir, work_dir)?;
+
+    Ok(())
+}
+
+/// Handle force-unsafe completion mode
+///
+/// Bypasses state machine validation and marks stage as completed directly.
+/// This is a manual recovery command for administrative use only.
+fn handle_force_unsafe_completion(
+    mut stage: crate::models::stage::Stage,
+    stage_id: &str,
+    assume_merged: bool,
+    work_dir: &Path,
+) -> Result<()> {
+    eprintln!();
+    eprintln!("⚠️  WARNING: Using --force-unsafe bypasses state machine validation!");
+    eprintln!("⚠️  This can corrupt dependency tracking and cause unexpected behavior.");
+    eprintln!("⚠️  Use only for manual recovery scenarios.");
+    eprintln!();
+
+    println!(
+        "Force-completing stage '{}' (was: {:?})",
+        stage_id, stage.status
+    );
+
+    // INTENTIONAL STATE MACHINE BYPASS: This is a manual recovery command
+    // that allows administrators to force completion from any state.
+    // This is the ONLY place where direct status assignment is acceptable.
+    stage.status = StageStatus::Completed;
+
+    // Only set merged=true if explicitly requested via --assume-merged
+    if assume_merged {
+        stage.merged = true;
+        println!("  → Stage marked as merged (manual merge assumed)");
+    } else {
+        stage.merged = false;
+        eprintln!();
+        eprintln!("⚠️  WARNING: Stage NOT marked as merged (--assume-merged not provided).");
+        eprintln!("⚠️  Dependent stages will NOT be automatically triggered.");
+        eprintln!("⚠️  If you manually merged the branch, re-run with --assume-merged to trigger dependents.");
+        eprintln!();
+    }
+
+    save_stage(&stage, work_dir)?;
+    println!("Stage '{stage_id}' force-completed!");
+
+    // Only trigger dependent stages if merged=true (i.e., --assume-merged was used)
+    if stage.merged {
+        let triggered =
+            trigger_dependents(stage_id, work_dir).context("Failed to trigger dependent stages")?;
+
+        if !triggered.is_empty() {
+            println!("Triggered {} dependent stage(s):", triggered.len());
+            for dep_id in &triggered {
+                println!("  → {dep_id}");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Sync worktree permissions with main repo
+///
+/// Ensures permissions are synced even if acceptance fails, allowing
+/// approved permissions to persist for retry attempts.
+fn sync_worktree_permissions(working_dir: &Option<PathBuf>, acceptance_dir: &Option<PathBuf>) {
     if let Some(ref dir) = working_dir {
         // Find the main repo root from the worktree path
         let repo_root = find_repo_root_from_cwd(dir);
@@ -198,19 +239,29 @@ pub fn complete(
             }
         }
     }
+}
 
+/// Run acceptance criteria phase
+///
+/// Returns Some(true) if criteria passed, Some(false) if failed, None if skipped.
+fn run_acceptance_phase(
+    stage: &crate::models::stage::Stage,
+    stage_id: &str,
+    no_verify: bool,
+    acceptance_dir: Option<&Path>,
+) -> Result<Option<bool>> {
     // Track whether acceptance criteria passed (None = skipped via --no-verify)
     let acceptance_result: Option<bool> = if no_verify {
         // --no-verify means we skip criteria entirely (deliberate skip)
         None
     } else if !stage.acceptance.is_empty() {
         println!("Running acceptance criteria for stage '{stage_id}'...");
-        if let Some(ref dir) = acceptance_dir {
+        if let Some(dir) = acceptance_dir {
             println!("  (working directory: {})", dir.display());
         }
 
-        let result = run_acceptance(&stage, acceptance_dir.as_deref())
-            .context("Failed to run acceptance criteria")?;
+        let result =
+            run_acceptance(stage, acceptance_dir).context("Failed to run acceptance criteria")?;
 
         // Print results for each criterion
         for criterion_result in result.results() {
@@ -232,28 +283,22 @@ pub fn complete(
         Some(true)
     };
 
-    // Cleanup terminal resources based on backend type
-    cleanup_terminal_for_stage(&stage_id, session_id.as_deref(), work_dir);
+    Ok(acceptance_result)
+}
 
-    // Cleanup session resources (update session status, remove signal)
-    if let Some(ref sid) = session_id {
-        cleanup_session_resources(&stage_id, sid, work_dir);
-    }
-
-    // Handle acceptance failure - mark as CompletedWithFailures and exit early
-    // (but not for --no-verify which is a deliberate skip)
-    if acceptance_result == Some(false) {
-        stage.try_complete_with_failures()?;
-        save_stage(&stage, work_dir)?;
-        println!("Stage '{stage_id}' completed with failures - acceptance criteria did not pass");
-        println!("  Run 'loom stage retry {stage_id}' to try again after fixing issues");
-        return Ok(());
-    }
-
-    // If --no-verify was used, skip verifications and merge
+/// Run verification phase (goal-backward verification and change impact comparison)
+///
+/// If verifications pass, performs progressive merge. If --no-verify is used, skips all checks.
+fn run_verification_phase(
+    stage: &mut crate::models::stage::Stage,
+    stage_id: &str,
+    no_verify: bool,
+    acceptance_dir: &Option<PathBuf>,
+    work_dir: &Path,
+) -> Result<()> {
     if !no_verify {
         // Run goal-backward verification (truths, artifacts, wiring)
-        if let Some(stage_def) = load_stage_definition_from_plan(&stage_id, work_dir)? {
+        if let Some(stage_def) = load_stage_definition_from_plan(stage_id, work_dir)? {
             let has_goal_checks = !stage_def.truths.is_empty()
                 || !stage_def.artifacts.is_empty()
                 || !stage_def.wiring.is_empty();
@@ -265,7 +310,7 @@ pub fn complete(
 
                 if !goal_result.is_passed() {
                     stage.try_complete_with_failures()?;
-                    save_stage(&stage, work_dir)?;
+                    save_stage(stage, work_dir)?;
                     println!(
                         "Stage '{stage_id}' completed with failures - goal-backward verification failed"
                     );
@@ -292,12 +337,8 @@ pub fn complete(
                 println!("Running change impact comparison...");
                 let comparison_dir = acceptance_dir.as_deref();
 
-                match compare_to_baseline(
-                    &stage_id,
-                    &change_impact_config,
-                    comparison_dir,
-                    work_dir,
-                ) {
+                match compare_to_baseline(stage_id, &change_impact_config, comparison_dir, work_dir)
+                {
                     Ok(impact) => {
                         if !impact.comparison_succeeded {
                             eprintln!(
@@ -327,7 +368,7 @@ pub fn complete(
                                 && change_impact_config.policy == ChangeImpactPolicy::Fail
                             {
                                 stage.try_complete_with_failures()?;
-                                save_stage(&stage, work_dir)?;
+                                save_stage(stage, work_dir)?;
                                 println!(
                                     "Stage '{stage_id}' completed with failures - new failures introduced"
                                 );
@@ -358,7 +399,7 @@ pub fn complete(
         let cwd = std::env::current_dir().context("Failed to get current directory")?;
         let repo_root = find_repo_root_from_cwd(&cwd).unwrap_or_else(|| cwd.clone());
 
-        complete_with_merge(&mut stage, &repo_root, work_dir)?;
+        complete_with_merge(stage, &repo_root, work_dir)?;
     } else {
         // --no-verify: Skip verifications and merge, just mark as completed
         // Merged flag semantics for this path:
@@ -366,24 +407,11 @@ pub fn complete(
         // - Dependents will NOT be triggered automatically
         // - User must manually merge and use --force-unsafe --assume-merged to trigger dependents
         stage.try_complete(None)?;
-        save_stage(&stage, work_dir)?;
+        save_stage(stage, work_dir)?;
         println!("Stage '{stage_id}' completed (skipped verification)");
         println!("⚠️  Note: Merge was skipped. Stage NOT marked as merged.");
         println!("⚠️  Dependent stages will NOT be automatically triggered.");
     }
 
     Ok(())
-}
-
-/// Clean up terminal resources for a stage based on backend type
-///
-/// For native backend, process cleanup is handled by the orchestrator via PID.
-/// No additional cleanup needed here.
-pub(super) fn cleanup_terminal_for_stage(
-    _stage_id: &str,
-    _session_id: Option<&str>,
-    _work_dir: &Path,
-) {
-    // Native backend cleanup is handled by orchestrator via PID
-    // No additional cleanup needed here
 }

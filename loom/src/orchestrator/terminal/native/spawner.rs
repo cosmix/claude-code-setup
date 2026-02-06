@@ -79,7 +79,7 @@ pub fn spawn_in_terminal(
         for retry in 0..PID_FILE_MAX_RETRIES {
             if let Some(claude_pid) = pid_tracking::read_pid_file(work_dir, stage_id) {
                 // Verify the PID is actually alive
-                if pid_tracking::check_pid_alive(claude_pid) {
+                if crate::process::is_process_alive(claude_pid) {
                     return Ok(claude_pid);
                 }
             }

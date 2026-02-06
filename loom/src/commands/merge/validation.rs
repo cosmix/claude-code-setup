@@ -8,7 +8,6 @@ use std::path::Path;
 
 use crate::fs::stage_files::find_stage_file;
 use crate::models::stage::StageStatus;
-use crate::orchestrator::terminal::native::check_pid_alive;
 use crate::parser::frontmatter::extract_frontmatter_field as extract_field_canonical;
 use crate::verify::transitions::load_stage;
 
@@ -101,7 +100,7 @@ fn find_active_session_for_stage(stage_id: &str, work_dir: &Path) -> Result<Opti
             // Check for native session (by PID)
             if let Some(pid_str) = extract_frontmatter_field(&content, "pid") {
                 if let Ok(pid) = pid_str.parse::<u32>() {
-                    if check_pid_alive(pid) {
+                    if crate::process::is_process_alive(pid) {
                         // Return session ID as the identifier
                         let session_id = extract_frontmatter_field(&content, "id")
                             .unwrap_or_else(|| format!("pid-{pid}"));
@@ -345,17 +344,5 @@ status: running
         assert!(result.is_some());
         let session_id = result.unwrap();
         assert_eq!(session_id, "session-native-test");
-    }
-
-    #[test]
-    fn test_check_pid_alive_current_process() {
-        let current_pid = std::process::id();
-        assert!(check_pid_alive(current_pid));
-    }
-
-    #[test]
-    fn test_check_pid_alive_nonexistent() {
-        // PID 99999 is very unlikely to exist
-        assert!(!check_pid_alive(99999));
     }
 }

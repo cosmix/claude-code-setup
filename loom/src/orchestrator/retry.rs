@@ -74,10 +74,39 @@ pub fn is_backoff_elapsed(last_failure: Option<DateTime<Utc>>, backoff: Duration
 ///
 /// Analyzes the close_reason text to determine what type of failure occurred.
 /// This enables appropriate handling strategies (retry, handoff, diagnosis, etc.).
+///
+/// # Classification Order
+///
+/// Checks are performed in priority order (first match wins):
+/// 1. **MergeConflict** - Structural issue requiring manual resolution
+/// 2. **ContextExhausted** - Handled by handoff mechanism, not retry
+/// 3. **SessionCrash** - Process-level failures (transient)
+/// 4. **Timeout** - Execution timeouts (possibly transient)
+/// 5. **BuildFailure** - Compilation failures (checked before TestFailure due to "failed" keyword)
+/// 6. **TestFailure** - Test execution failures
+/// 7. **CodeError** - Lint and type errors
+/// 8. **UserBlocked** - Manual intervention
+/// 9. **Unknown** - Unclassified failure
+///
+/// Order matters: more specific checks come first, broader checks later.
+/// For example, "build failed" should match BuildFailure, not TestFailure.
 pub fn classify_failure(close_reason: &str) -> FailureType {
     let reason_lower = close_reason.to_lowercase();
 
-    // SessionCrash: Process-level failures
+    // MergeConflict: Git merge conflicts (highest priority - structural issue)
+    if reason_lower.contains("conflict") || reason_lower.contains("merge") {
+        return FailureType::MergeConflict;
+    }
+
+    // ContextExhausted: Token/context limit reached (handled specially via handoff)
+    if reason_lower.contains("context")
+        || reason_lower.contains("token")
+        || reason_lower.contains("handoff")
+    {
+        return FailureType::ContextExhausted;
+    }
+
+    // SessionCrash: Process-level failures (transient)
     if reason_lower.contains("crash")
         || reason_lower.contains("process")
         || reason_lower.contains("orphan")
@@ -85,12 +114,9 @@ pub fn classify_failure(close_reason: &str) -> FailureType {
         return FailureType::SessionCrash;
     }
 
-    // ContextExhausted: Token/context limit reached
-    if reason_lower.contains("context")
-        || reason_lower.contains("token")
-        || reason_lower.contains("handoff")
-    {
-        return FailureType::ContextExhausted;
+    // Timeout: Execution timeout (possibly transient)
+    if reason_lower.contains("timeout") {
+        return FailureType::Timeout;
     }
 
     // BuildFailure: Compilation/build failures (check before TestFailure due to "failed" keyword)
@@ -118,19 +144,9 @@ pub fn classify_failure(close_reason: &str) -> FailureType {
         return FailureType::CodeError;
     }
 
-    // Timeout: Execution timeout
-    if reason_lower.contains("timeout") {
-        return FailureType::Timeout;
-    }
-
     // UserBlocked: Manually blocked by user
     if reason_lower.contains("blocked by user") || reason_lower.contains("manually blocked") {
         return FailureType::UserBlocked;
-    }
-
-    // MergeConflict: Git merge conflicts
-    if reason_lower.contains("conflict") || reason_lower.contains("merge") {
-        return FailureType::MergeConflict;
     }
 
     // Unknown: Unclassified failure
