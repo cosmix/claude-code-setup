@@ -574,3 +574,17 @@ Two plan criteria caused false negatives in integration-verify:
 
 - **Verified sandbox settings generation is correct by running all tests and manual code review**
   - _Rationale:_ All 7 functional requirements verified: Bash permissions for excluded commands, signal read allows, no allow/deny conflicts, knowledge path protection, and .work/stages/.work/sessions removal from defaults
+
+## Sandbox: Knowledge Path Protection (2026-02-06)
+
+**What:** merge_config() auto-added doc/loom/knowledge/** to allow_write for Knowledge/IntegrationVerify stages, contradicting deny_write default.
+
+**Why:** Same path in both allow and deny is contradictory and confusing.
+
+**Fix:** Removed auto-add. Knowledge writes go through loom CLI (outside sandbox). Tests verify no stage type gets knowledge paths in allow_write.
+
+## Sandbox: .work/ State Paths in Deny (2026-02-06)
+
+**What:** default_deny_write() included .work/stages/**and .work/sessions/**. This was overly broad and could block legitimate operations.
+
+**Fix:** Removed from deny defaults. State protection handled by: signal instructions, hook enforcement, and loom CLI as sanctioned interface.
