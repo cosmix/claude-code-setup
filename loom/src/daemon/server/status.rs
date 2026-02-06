@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::git::branch::branch_name_for_stage;
-use crate::models::stage::StageStatus;
+use crate::models::stage::{Stage, StageStatus};
 use crate::models::worktree::WorktreeStatus;
-use crate::parser::frontmatter::extract_yaml_frontmatter;
+use crate::parser::frontmatter::{extract_yaml_frontmatter, parse_from_markdown};
 
 /// Collect current stage status from the work directory.
 pub fn collect_status(work_dir: &Path) -> Result<Response> {
@@ -35,31 +35,27 @@ pub fn collect_status(work_dir: &Path) -> Result<Response> {
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("md") {
                     if let Ok(content) = fs::read_to_string(&path) {
-                        if let Some(parsed) = parse_stage_frontmatter_full(&content) {
+                        if let Ok(stage) = parse_from_markdown::<Stage>(&content, "Stage") {
                             let session_pid =
-                                get_session_pid(&sessions_dir, parsed.session.as_deref());
-                            let started_at = get_stage_started_at(&content);
-                            let completed_at = get_stage_completed_at(&content);
-                            let worktree_status = detect_worktree_status(&parsed.id, &repo_root);
-
-                            // Map status string to StageStatus enum
-                            let status_enum: StageStatus =
-                                parsed.status.parse().unwrap_or(StageStatus::WaitingForDeps);
+                                get_session_pid(&sessions_dir, stage.session.as_deref());
+                            let started_at = stage.started_at.unwrap_or_else(chrono::Utc::now);
+                            let completed_at = stage.completed_at;
+                            let worktree_status = detect_worktree_status(&stage.id, &repo_root);
 
                             let stage_info = StageInfo {
-                                id: parsed.id,
-                                name: parsed.name,
+                                id: stage.id,
+                                name: stage.name,
                                 session_pid,
                                 started_at,
                                 completed_at,
                                 worktree_status,
-                                status: status_enum.clone(),
-                                merged: parsed.merged,
-                                dependencies: parsed.dependencies,
+                                status: stage.status.clone(),
+                                merged: stage.merged,
+                                dependencies: stage.dependencies,
                             };
 
                             // Categorize into lists based on status
-                            match status_enum {
+                            match stage.status {
                                 StageStatus::Executing => {
                                     stages_executing.push(stage_info);
                                 }
@@ -179,114 +175,6 @@ pub fn has_merge_conflicts(worktree_path: &Path) -> bool {
     }
 }
 
-/// Parsed stage data from frontmatter.
-pub struct ParsedStage {
-    pub id: String,
-    pub name: String,
-    pub status: String,
-    pub session: Option<String>,
-    pub merged: bool,
-    pub dependencies: Vec<String>,
-}
-
-/// Parse stage frontmatter to extract id, name, status, and session.
-///
-/// Uses proper YAML parsing via serde_yaml for robustness. This handles
-/// all YAML formats correctly (quoted strings, flow style, multiline values, etc.)
-///
-/// Parse stage frontmatter to extract all fields including merged and dependencies.
-///
-/// Uses proper YAML parsing via serde_yaml for robustness.
-pub fn parse_stage_frontmatter_full(content: &str) -> Option<ParsedStage> {
-    let yaml = extract_yaml_frontmatter(content).ok()?;
-
-    // Extract required fields
-    let id = yaml
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())?;
-
-    let name = yaml
-        .get("name")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())?;
-
-    let status = yaml
-        .get("status")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_lowercase())?;
-
-    // Extract optional session field
-    let session = yaml
-        .get("session")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty() && *s != "null" && *s != "~")
-        .map(|s| s.to_string());
-
-    // Extract merged field (defaults to false)
-    let merged = yaml
-        .get("merged")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    // Extract dependencies array
-    let dependencies = yaml
-        .get("dependencies")
-        .and_then(|v| v.as_sequence())
-        .map(|seq| {
-            seq.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    Some(ParsedStage {
-        id,
-        name,
-        status,
-        session,
-        merged,
-        dependencies,
-    })
-}
-
-/// Get the started_at timestamp from stage content.
-///
-/// Extracts the `started_at` field from YAML frontmatter using proper parsing.
-/// Falls back to `updated_at` for backward compatibility with older stage files.
-pub fn get_stage_started_at(content: &str) -> chrono::DateTime<chrono::Utc> {
-    // Use proper YAML parsing
-    if let Ok(yaml) = extract_yaml_frontmatter(content) {
-        // First try started_at (new field)
-        if let Some(started_at) = yaml.get("started_at").and_then(|v| v.as_str()) {
-            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(started_at) {
-                return dt.with_timezone(&chrono::Utc);
-            }
-        }
-        // Fall back to updated_at for backward compatibility
-        if let Some(updated_at) = yaml.get("updated_at").and_then(|v| v.as_str()) {
-            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(updated_at) {
-                return dt.with_timezone(&chrono::Utc);
-            }
-        }
-    }
-    chrono::Utc::now()
-}
-
-/// Get stage completed_at timestamp from stage file content.
-///
-/// Extracts the `completed_at` field from YAML frontmatter using proper parsing.
-pub fn get_stage_completed_at(content: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    if let Ok(yaml) = extract_yaml_frontmatter(content) {
-        if let Some(completed_at) = yaml.get("completed_at").and_then(|v| v.as_str()) {
-            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(completed_at) {
-                return Some(dt.with_timezone(&chrono::Utc));
-            }
-        }
-    }
-    None
-}
-
 /// Get session PID from session file.
 ///
 /// Extracts the `pid` field from session YAML frontmatter using proper parsing.
@@ -361,9 +249,9 @@ pub fn collect_completion_summary(work_dir: &Path) -> Result<CompletionSummary> 
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("md") {
                     if let Ok(content) = fs::read_to_string(&path) {
-                        if let Some(parsed) = parse_stage_frontmatter_full(&content) {
-                            let started_at = get_stage_started_at(&content);
-                            let completed_at = get_stage_completed_at(&content);
+                        if let Ok(stage) = parse_from_markdown::<Stage>(&content, "Stage") {
+                            let started_at = stage.started_at.unwrap_or_else(chrono::Utc::now);
+                            let completed_at = stage.completed_at;
 
                             // Track earliest start and latest completion
                             if earliest_start.is_none() || started_at < earliest_start.unwrap() {
@@ -377,12 +265,8 @@ pub fn collect_completion_summary(work_dir: &Path) -> Result<CompletionSummary> 
                                 }
                             }
 
-                            // Map status string to enum
-                            let status_enum: StageStatus =
-                                parsed.status.parse().unwrap_or(StageStatus::WaitingForDeps);
-
                             // Count successes and failures
-                            match status_enum {
+                            match stage.status {
                                 StageStatus::Completed | StageStatus::Skipped => {
                                     success_count += 1;
                                 }
@@ -399,29 +283,15 @@ pub fn collect_completion_summary(work_dir: &Path) -> Result<CompletionSummary> 
                             let duration_secs = completed_at
                                 .map(|completed| (completed - started_at).num_seconds());
 
-                            // Extract execution_secs and retry_count from YAML frontmatter
-                            let (execution_secs, retry_count) =
-                                if let Ok(yaml) = extract_yaml_frontmatter(&content) {
-                                    let exec = yaml.get("execution_secs").and_then(|v| v.as_i64());
-                                    let retries = yaml
-                                        .get("retry_count")
-                                        .and_then(|v| v.as_u64())
-                                        .and_then(|v| u32::try_from(v).ok())
-                                        .unwrap_or(0);
-                                    (exec, retries)
-                                } else {
-                                    (None, 0)
-                                };
-
                             stages.push(StageCompletionInfo {
-                                id: parsed.id,
-                                name: parsed.name,
-                                status: status_enum,
+                                id: stage.id,
+                                name: stage.name,
+                                status: stage.status,
                                 duration_secs,
-                                execution_secs,
-                                retry_count,
-                                merged: parsed.merged,
-                                dependencies: parsed.dependencies,
+                                execution_secs: stage.execution_secs,
+                                retry_count: stage.retry_count,
+                                merged: stage.merged,
+                                dependencies: stage.dependencies,
                             });
                         }
                     }

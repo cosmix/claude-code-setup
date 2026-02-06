@@ -12,7 +12,9 @@ use colored::Colorize;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-use crate::daemon::{read_message, write_message, CompletionSummary, Request, Response, StageInfo};
+use crate::daemon::{
+    read_auth_token, read_message, write_message, CompletionSummary, Request, Response, StageInfo,
+};
 use crate::utils::{cleanup_terminal, format_elapsed, install_terminal_panic_hook};
 
 use super::activity::{ActivityLog, ActivityType};
@@ -56,7 +58,12 @@ impl LiveMode {
             running.store(false, Ordering::SeqCst);
             let mut stream = stream_for_signal.try_clone().ok();
             if let Some(ref mut s) = stream {
-                let _ = write_message(s, &Request::Unsubscribe);
+                let _ = write_message(
+                    s,
+                    &Request::Unsubscribe {
+                        auth_token: read_auth_token(Path::new(".work")).unwrap_or_default(),
+                    },
+                );
             }
             cleanup_terminal();
             std::process::exit(0);
@@ -78,7 +85,12 @@ impl LiveMode {
                     if let Some(ref summary) = self.completion_summary {
                         // Render completion screen and wait for 'q' to exit
                         render_completion_screen(summary);
-                        let _ = write_message(&mut stream, &Request::Unsubscribe);
+                        let _ = write_message(
+                            &mut stream,
+                            &Request::Unsubscribe {
+                                auth_token: read_auth_token(Path::new(".work")).unwrap_or_default(),
+                            },
+                        );
                         self.wait_for_exit_key()?;
                         break;
                     }
@@ -91,7 +103,12 @@ impl LiveMode {
             }
         }
 
-        let _ = write_message(&mut stream, &Request::Unsubscribe);
+        let _ = write_message(
+            &mut stream,
+            &Request::Unsubscribe {
+                auth_token: read_auth_token(Path::new(".work")).unwrap_or_default(),
+            },
+        );
         cleanup_terminal();
 
         Ok(())
@@ -136,7 +153,13 @@ impl LiveMode {
             .set_write_timeout(Some(SOCKET_TIMEOUT))
             .context("Failed to set write timeout")?;
 
-        write_message(&mut stream, &Request::Ping).context("Failed to send Ping")?;
+        write_message(
+            &mut stream,
+            &Request::Ping {
+                auth_token: read_auth_token(Path::new(".work")).unwrap_or_default(),
+            },
+        )
+        .context("Failed to send Ping")?;
 
         let response: Response =
             read_message(&mut stream).context("Failed to read Ping response")?;
@@ -159,8 +182,13 @@ impl LiveMode {
     }
 
     fn subscribe(&self, stream: &mut UnixStream) -> Result<()> {
-        write_message(stream, &Request::SubscribeStatus)
-            .context("Failed to send SubscribeStatus")?;
+        write_message(
+            stream,
+            &Request::SubscribeStatus {
+                auth_token: read_auth_token(Path::new(".work")).unwrap_or_default(),
+            },
+        )
+        .context("Failed to send SubscribeStatus")?;
 
         let response: Response =
             read_message(stream).context("Failed to read subscription response")?;

@@ -6,10 +6,10 @@ use super::client::handle_client_connection;
 use super::core::{DaemonServer, MAX_CONNECTIONS};
 use super::orchestrator::spawn_orchestrator;
 use anyhow::{bail, Context, Result};
-use nix::unistd::{close, dup2, fork, setsid, ForkResult};
+use nix::unistd::{close, fork, pipe, setsid, ForkResult};
 use std::fs::{self, File, Permissions};
 use std::os::unix::fs::PermissionsExt;
-use std::os::unix::io::{FromRawFd, IntoRawFd, OwnedFd};
+use std::os::unix::io::AsRawFd;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::atomic::Ordering;
@@ -32,6 +32,13 @@ impl DaemonServer {
             bail!("Daemon is not running");
         }
 
+        // Read auth token
+        let token_path = work_dir.join("daemon.token");
+        let auth_token = fs::read_to_string(&token_path)
+            .context("Failed to read auth token")?
+            .trim()
+            .to_string();
+
         let mut stream =
             UnixStream::connect(&socket_path).context("Failed to connect to daemon socket")?;
 
@@ -39,7 +46,8 @@ impl DaemonServer {
             .set_read_timeout(Some(Duration::from_secs(5)))
             .context("Failed to set read timeout")?;
 
-        write_message(&mut stream, &Request::Stop).context("Failed to send stop request")?;
+        write_message(&mut stream, &Request::Stop { auth_token })
+            .context("Failed to send stop request")?;
 
         let response: Response = match read_message(&mut stream) {
             Ok(resp) => resp,
@@ -61,6 +69,7 @@ impl DaemonServer {
 
         match response {
             Response::Ok => Ok(()),
+            Response::AuthenticationFailed => bail!("Authentication failed - invalid token"),
             Response::Error { message } => bail!("Daemon returned error: {message}"),
             _ => bail!("Unexpected response from daemon"),
         }
@@ -78,14 +87,35 @@ impl DaemonServer {
             }
         }
 
+        // Create pipe for error propagation from grandchild to original parent
+        let (read_fd, write_fd) = pipe().context("Failed to create pipe")?;
+
         // First fork - parent exits, child continues
         match unsafe { fork() }.context("First fork failed")? {
             ForkResult::Parent { .. } => {
-                // Parent process exits successfully
-                std::process::exit(0);
+                // Close write end in parent
+                drop(write_fd);
+
+                // Wait for signal from grandchild
+                let mut buf = [0u8; 1];
+                match nix::unistd::read(&read_fd, &mut buf) {
+                    Ok(1) if buf[0] == 1 => std::process::exit(0), // Success signal received
+                    Ok(0) => {
+                        // EOF - grandchild failed before writing success signal
+                        eprintln!("Daemon failed to start");
+                        std::process::exit(1);
+                    }
+                    _ => {
+                        // Read error or unexpected data
+                        eprintln!("Daemon failed to start");
+                        std::process::exit(1);
+                    }
+                }
             }
             ForkResult::Child => {
-                // Child continues with daemonization
+                // Close read end in child
+                drop(read_fd);
+                // Child continues with daemonization (write_fd will be passed to grandchild)
             }
         }
 
@@ -111,18 +141,29 @@ impl DaemonServer {
         fs::set_permissions(&self.pid_path, Permissions::from_mode(0o600))
             .context("Failed to set PID file permissions")?;
 
+        // Generate auth token and write to file
+        let token = uuid::Uuid::new_v4().to_string();
+        let token_path = self.work_dir.join("daemon.token");
+        fs::write(&token_path, &token).context("Failed to write token file")?;
+        fs::set_permissions(&token_path, Permissions::from_mode(0o600))
+            .context("Failed to set token file permissions")?;
+
         // Redirect stdout and stderr to log file
         let log_file = File::create(&self.log_path).context("Failed to create log file")?;
 
         // Close stdin and redirect stdout/stderr to log file
         close(0).ok();
-        // SAFETY: fds 1 and 2 are valid open descriptors in this double-forked daemon process
-        let mut stdout_fd = unsafe { OwnedFd::from_raw_fd(1) };
-        dup2(&log_file, &mut stdout_fd).context("Failed to redirect stdout")?;
-        let _ = stdout_fd.into_raw_fd(); // Release ownership — fd 1 stays open as redirected stdout
-        let mut stderr_fd = unsafe { OwnedFd::from_raw_fd(2) };
-        dup2(&log_file, &mut stderr_fd).context("Failed to redirect stderr")?;
-        let _ = stderr_fd.into_raw_fd(); // Release ownership — fd 2 stays open as redirected stderr
+        // SAFETY: Using libc::dup2 directly with raw fds to avoid ownership issues.
+        // fds 1 and 2 are valid open descriptors in this double-forked daemon process.
+        unsafe {
+            libc::dup2(log_file.as_raw_fd(), 1);
+            libc::dup2(log_file.as_raw_fd(), 2);
+        }
+
+        // Signal success to original parent AFTER all initialization succeeds
+        let success_signal = [1u8];
+        let _ = nix::unistd::write(&write_fd, &success_signal);
+        drop(write_fd); // Close pipe after writing success
 
         // Run the server
         self.run_server()
@@ -183,24 +224,24 @@ impl DaemonServer {
         // Spawn status broadcasting thread
         let status_broadcast_handle = spawn_status_broadcaster(self);
 
-        while !self.shutdown_flag.load(Ordering::Relaxed) {
+        while !self.shutdown_flag.load(Ordering::SeqCst) {
             match listener.accept() {
                 Ok((stream, _addr)) => {
-                    // Check connection limit before accepting
-                    let current = self.connection_count.load(Ordering::Relaxed);
-                    if current >= MAX_CONNECTIONS {
+                    // Atomically increment connection count and check limit
+                    let previous = self.connection_count.fetch_add(1, Ordering::SeqCst);
+                    if previous >= MAX_CONNECTIONS {
+                        // Over limit - decrement and reject
+                        self.connection_count.fetch_sub(1, Ordering::SeqCst);
                         eprintln!("Connection limit reached ({MAX_CONNECTIONS}), rejecting");
                         drop(stream); // Close the connection immediately
                         continue;
                     }
 
-                    // Increment connection count
-                    self.connection_count.fetch_add(1, Ordering::Relaxed);
-
                     let shutdown_flag = Arc::clone(&self.shutdown_flag);
                     let status_subscribers = Arc::clone(&self.status_subscribers);
                     let log_subscribers = Arc::clone(&self.log_subscribers);
                     let connection_count = Arc::clone(&self.connection_count);
+                    let work_dir = self.work_dir.clone();
 
                     thread::spawn(move || {
                         let result = handle_client_connection(
@@ -208,9 +249,10 @@ impl DaemonServer {
                             shutdown_flag,
                             status_subscribers,
                             log_subscribers,
+                            &work_dir,
                         );
                         // Decrement connection count when thread exits
-                        connection_count.fetch_sub(1, Ordering::Relaxed);
+                        connection_count.fetch_sub(1, Ordering::SeqCst);
                         if let Err(e) = result {
                             eprintln!("Client handler error: {e}");
                         }
@@ -257,7 +299,7 @@ impl DaemonServer {
         Ok(())
     }
 
-    /// Clean up socket, PID, and completion marker files.
+    /// Clean up socket, PID, token, and completion marker files.
     pub(super) fn cleanup(&self) -> Result<()> {
         // Remove files directly, ignoring NotFound to avoid TOCTOU race
         if let Err(e) = fs::remove_file(&self.socket_path) {
@@ -268,6 +310,13 @@ impl DaemonServer {
         if let Err(e) = fs::remove_file(&self.pid_path) {
             if e.kind() != std::io::ErrorKind::NotFound {
                 return Err(e).context("Failed to remove PID file");
+            }
+        }
+        // Clean up token file
+        let token_path = self.work_dir.join("daemon.token");
+        if let Err(e) = fs::remove_file(&token_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                return Err(e).context("Failed to remove token file");
             }
         }
         // Clean up completion marker file

@@ -84,15 +84,15 @@ impl Default for DaemonConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
     /// Subscribe to live status updates
-    SubscribeStatus,
+    SubscribeStatus { auth_token: String },
     /// Subscribe to raw log stream
-    SubscribeLogs,
+    SubscribeLogs { auth_token: String },
     /// Request daemon shutdown
-    Stop,
+    Stop { auth_token: String },
     /// Disconnect cleanly
-    Unsubscribe,
+    Unsubscribe { auth_token: String },
     /// Ping to check if daemon is alive
-    Ping,
+    Ping { auth_token: String },
 }
 
 /// Daemon response to client
@@ -102,6 +102,7 @@ pub enum Response {
     Error {
         message: String,
     },
+    AuthenticationFailed,
     StatusUpdate {
         stages_executing: Vec<StageInfo>,
         stages_pending: Vec<StageInfo>,
@@ -201,7 +202,9 @@ mod tests {
     #[test]
     fn test_write_and_read_request() {
         let mut buffer = Vec::new();
-        let request = Request::Ping;
+        let request = Request::Ping {
+            auth_token: "test-token".to_string(),
+        };
 
         write_message(&mut buffer, &request).expect("Failed to write message");
 
@@ -209,7 +212,9 @@ mod tests {
         let decoded: Request = read_message(&mut cursor).expect("Failed to read message");
 
         match decoded {
-            Request::Ping => {}
+            Request::Ping { auth_token } => {
+                assert_eq!(auth_token, "test-token");
+            }
             _ => panic!("Expected Ping request"),
         }
     }

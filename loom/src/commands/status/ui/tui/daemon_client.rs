@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 
-use crate::daemon::{read_message, write_message, Request, Response};
+use crate::daemon::{read_auth_token, read_message, write_message, Request, Response};
 
 /// Connection timeout for daemon socket.
 pub const SOCKET_TIMEOUT: Duration = Duration::from_secs(2);
@@ -23,7 +23,14 @@ pub fn connect(socket_path: &Path) -> Result<UnixStream> {
         .set_write_timeout(Some(SOCKET_TIMEOUT))
         .context("Failed to set write timeout")?;
 
-    write_message(&mut stream, &Request::Ping).context("Failed to send Ping")?;
+    let token = read_auth_token(socket_path.parent().unwrap_or(Path::new("."))).unwrap_or_default();
+    write_message(
+        &mut stream,
+        &Request::Ping {
+            auth_token: token.clone(),
+        },
+    )
+    .context("Failed to send Ping")?;
 
     let response: Response = read_message(&mut stream).context("Failed to read Ping response")?;
 
@@ -42,7 +49,9 @@ pub fn connect(socket_path: &Path) -> Result<UnixStream> {
 
 /// Subscribe to status updates.
 pub fn subscribe(stream: &mut UnixStream) -> Result<()> {
-    write_message(stream, &Request::SubscribeStatus).context("Failed to send SubscribeStatus")?;
+    let token = read_auth_token(Path::new(".work")).unwrap_or_default();
+    write_message(stream, &Request::SubscribeStatus { auth_token: token })
+        .context("Failed to send SubscribeStatus")?;
 
     let response: Response =
         read_message(stream).context("Failed to read subscription response")?;

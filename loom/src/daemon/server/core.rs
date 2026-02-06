@@ -155,6 +155,6 @@ impl DaemonServer {
 
     /// Request graceful shutdown of the daemon.
     pub fn shutdown(&self) {
-        self.shutdown_flag.store(true, Ordering::Relaxed);
+        self.shutdown_flag.store(true, Ordering::SeqCst);
     }
 }

@@ -28,7 +28,9 @@ use super::renderer::{
 };
 use super::state::{GraphState, LiveStatus};
 use crate::commands::status::render::print_completion_summary;
-use crate::daemon::{read_message, write_message, CompletionSummary, Request, Response};
+use crate::daemon::{
+    read_auth_token, read_message, write_message, CompletionSummary, Request, Response,
+};
 use crate::models::stage::StageStatus;
 
 /// Poll timeout for event loop (100ms for responsive UI).
@@ -113,7 +115,8 @@ impl TuiApp {
 
         let result = self.run_event_loop(&mut stream);
 
-        let _ = write_message(&mut stream, &Request::Unsubscribe);
+        let token = read_auth_token(std::path::Path::new(".work")).unwrap_or_default();
+        let _ = write_message(&mut stream, &Request::Unsubscribe { auth_token: token });
 
         // If we have a completion summary, cleanup terminal and print summary to stdout
         // so it remains visible after TUI exits
