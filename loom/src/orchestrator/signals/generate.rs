@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -51,15 +51,8 @@ pub fn generate_signal_with_skills(
     work_dir: &Path,
     skill_index: Option<&SkillIndex>,
 ) -> Result<PathBuf> {
-    let signals_dir = work_dir.join("signals");
-
-    if !signals_dir.exists() {
-        fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
-    }
-
-    // Build embedded context by reading files, including task state and session memory for recitation
-    let mut embedded_context =
-        build_embedded_context_with_session(work_dir, handoff_file, &stage.id, Some(&session.id));
+    // Build embedded context with shared setup logic
+    let mut embedded_context = build_signal_context(session, stage, work_dir, handoff_file);
 
     // Add skill recommendations if skill index is available
     if let Some(index) = skill_index {
@@ -68,24 +61,6 @@ pub fn generate_signal_with_skills(
             index.match_skills(&text_to_match, DEFAULT_MAX_SKILL_RECOMMENDATIONS);
     }
 
-    // Populate context budget from stage (or use default)
-    embedded_context.context_budget = stage
-        .context_budget
-        .map(|b| b as f32)
-        .or(Some(crate::models::constants::DEFAULT_CONTEXT_BUDGET));
-
-    // Populate current context usage from session
-    let usage_pct = if session.context_limit > 0 {
-        (session.context_tokens as f32 / session.context_limit as f32) * 100.0
-    } else {
-        0.0
-    };
-    embedded_context.context_usage = Some(usage_pct);
-
-    // Populate sandbox summary from stage config
-    embedded_context.sandbox_summary = Some(build_sandbox_summary(stage));
-
-    let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_signal_content(
         session,
         stage,
@@ -96,10 +71,7 @@ pub fn generate_signal_with_skills(
         &embedded_context,
     );
 
-    fs::write(&signal_path, content)
-        .with_context(|| format!("Failed to write signal file: {}", signal_path.display()))?;
-
-    Ok(signal_path)
+    super::helpers::write_signal_file(&session.id, &content, work_dir)
 }
 
 /// Build text for skill matching from stage metadata
@@ -289,12 +261,34 @@ pub fn generate_signal_with_metrics(
     git_history: Option<&GitHistory>,
     work_dir: &Path,
 ) -> Result<(PathBuf, SignalMetrics)> {
-    let signals_dir = work_dir.join("signals");
+    // Build embedded context with shared setup logic
+    let embedded_context = build_signal_context(session, stage, work_dir, handoff_file);
 
-    if !signals_dir.exists() {
-        fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
-    }
+    let formatted = format_signal_with_metrics(
+        session,
+        stage,
+        worktree,
+        dependencies_status,
+        handoff_file,
+        git_history,
+        &embedded_context,
+    );
 
+    let signal_path = super::helpers::write_signal_file(&session.id, &formatted.content, work_dir)?;
+
+    Ok((signal_path, formatted.metrics))
+}
+
+/// Build signal context with all shared setup logic
+///
+/// This consolidates the context building, budget, usage, and sandbox setup
+/// that was duplicated between `generate_signal_with_skills` and `generate_signal_with_metrics`.
+fn build_signal_context(
+    session: &Session,
+    stage: &Stage,
+    work_dir: &Path,
+    handoff_file: Option<&str>,
+) -> EmbeddedContext {
     // Build embedded context by reading files, including task state and session memory for recitation
     let mut embedded_context =
         build_embedded_context_with_session(work_dir, handoff_file, &stage.id, Some(&session.id));
@@ -316,21 +310,7 @@ pub fn generate_signal_with_metrics(
     // Populate sandbox summary from stage config
     embedded_context.sandbox_summary = Some(build_sandbox_summary(stage));
 
-    let signal_path = signals_dir.join(format!("{}.md", session.id));
-    let formatted = format_signal_with_metrics(
-        session,
-        stage,
-        worktree,
-        dependencies_status,
-        handoff_file,
-        git_history,
-        &embedded_context,
-    );
-
-    fs::write(&signal_path, &formatted.content)
-        .with_context(|| format!("Failed to write signal file: {}", signal_path.display()))?;
-
-    Ok((signal_path, formatted.metrics))
+    embedded_context
 }
 
 /// Build sandbox summary from stage configuration
