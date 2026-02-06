@@ -425,7 +425,7 @@ mod tests {
         // Check content includes the cd command
         let content = fs::read_to_string(&wrapper_path).unwrap();
         assert!(content.contains("#!/bin/bash"));
-        assert!(content.contains("cd '/tmp/test-worktree'"));
+        assert!(content.contains("cd /tmp/test-worktree"));
         assert!(content.contains("echo $$"));
         assert!(content.contains(claude_cmd));
         // Check worktree path is exported for file isolation hooks

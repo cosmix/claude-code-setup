@@ -110,6 +110,12 @@ id: stage-pending
 name: Pending Stage
 status: pending
 session: ~
+dependencies: []
+acceptance: []
+files: []
+child_stages: []
+created_at: "2024-01-01T00:00:00Z"
+updated_at: "2024-01-01T00:00:00Z"
 ---
 "#;
     fs::write(stages_dir.join("stage-pending.md"), pending_stage).expect("Failed to write stage");
@@ -120,6 +126,12 @@ id: stage-executing
 name: Executing Stage
 status: executing
 session: session-1
+dependencies: []
+acceptance: []
+files: []
+child_stages: []
+created_at: "2024-01-01T00:00:00Z"
+updated_at: "2024-01-01T00:00:00Z"
 ---
 "#;
     fs::write(stages_dir.join("stage-executing.md"), executing_stage)
@@ -131,6 +143,12 @@ id: stage-completed
 name: Completed Stage
 status: completed
 session: ~
+dependencies: []
+acceptance: []
+files: []
+child_stages: []
+created_at: "2024-01-01T00:00:00Z"
+updated_at: "2024-01-01T00:00:00Z"
 ---
 "#;
     fs::write(stages_dir.join("stage-completed.md"), completed_stage)

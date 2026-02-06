@@ -46,8 +46,9 @@ pub fn find_repo_root_from_cwd(cwd: &Path) -> Option<PathBuf> {
 
         // Handle empty path (worktree marker at start of relative path)
         let repo_root = if trimmed_root.is_empty() {
-            // Worktree path is relative - resolve against current directory
-            PathBuf::from(".")
+            // Worktree path is relative - return "." directly
+            // (don't canonicalize, as callers expect a relative path)
+            return Some(PathBuf::from("."));
         } else {
             PathBuf::from(trimmed_root)
         };
