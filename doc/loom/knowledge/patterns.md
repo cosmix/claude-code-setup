@@ -1346,3 +1346,61 @@ refresh_worktree_settings_local merges permissions via merge_permission_vecs (un
 ### 3. Sync Before Acceptance (complete.rs:166-200)
 
 Permission sync occurs BEFORE acceptance criteria, ensuring permissions persist for retry attempts.
+
+## Process Management and PID Handling
+
+### PID File Pattern (pid_tracking.rs)
+
+Wrapper script writes PID to .work/pids/{stage_id}.pid.
+wait_for_pid_file() polls for valid alive PID with timeout (5s default).
+cleanup_stage_files() removes PID file and wrapper script.
+
+### PID Discovery Fallbacks
+
+Linux: Scans /proc/*/cmdline and /proc/*/cwd for Claude processes.
+macOS: Uses ps aux and lsof -p to locate processes and working dirs.
+
+## Process Management (continued)
+
+### Wrapper Script Pattern (pid_tracking.rs:273-391)
+
+Creates shell script that: sets env vars, cd to workdir, writes PID, exec claude.
+Env vars: LOOM_SESSION_ID, LOOM_STAGE_ID, LOOM_WORK_DIR, LOOM_MAIN_AGENT_PID.
+LOOM_MAIN_AGENT_PID enables hooks to detect subagents via PPID comparison.
+
+### Zombie Prevention (spawner.rs:25-34)
+
+spawn_reaper_thread() calls wait() on terminal child process in background thread.
+
+## Session Liveness Check Pattern (handlers.rs:39-71)
+
+Layered approach: PID file (most current) -> process alive check -> fallback to session.pid.
+Cleans up stale PID file if process is dead.
+Returns Ok(Some(bool)) for definitive, Ok(None) if no PID available.
+
+### Timing Constants (spawner.rs)
+
+CLAUDE_STARTUP_DELAY_MS: 1000ms (macOS terminal startup)
+PID_DISCOVERY_TIMEOUT_SECS: 5s
+PID_FILE_MAX_RETRIES: 10 (200ms delay = 2s total)
+
+## Git Command Invocation Pattern
+
+Standard pattern: Command::new(git).args(&[...]).current_dir(repo).output().with_context()?
+Check output.status.success(), parse with String::from_utf8_lossy. Use bail!() on failure.
+
+### Branch Operations (git/branch/operations.rs)
+
+branch_exists(): rev-parse --verify refs/heads/{name} (exit code check)
+current_branch(): rev-parse --abbrev-ref HEAD
+default_branch(): Tries symbolic-ref, falls back to main/master.
+
+## Persistence and File State Pattern
+
+Stage/Session: Markdown with YAML frontmatter + content sections.
+Failure state: YAML via serde_yaml in .work/state/{stage_id}.yaml.
+Signal files: Markdown with structured sections.
+No explicit file locking; relies on daemon single-writer model.
+
+load_from_work_dir(): Reads .yaml files from .work/state/.
+save_stage_state(): Writes single stage state. Warning on load failures (non-blocking).

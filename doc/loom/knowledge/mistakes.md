@@ -434,4 +434,10 @@ Solutions: 1) Use ./target/debug/loom path, 2) Accept failures until merge,
 - **Used umask(0o077) before socket bind to prevent TOCTOU race between bind and chmod**
   - *Rationale:* Setting permissions after bind leaves a window where socket has default permissions
 
+## Promoted from Memory [2026-02-06 08:55]
+
+### Notes
+
+- Knowledge bootstrap: Coverage was 83% (15/18 modules). Added documentation for 3 missing modules: process (PID liveness), completions (shell completion), diagnosis (failure analysis). Also added specific knowledge for plan areas: PID handling, signal generation, git commands, type system, persistence.
+
 

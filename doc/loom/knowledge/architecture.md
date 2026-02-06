@@ -570,3 +570,34 @@ TruthCheck (truths.rs) - Extended success criteria: exit_code, stdout_contains, 
 WiringTest (wiring_tests.rs) - Command-based integration tests with SuccessCriteria struct for runtime wiring verification
 
 Baseline (verify/baseline/) - Change impact detection: capture.rs, compare.rs, types.rs. Config: baseline_command, failure_patterns, policy
+
+## Process Module (src/process/mod.rs)
+
+Core utility for checking if a process with a given PID is alive.
+
+Uses libc::kill(pid, 0) - standard Unix pattern for PID existence check.
+Signal 0 is safe: doesn't send actual signal, only checks permission.
+Converts u32 PID to i32, returns false if PID exceeds i32::MAX.
+
+Re-exported in pid_tracking.rs as check_pid_alive.
+Used by: orchestrator monitor handlers, session liveness checks.
+
+## Completions Module (src/completions/)
+
+Two-tier shell completion system: static + dynamic.
+
+Static (generator.rs): clap_complete generates scripts user sources in shell rc.
+Supports Bash, Zsh, Fish shells via Shell enum with FromStr.
+
+Dynamic (dynamic/mod.rs): Shell calls hidden loom complete for context-aware values.
+CompletionContext holds: cwd, shell, cmdline, current_word, prev_word.
+
+Submodules: plans.rs (plan file paths), sessions.rs (session IDs), stages.rs (stage IDs).
+
+## Diagnosis Module (src/commands/diagnose.rs)
+
+Stage failure diagnosis command. Spawns Claude session to analyze blocked stages.
+
+Workflow: Load blocked stage, gather context (crash report, git status, diff), generate diagnosis signal with UUID session ID, output paths.
+
+Signal includes: crash report, git status, diff, failure info, acceptance criteria, investigation tasks.

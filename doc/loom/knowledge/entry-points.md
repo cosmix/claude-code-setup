@@ -331,3 +331,18 @@ New completion handlers added:
 - orchestrator/hooks/config.rs - HookEvent enum, HooksConfig struct
 - orchestrator/hooks/events.rs - HookEventLog, log_hook_event()
 - orchestrator/hooks/generator.rs - setup_hooks_for_worktree()
+
+## Process Module
+
+- src/process/mod.rs - PID liveness checking via libc::kill(pid, 0)
+- Re-exported in pid_tracking.rs as check_pid_alive
+
+## Completions Module
+
+- src/completions/mod.rs - Public exports
+- src/completions/generator.rs - Static shell completion generation
+- src/completions/dynamic/mod.rs - Dynamic context-aware completions
+
+## Diagnosis Module
+
+- src/commands/diagnose.rs - Stage failure diagnosis command
