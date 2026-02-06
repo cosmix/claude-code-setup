@@ -346,3 +346,27 @@ New completion handlers added:
 ## Diagnosis Module
 
 - src/commands/diagnose.rs - Stage failure diagnosis command
+
+## Agent Teams Integration Points
+
+### Settings System
+- fs/permissions/settings.rs:35 - ensure_loom_permissions() entry
+- fs/permissions/settings.rs:131 - create_worktree_settings() entry
+- fs/permissions/constants.rs:79 - LOOM_PERMISSIONS constant
+- fs/permissions/constants.rs:94 - LOOM_PERMISSIONS_WORKTREE constant
+- fs/permissions/hooks.rs:14 - loom_hooks_config() returns hook JSON
+
+## Schema Transformation Points
+- plan/schema/types.rs:209 - StageDefinition struct (YAML input)
+- models/stage/types.rs:86 - Stage struct (runtime model)
+- commands/init/plan_setup.rs:327 - create_stage_from_definition() converter
+- commands/init/plan_setup.rs:286 - detect_stage_type() pattern matching
+- verify/goal_backward/mod.rs:27 - run_goal_backward_verification() entry
+
+## Signal Generation Entry Points (Extended)
+
+Stable prefixes (cache.rs): generate_stable_prefix(), generate_knowledge_stable_prefix(),
+generate_code_review_stable_prefix(), generate_integration_verify_stable_prefix().
+
+Sections (format/sections.rs): format_semi_stable_section(), format_dynamic_section(),
+format_recitation_section(). Assembly (format/mod.rs): format_signal_with_metrics().

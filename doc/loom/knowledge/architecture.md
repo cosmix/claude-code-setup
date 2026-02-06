@@ -601,3 +601,37 @@ Stage failure diagnosis command. Spawns Claude session to analyze blocked stages
 Workflow: Load blocked stage, gather context (crash report, git status, diff), generate diagnosis signal with UUID session ID, output paths.
 
 Signal includes: crash report, git status, diff, failure info, acceptance criteria, investigation tasks.
+
+## Settings Management Architecture
+
+Two permission sets in constants.rs:
+- LOOM_PERMISSIONS (main repo): Read/Write .work/**, Read .claude/CLAUDE.md, Bash(loom:*)
+- LOOM_PERMISSIONS_WORKTREE (worktree): Same set, paths resolve relative to worktree root
+
+ensure_loom_permissions() at settings.rs:35: Installs hooks, merges permissions with HashSet dedup.
+create_worktree_settings() at settings.rs:131: Fresh settings with trust + acceptEdits.
+
+## Wrapper Script Environment (pid_tracking.rs:292-394)
+
+create_wrapper_script() generates .work/wrappers/{stage_id}-wrapper.sh (mode 0o700):
+Env vars: LOOM_SESSION_ID, LOOM_STAGE_ID, LOOM_WORK_DIR (absolute), LOOM_MAIN_AGENT_PID (PID), LOOM_WORKTREE_PATH.
+Writes PID to .work/pids/{stage_id}.pid, then exec claude.
+settings.json env duplicates vars but OMITS MAIN_AGENT_PID (must be dynamic).
+
+## Signal Stable Prefix Functions (cache.rs)
+
+Four stage-type-specific prefix generators for KV-cache optimization:
+- generate_stable_prefix(): Standard stages - isolation rules, git warnings
+- generate_knowledge_stable_prefix(): Knowledge stages - exploration, no commits
+- generate_code_review_stable_prefix(): Review - parallel review agents
+- generate_integration_verify_stable_prefix(): Verify - ZERO TOLERANCE mode
+
+Hash via SHA-256 (first 16 hex chars) for cache debugging.
+
+## Schema-to-Runtime Field Pipeline
+
+StageDefinition (plan/schema/types.rs:209) -> Stage (models/stage/types.rs:86):
+- create_stage_from_definition() at plan_setup.rs:327-381 converts
+- Most fields direct, working_dir wraps String -> Option
+- status computed: empty deps -> Queued, else WaitingForDeps
+- Stage type: explicit field first, then ID/name pattern matching

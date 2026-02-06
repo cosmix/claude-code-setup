@@ -479,6 +479,18 @@ Two plan criteria caused false negatives in integration-verify:
 
 2. Wiring pattern 'pub fn write_signal_file' does not match 'pub(super) fn write_signal_file'. Fix: use regex 'pub.*fn write_signal_file' to match visibility modifiers.
 
+## Promoted from Memory [2026-02-06 12:03]
+
+### Notes
+
+- Knowledge bootstrap for agent-teams: Coverage already high (83%+). Targeted exploration of settings, signals, and schema systems completed via 3 parallel Explore subagents.
+- loom knowledge check fails with 'Knowledge directory does not exist' even though files exist. May be a directory detection issue with the init check.
+
+### Decisions
+
+- **Used parallel Explore subagents for targeted codebase analysis rather than loom map --deep since coverage was already high**
+  - *Rationale:* Coverage >= 50% so map was unnecessary; targeted exploration more efficient
+
 ## Promoted from Memory [2026-02-06 12:06]
 
 ### Notes

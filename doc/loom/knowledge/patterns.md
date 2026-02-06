@@ -1404,3 +1404,44 @@ No explicit file locking; relies on daemon single-writer model.
 
 load_from_work_dir(): Reads .yaml files from .work/state/.
 save_stage_state(): Writes single stage state. Warning on load failures (non-blocking).
+
+## Settings Merging Pattern
+
+### Permission Propagation (fs/permissions/)
+
+Three-component flow for settings in worktrees:
+
+1. ensure_loom_permissions(): Main repo permissions via HashSet dedup
+2. create_worktree_settings(): Fresh worktree settings with trust flags
+3. refresh_worktree_settings_local(): Merge via merge_permission_vecs (union)
+
+Key: LOOM_MAIN_AGENT_PID removed from settings.json env (must come from wrapper script $$).
+
+## Signal Section Content Map
+
+Semi-stable section (sections.rs format_semi_stable_section):
+- Knowledge CLI reference, stage-type-aware instruction box
+- Standard: SESSION MEMORY REQUIRED (memory only)
+- Knowledge/CodeReview/IntegrationVerify: KNOWLEDGE UPDATES REQUIRED
+
+Dynamic section (format_dynamic_section):
+- Target, assignment, deps status, handoff, git history, acceptance
+
+Recitation section (format_recitation_section):
+- Context budget warning, immediate tasks, last 10 memory entries
+
+## EmbeddedContext Pattern (signals/types.rs)
+
+Self-contained context for agent signals. Fields:
+handoff (V1/V2), plan_overview, knowledge_has_content, memory_content (last 10 entries),
+skill_recommendations, context_budget/usage percentages, sandbox_summary.
+Built by build_signal_context() in generate.rs. Memory placed in recitation for attention.
+
+## Adding New Schema Fields Checklist
+
+1. StageDefinition (plan/schema/types.rs) - add field + serde attrs
+2. Stage (models/stage/types.rs) - add field + default
+3. create_stage_from_definition (plan_setup.rs:327) - map field
+4. Stage::default() (types.rs:306) - provide default
+5. If goal-backward: update verify/goal_backward/mod.rs
+6. If affects signals: update format sections
