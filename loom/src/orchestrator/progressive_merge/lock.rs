@@ -60,9 +60,19 @@ impl MergeLock {
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
                 // Lock is held by another process - check if it's stale
                 if Self::is_lock_stale(lock_path)? {
-                    // Remove stale lock and retry
-                    fs::remove_file(lock_path).ok();
-                    Self::try_acquire(lock_path)
+                    // Atomically claim the stale lock by renaming it
+                    let claimed_path = lock_path.with_extension("claimed");
+                    match fs::rename(lock_path, &claimed_path) {
+                        Ok(_) => {
+                            // We successfully claimed the stale lock
+                            fs::remove_file(&claimed_path).ok();
+                            Self::try_acquire(lock_path)
+                        }
+                        Err(_) => {
+                            // Another process already claimed it, lock is not stale anymore
+                            Err(anyhow::anyhow!("Merge lock is held by another process"))
+                        }
+                    }
                 } else {
                     Err(anyhow::anyhow!("Merge lock is held by another process"))
                 }

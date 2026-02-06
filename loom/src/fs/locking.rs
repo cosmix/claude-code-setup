@@ -56,6 +56,11 @@ pub fn locked_write(path: &Path, content: &str) -> Result<()> {
     writer
         .flush()
         .with_context(|| format!("Failed to flush file: {}", path.display()))?;
+    // Drop writer to release borrow on file
+    drop(writer);
+    // Ensure data is persisted to disk before releasing lock
+    file.sync_all()
+        .with_context(|| format!("Failed to sync file: {}", path.display()))?;
     Ok(())
 }
 

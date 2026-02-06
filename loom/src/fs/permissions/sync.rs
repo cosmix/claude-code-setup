@@ -256,7 +256,10 @@ fn transform_worktree_path(permission: &str) -> Option<String> {
         while path.starts_with("../") {
             path = &path[3..];
         }
-        if path.is_empty() {
+        if path.is_empty() || path == "**" {
+            // Filter out bare "**" — this results from stripping ../
+            // prefixes from escape-prevention rules like "../../**",
+            // and would match everything if synced to the main repo.
             None
         } else {
             Some(path.to_string())
@@ -298,7 +301,9 @@ fn merge_permissions_with_lock(
     // Read current content
     let mut content = String::new();
     let mut file_reader = &file;
-    file_reader.read_to_string(&mut content).ok();
+    file_reader
+        .read_to_string(&mut content)
+        .context("Failed to read settings file while holding lock")?;
 
     // Parse or create settings
     let mut settings: Value = if content.is_empty() {
@@ -569,6 +574,11 @@ mod tests {
         // Empty path after transformation
         assert_eq!(transform_worktree_path("Read(.worktrees/stage/)"), None);
         assert_eq!(transform_worktree_path("Read(../../)"), None);
+
+        // Bare glob after stripping ../ — escape prevention rules like ../../**
+        // must not become Read(**) / Write(**) which would match everything
+        assert_eq!(transform_worktree_path("Read(../../**)"), None);
+        assert_eq!(transform_worktree_path("Write(../../**)"), None);
 
         // Just the stage id with no further path
         assert_eq!(transform_worktree_path("Read(.worktrees/stage-id)"), None);
