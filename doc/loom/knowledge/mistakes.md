@@ -471,4 +471,10 @@ Solutions: 1) Use ./target/debug/loom path, 2) Accept failures until merge,
 - **Applied cargo fmt fix to merge_handler.rs:228 - eprintln! macro arguments should be on single line per rustfmt rules**
   - *Rationale:* cargo fmt --check caught a multi-line eprintln! that rustfmt wants on a single line
 
+## Goal-Backward Verification False Negatives (2026-02-06)
 
+Two plan criteria caused false negatives in integration-verify:
+
+1. Truth 'cargo test 2>&1 | tail -1' fails because cargo test outputs trailing newline as last line. Fix: filter test result lines first then check.
+
+2. Wiring pattern 'pub fn write_signal_file' does not match 'pub(super) fn write_signal_file'. Fix: use regex 'pub.*fn write_signal_file' to match visibility modifiers.
