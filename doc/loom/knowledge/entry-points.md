@@ -370,3 +370,30 @@ generate_code_review_stable_prefix(), generate_integration_verify_stable_prefix(
 
 Sections (format/sections.rs): format_semi_stable_section(), format_dynamic_section(),
 format_recitation_section(). Assembly (format/mod.rs): format_signal_with_metrics().
+
+## Stage Timing Code Paths
+
+### Setting Timestamps
+- models/stage/methods.rs:163-169 - try_mark_executing() sets started_at
+- models/stage/methods.rs:128-138 - try_complete() sets completed_at + duration_secs
+- models/stage/methods.rs:218-229 - try_complete_merge() also sets timing
+- commands/stage/state.rs:44-49 - reset() clears all timing fields
+
+### Duration Formatting
+- utils.rs:21-29 - format_elapsed() compact (30s, 1m30s, 1h1m)
+- utils.rs:40-52 - format_elapsed_verbose() with spaces
+
+### Status Display Timing
+- daemon/server/status.rs:257-274 - get_stage_started_at() from frontmatter
+- daemon/server/status.rs:279-288 - get_stage_completed_at() from frontmatter
+- daemon/server/status.rs:323-433 - collect_completion_summary()
+- commands/status/render/summary.rs:20-84 - print_completion_summary()
+- commands/status/render/completion.rs:46-135 - render_completion_screen()
+- commands/status/ui/tui/renderer.rs:83-89 - TUI stage duration calc
+
+### Retry/Recovery Code Path
+- orchestrator/monitor/detection.rs - PID liveness + heartbeat checks
+- orchestrator/core/crash_handler.rs:14-109 - handle_session_crashed()
+- orchestrator/retry.rs - classify_failure(), calculate_backoff()
+- orchestrator/core/recovery.rs:36-169 - sync blocked stages for retry
+- orchestrator/monitor/failure_tracking.rs:59-97 - consecutive failure escalation

@@ -1445,3 +1445,35 @@ Built by build_signal_context() in generate.rs. Memory placed in recitation for 
 4. Stage::default() (types.rs:306) - provide default
 5. If goal-backward: update verify/goal_backward/mod.rs
 6. If affects signals: update format sections
+
+## Retry Flow Pattern
+
+### Detection → Classification → Backoff → Re-spawn
+
+1. Monitor detects crash: PID dead or heartbeat stale (detection.rs)
+2. Classify failure type (retry.rs): SessionCrash/Timeout = retryable
+3. crash_handler.rs: retry_count++, last_failure_at=now, status=Blocked
+4. Backoff: 30 * 2^(retry_count-1), capped at 300s
+5. recovery.rs sync: check backoff elapsed, transition Blocked->Queued
+6. Orchestrator re-spawns from Queued, started_at preserved
+
+### Retry State Fields (models/stage/types.rs:141-151)
+
+- retry_count: u32 (incremented each failure)
+- max_retries: Option<u32> (default 3 if None)
+- last_failure_at: Option<DateTime<Utc>> (for backoff calc)
+- failure_info: Option<FailureInfo> (type, detected_at, evidence)
+- close_reason: Option<String>
+
+Retryable types: SessionCrash, Timeout only.
+Non-retryable: ContextExhausted (handoff), TestFailure, BuildFailure, CodeError.
+
+## Stage File Serialization
+
+Files at .work/stages/{depth}-{stage-id}.md: markdown + YAML frontmatter.
+
+Write (persistence.rs): serde_yaml::to_string(stage) -> --- delimiters + markdown body
+Read: extract_yaml_frontmatter() -> parse_from_markdown::<Stage>()
+File locked during write for concurrent safety.
+
+StageFrontmatter (fs/stage_loading.rs) for loading. Stage struct (types.rs) for serialization.

@@ -531,6 +531,13 @@ Two plan criteria caused false negatives in integration-verify:
   - *Rationale:* cargo fmt fixed 3 files with whitespace/line-wrapping changes only in settings.rs, cache.rs, sections.rs. All were code from the implementation stages that just needed rustfmt.
 
 
+## Promoted from Memory [2026-02-06 16:00]
+
+### Notes
+
+- Knowledge bootstrap for stage-timing: Coverage was already 100% (18/18). Added targeted timing docs: timing fields architecture, mutation points, completion summary collection, retry flow pattern, retry state fields, stage file serialization, and entry-points for all timing/retry/display code paths.
+- Key timing insight: started_at is preserved across retries (only set if None), duration_secs computed at completion from started_at to now. Completion summary calculates total_duration as latest_completion - earliest_start across all stages.
+- Retry flow: crash detection (PID/heartbeat) -> classify_failure() -> crash_handler increments retry_count -> Blocked status -> recovery.rs checks backoff elapsed -> Queued -> re-spawn. Exponential backoff: 30*2^(n-1), cap 300s. Max retries default 3.
 
 ## Promoted from Memory [2026-02-06 16:38]
 
@@ -542,5 +549,3 @@ Two plan criteria caused false negatives in integration-verify:
 
 - **Fixed all 6 issues directly in code rather than just reporting them. Used saturating_add for i64 overflow safety, extracted build_duration_display helper for DRY, used u32::try_from for safe numeric conversion.**
   - *Rationale:* Code review stages should fix issues, not just report. All changes are backward-compatible.
-
-
