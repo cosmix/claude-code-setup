@@ -338,6 +338,53 @@ If plan says "sequential" - execute in order with explicit dependencies.
 
 **File Ownership:** Each subagent MUST have exclusive write access. Overlap = merge conflicts. Read-only can be shared.
 
+### 6b. AGENT TEAMS (WHEN AVAILABLE)
+
+Agent teams provide richer coordination than subagents: inter-agent messaging, shared task lists, and persistent task state. Use them when the work benefits from collaboration rather than simple parallel execution.
+
+**THE DECISION TEST - Ask Three Questions:**
+
+1. Would the subagents benefit from talking to each other?
+   No = use subagents. Yes = consider teams.
+2. Might the work scope change during execution?
+   Fixed scope = subagents. Exploratory = teams.
+3. Does the stage have multiple dimensions (not just files)?
+   Files only = subagents. Dimensions (security, quality, etc.) = teams.
+
+**CHOOSING TEAMS vs SUBAGENTS:**
+
+| Factor | Subagents | Teams |
+| ------ | --------- | ----- |
+| Scope | Concrete, well-defined | Wide, exploratory |
+| Communication | None (fire-and-forget) | DM, broadcast, shared tasks |
+| Task discovery | Static (assigned upfront) | Dynamic (agents claim work) |
+| Stage types | Standard implementation | Knowledge, code-review, integration-verify |
+| Cost | Lower (~1x per subagent) | Higher (~7x total) |
+
+**TEAM LEAD RULES:**
+
+- Only YOU may run git commit and loom stage complete
+- Only YOU may use loom memory commands
+- Teammates CANNOT commit, complete stages, or update memory/knowledge
+- Record teammate insights: loom memory note "Teammate found: ..."
+- Keep your context for coordination (aim for <40% utilization)
+- Delegate implementation to teammates, do not implement yourself
+- Shut down ALL teammates before completing stage
+
+**TEAM CREATION PATTERN:**
+
+1. TeamCreate(team_name="loom-{stage_id}")
+2. TaskCreate for each work item with clear acceptance criteria
+3. Spawn teammates via Task tool with team_name parameter
+4. Monitor via TaskList, coordinate via SendMessage
+5. When done: shutdown teammates, verify acceptance, loom stage complete
+
+**ANTI-PATTERNS (DO NOT use teams for):**
+
+- Stages with 2-3 concrete subagent assignments and clear file ownership
+- Single-file changes with tests
+- Any task where all subagents write to completely independent files
+
 ### 7. SKILLS & AGENT DELEGATION
 
 **⚠️ CHECK SKILLS & AGENTS BEFORE IMPLEMENTING**

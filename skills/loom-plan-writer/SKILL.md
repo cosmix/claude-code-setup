@@ -126,24 +126,37 @@ loom:
 
 ### 4. Parallelization Strategy
 
-Maximize parallel execution at TWO levels:
+Maximize parallel execution at THREE levels:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  PARALLELIZATION PRIORITY                                           │
 │                                                                     │
-│  1. SUBAGENTS FIRST  - Within a stage, use parallel subagents       │
-│                        for tasks with NO file overlap               │
+│  1. AGENT TEAMS FIRST  - For wide-scope stages where inter-agent   │
+│                          communication adds value (knowledge,       │
+│                          review, verify)                            │
 │                                                                     │
-│  2. STAGES SECOND    - Separate stages for tasks that WILL touch    │
-│                        the same files (loom merges branches)        │
+│  2. SUBAGENTS SECOND   - Within a stage, for concrete tasks with   │
+│                          NO file overlap and clear assignments      │
+│                                                                     │
+│  3. STAGES THIRD       - Separate stages for tasks that touch      │
+│                          same files or have code dependencies       │
+│                          (loom merges branches)                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-| Files Overlap? | Solution                           |
-| -------------- | ---------------------------------- |
-| NO             | Same stage, parallel subagents     |
-| YES            | Separate stages, loom merges later |
+| Files Overlap? | Inter-agent Comms Needed? | Solution |
+| -------------- | ------------------------- | -------- |
+| NO | NO | Same stage, parallel subagents |
+| NO | YES | Same stage, agent team |
+| YES | Any | Separate stages, loom merges |
+
+**Stage-Specific Defaults:**
+
+- knowledge-bootstrap: Default to TEAM (coordinated exploration, researchers share discoveries that inform each other)
+- standard (implementation): Default to SUBAGENTS (concrete file assignments, fire-and-forget). Use team only for wide/exploratory scope
+- code-review: Default to TEAM (security + architecture + quality dimensions that may interact)
+- integration-verify: Default to TEAM (build + functional + knowledge promotion tasks that may require iterative fixes)
 
 ### 5. Stage Description Requirement
 
@@ -235,6 +248,7 @@ loom:
       files: # Optional: target file globs for scope
         - "src/**/*.rs"
       working_dir: "." # Required: "." for worktree root, or subdirectory like "loom"
+      execution_mode: team  # Optional hint: single or team, agent decides
       # REQUIRED: At least ONE of truths/artifacts/wiring per stage
       truths: # Observable behaviors proving feature works
         - "myapp --help"

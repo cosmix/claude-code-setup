@@ -478,3 +478,17 @@ Two plan criteria caused false negatives in integration-verify:
 1. Truth 'cargo test 2>&1 | tail -1' fails because cargo test outputs trailing newline as last line. Fix: filter test result lines first then check.
 
 2. Wiring pattern 'pub fn write_signal_file' does not match 'pub(super) fn write_signal_file'. Fix: use regex 'pub.*fn write_signal_file' to match visibility modifiers.
+
+## Promoted from Memory [2026-02-06 12:06]
+
+### Notes
+
+- Successfully inserted Rule 6b (AGENT TEAMS) into CLAUDE.md.template at line 341, between Rule 6 and Rule 7.
+- Updated SKILL.md Section 4 from 2-level to 3-level parallelization hierarchy (AGENT TEAMS FIRST > SUBAGENTS SECOND > STAGES THIRD). Added execution_mode hint to YAML format.
+
+### Decisions
+
+- **Used parallel subagents for independent file changes since files have no overlap**
+  - *Rationale:* Follows subagents-first parallelization strategy
+
+
