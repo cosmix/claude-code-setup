@@ -87,12 +87,20 @@ pub fn generate_settings_json(config: &MergedSandboxConfig) -> Value {
         allow.push(json!(format!("Write({})", path)));
     }
 
-    // Add Bash permissions for excluded commands
+    // Add Bash permissions for excluded commands.
+    // This complements sandbox.excludedCommands (which exempts from OS-level sandbox)
+    // by also auto-approving the permission prompt for these commands.
     for cmd in &config.excluded_commands {
-        allow.push(json!(format!("Bash({}:*)", cmd)));
+        let cmd_trimmed = cmd.trim();
+        if cmd_trimmed.is_empty() {
+            continue;
+        }
+        allow.push(json!(format!("Bash({}:*)", cmd_trimmed)));
     }
 
-    // Add Read permissions for orchestration state files agents need
+    // Add narrow Read permissions for orchestration state files agents need.
+    // The main settings.json grants broader Read(.work/**) via LOOM_PERMISSIONS_WORKTREE,
+    // but settings.local.json uses these narrow grants as defense-in-depth.
     allow.push(json!("Read(.work/signals/**)"));
     allow.push(json!("Read(.work/handoffs/**)"));
     allow.push(json!("Read(.work/config.toml)"));
@@ -351,39 +359,18 @@ mod tests {
                 .map(|a| a.to_vec())
                 .unwrap_or_default();
 
-            // Extract just the path portion from entries like "Read(path)" or "Write(path)"
-            let allow_paths: Vec<String> = allow
-                .iter()
-                .filter_map(|v| v.as_str())
-                .filter_map(|s| {
-                    if let Some(start) = s.find('(') {
-                        if let Some(end) = s.find(')') {
-                            return Some(s[start + 1..end].to_string());
-                        }
-                    }
-                    None
-                })
-                .collect();
+            // Compare full permission strings (e.g. "Read(.work/signals/**)")
+            // to detect true conflicts where the same permission type + path
+            // appears in both allow and deny.
+            let allow_strs: Vec<&str> = allow.iter().filter_map(|v| v.as_str()).collect();
+            let deny_strs: Vec<&str> = deny.iter().filter_map(|v| v.as_str()).collect();
 
-            let deny_paths: Vec<String> = deny
-                .iter()
-                .filter_map(|v| v.as_str())
-                .filter_map(|s| {
-                    if let Some(start) = s.find('(') {
-                        if let Some(end) = s.find(')') {
-                            return Some(s[start + 1..end].to_string());
-                        }
-                    }
-                    None
-                })
-                .collect();
-
-            for path in &allow_paths {
+            for entry in &allow_strs {
                 assert!(
-                    !deny_paths.contains(path),
-                    "Stage type {:?}: path '{}' appears in both allow and deny",
+                    !deny_strs.contains(entry),
+                    "Stage type {:?}: '{}' appears in both allow and deny",
                     stage_type,
-                    path
+                    entry
                 );
             }
         }

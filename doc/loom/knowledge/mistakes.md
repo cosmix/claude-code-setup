@@ -550,3 +550,16 @@ Two plan criteria caused false negatives in integration-verify:
 ### Decisions
 
 - **Added doc comments referencing begin_attempt and accumulate_attempt_time to types.rs fields, resolving acceptance criteria mismatch after code-review refactoring**
+
+## Promoted from Memory [2026-02-06 20:41]
+
+### Notes
+
+- Code review of fix-sandbox-settings: 3 files changed (settings.rs, config.rs, types.rs). Found and fixed: (1) empty excluded_commands could produce malformed Bash(:_) permission - added skip for empty/whitespace, (2) test_no_path_in_both_allow_and_deny compared only extracted paths across permission types - fixed to compare full permission strings, (3) _stage_type param in merge_config had no documentation - added doc comment, (4) stale knowledge docs said Knowledge/IntegrationVerify auto-add to allow_write - updated to reflect CLI-based approach, (5) added explanatory comments for Bash(cmd:_) + excludedCommands relationship and narrow .work/ read allows
+- Pre-existing issue found: test_loom_terminal_env_var_takes_precedence in detection.rs uses std::env::set_var without serial_test, causing intermittent race condition failures when run with full test suite. Not in scope for this review but should be addressed.
+- Security review: No critical/high issues. Medium: excluded_commands lacks input validation (could contain special chars). The existing layers (hooks, signals) adequately protect .work/ state after deny_write removal. The Bash(cmd:*) + excludedCommands dual mechanism is belt-and-suspenders (sandbox exemption + prompt auto-approve).
+
+### Decisions
+
+- **Fixed test_no_path_in_both_allow_and_deny to compare full permission strings instead of just paths**
+  - _Rationale:_ The test was stripping Read/Write/Bash prefixes and comparing raw paths, which would false-positive on Read(x) in allow vs Write(x) in deny (different permission types, valid config). Changed to compare full strings for true conflicts.

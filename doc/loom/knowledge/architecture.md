@@ -445,7 +445,7 @@ Generates Claude Code `settings.local.json` with permission boundaries.
 - `network.allowed_domains` - Web access
 - `excluded_commands` - Blocked CLI commands
 
-**Special stage types:** Knowledge and IntegrationVerify stages auto-add `doc/loom/knowledge/**` to allow_write.
+**Knowledge file access:** Knowledge writes are handled via the `loom knowledge update` CLI (in `excluded_commands`), not via sandbox `allow_write` rules. `doc/loom/knowledge/**` remains in `deny_write` for all stage types.
 
 **Key files:**
 

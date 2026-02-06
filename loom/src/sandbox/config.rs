@@ -35,6 +35,10 @@ pub struct MergedSandboxConfig {
 
 /// Merge plan-level sandbox config with stage-level overrides
 /// Stage values override plan values when present
+///
+/// Note: `_stage_type` is currently unused after removing the stage-type-specific
+/// knowledge path auto-add logic (knowledge writes now go through `loom` CLI).
+/// Parameter is retained to preserve the API surface for callers.
 pub fn merge_config(
     plan_config: &SandboxConfig,
     stage_config: &StageSandboxConfig,
