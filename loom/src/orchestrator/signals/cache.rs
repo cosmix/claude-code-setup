@@ -124,12 +124,18 @@ pub fn generate_stable_prefix() -> String {
     content.push_str("**Agent Teams (WHEN AVAILABLE):**\n\n");
     content.push_str("If CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is set, you can create\n");
     content.push_str("agent teams for richer coordination than subagents:\n");
-    content.push_str("- Teams provide: inter-agent messaging, shared task lists, idle/wake lifecycle\n");
-    content.push_str("- Teams cost ~7x tokens - use ONLY when coordination benefit justifies cost\n");
-    content.push_str("- YOU are the team lead - only YOU may run git commit and loom stage complete\n");
+    content.push_str(
+        "- Teams provide: inter-agent messaging, shared task lists, idle/wake lifecycle\n",
+    );
+    content
+        .push_str("- Teams cost ~7x tokens - use ONLY when coordination benefit justifies cost\n");
+    content.push_str(
+        "- YOU are the team lead - only YOU may run git commit and loom stage complete\n",
+    );
     content.push_str("- Teammates CANNOT commit, complete stages, or update memory/knowledge\n");
     content.push_str("- Record teammate insights: loom memory note \"Teammate found: ...\"\n");
-    content.push_str("- Keep context for coordination (<40% utilization), delegate implementation\n");
+    content
+        .push_str("- Keep context for coordination (<40% utilization), delegate implementation\n");
     content.push_str("- Shut down ALL teammates before completing the stage\n\n");
     content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");

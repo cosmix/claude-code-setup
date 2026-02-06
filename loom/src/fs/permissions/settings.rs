@@ -103,9 +103,7 @@ pub fn ensure_loom_permissions(repo_root: &Path) -> Result<()> {
     let hooks_configured = configure_loom_hooks(settings_obj)?;
 
     // Configure agent teams environment variable
-    let env_obj = settings_obj
-        .entry("env")
-        .or_insert_with(|| json!({}));
+    let env_obj = settings_obj.entry("env").or_insert_with(|| json!({}));
     let env_map = env_obj
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("env must be a JSON object"))?;
@@ -205,10 +203,7 @@ mod tests {
         let settings: Value = serde_json::from_str(&content).unwrap();
 
         // Verify env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == "1"
-        assert_eq!(
-            settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"],
-            "1"
-        );
+        assert_eq!(settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1");
     }
 
     #[test]
@@ -227,10 +222,7 @@ mod tests {
         let settings: Value = serde_json::from_str(&content).unwrap();
 
         // Verify env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == "1"
-        assert_eq!(
-            settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"],
-            "1"
-        );
+        assert_eq!(settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1");
     }
 
     #[test]
@@ -264,9 +256,6 @@ mod tests {
 
         // Verify both env vars exist
         assert_eq!(settings["env"]["MY_CUSTOM_VAR"], "hello");
-        assert_eq!(
-            settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"],
-            "1"
-        );
+        assert_eq!(settings["env"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1");
     }
 }

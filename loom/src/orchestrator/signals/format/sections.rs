@@ -241,7 +241,8 @@ pub(super) fn format_semi_stable_section(
 
     // Agent Teams decision framework
     content.push_str("## Agent Teams\n\n");
-    content.push_str("You have agent teams available (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).\n\n");
+    content
+        .push_str("You have agent teams available (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).\n\n");
     content.push_str("**When to use SUBAGENTS (Task tool):**\n");
     content.push_str("- Tasks have clear, concrete file assignments\n");
     content.push_str("- No inter-agent communication needed\n");
@@ -669,7 +670,10 @@ pub fn format_skill_recommendations(skills: &[SkillMatch]) -> String {
     for skill in skills {
         // Truncate description if too long for table (UTF-8 safe)
         let desc = if skill.description.chars().count() > 60 {
-            format!("{}...", skill.description.chars().take(57).collect::<String>())
+            format!(
+                "{}...",
+                skill.description.chars().take(57).collect::<String>()
+            )
         } else {
             skill.description.clone()
         };
