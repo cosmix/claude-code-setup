@@ -127,14 +127,15 @@ fn test_complete_knowledge_stage_with_failing_acceptance() {
 
     std::env::set_current_dir(original_dir).unwrap();
 
+    // New behavior: acceptance failure returns Err and stage stays Executing
     assert!(
-        result.is_ok(),
-        "complete() should succeed even with failed acceptance"
+        result.is_err(),
+        "complete() should return Err when acceptance fails"
     );
 
     let loaded_stage = load_stage("knowledge-stage", &work_dir_path).unwrap();
-    // Failing acceptance results in CompletedWithFailures
-    assert_eq!(loaded_stage.status, StageStatus::CompletedWithFailures);
+    // Stage should remain Executing (not transition to CompletedWithFailures)
+    assert_eq!(loaded_stage.status, StageStatus::Executing);
     // merged should NOT be set when acceptance fails
     assert!(!loaded_stage.merged);
 }

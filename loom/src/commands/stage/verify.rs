@@ -90,14 +90,16 @@ pub fn verify(stage_id: String, no_reload: bool) -> Result<()> {
 
     // Handle acceptance failure
     if !acceptance_result {
-        // Keep stage in current state (CompletedWithFailures or update to it)
-        if stage.status == StageStatus::Executing {
-            stage.try_complete_with_failures()?;
+        // If stage is Executing, keep it Executing (don't transition to CompletedWithFailures)
+        // If stage is already CompletedWithFailures, save updated criteria only
+        if stage.status == StageStatus::CompletedWithFailures {
+            // Save any updated acceptance criteria (from plan reload) without state change
+            save_stage(&stage, work_dir)?;
         }
-        save_stage(&stage, work_dir)?;
-        println!("Stage '{stage_id}' verification failed - acceptance criteria did not pass");
-        println!("  Fix the issues and run 'loom stage verify {stage_id}' again");
-        return Ok(());
+        // If Executing, don't save or transition - just bail
+        eprintln!("Verification FAILED for stage '{stage_id}' - acceptance criteria did not pass");
+        eprintln!("  Fix the issues and run 'loom stage verify {stage_id}' again");
+        bail!("Verification failed for stage '{stage_id}'");
     }
 
     // Handle knowledge stages (no merge required)

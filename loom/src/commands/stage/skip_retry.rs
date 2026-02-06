@@ -28,6 +28,25 @@ pub fn retry(stage_id: String, force: bool) -> Result<()> {
 
     let mut stage = load_stage(&stage_id, work_dir)?;
 
+    // Defense-in-depth: check for active session to prevent parallel session spawning
+    if let Some(ref session_id) = stage.session {
+        let session_path = work_dir.join("sessions").join(format!("{session_id}.md"));
+        if session_path.exists() {
+            eprintln!(
+                "WARNING: Stage '{}' may have an active session ({})",
+                stage_id, session_id
+            );
+            eprintln!("  If the session is still running, retry will create a parallel session.");
+            eprintln!(
+                "  Fix issues in the current session and run 'loom stage complete {stage_id}'."
+            );
+            if !force {
+                bail!("Stage has active session. Use --force to override.");
+            }
+            eprintln!("  --force used, proceeding with retry despite active session.");
+        }
+    }
+
     // Allow retry for Blocked, CompletedWithFailures, and MergeBlocked states
     let retryable = matches!(
         stage.status,

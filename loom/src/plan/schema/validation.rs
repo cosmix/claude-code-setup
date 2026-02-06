@@ -415,8 +415,12 @@ pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
 /// - Path traversal patterns (errors handled in validate())
 /// - working_dir prefix redundancy in acceptance criteria
 /// - Overly broad patterns in wiring checks
-#[cfg(test)]
-pub fn validate_structural_preflight(stages: &[super::types::StageDefinition]) -> Vec<String> {
+/// - Build tool config file mismatches
+/// - Double-path artifacts and wiring sources
+pub fn validate_structural_preflight(
+    stages: &[super::types::StageDefinition],
+    repo_root: Option<&std::path::Path>,
+) -> Vec<String> {
     let mut warnings = Vec::new();
 
     for stage in stages {
@@ -453,6 +457,79 @@ pub fn validate_structural_preflight(stages: &[super::types::StageDefinition]) -
         }
     }
 
+    // Build tool command patterns and their expected config files
+    const BUILD_TOOL_CHECKS: &[(&str, &str)] = &[
+        ("cargo", "Cargo.toml"),
+        ("npm ", "package.json"),
+        ("bun ", "package.json"),
+        ("yarn ", "package.json"),
+        ("go ", "go.mod"),
+        ("pytest", "pyproject.toml"),
+        ("uv ", "pyproject.toml"),
+    ];
+
+    if let Some(root) = repo_root {
+        for stage in stages {
+            let working_dir = if stage.working_dir.is_empty() || stage.working_dir == "." {
+                root.to_path_buf()
+            } else {
+                root.join(&stage.working_dir)
+            };
+
+            // Check if acceptance criteria reference build tools whose config files are missing
+            for criterion in &stage.acceptance {
+                for &(tool_cmd, config_file) in BUILD_TOOL_CHECKS {
+                    if criterion.contains(tool_cmd) && !working_dir.join(config_file).exists() {
+                        warnings.push(format!(
+                            "Stage '{}': Acceptance criterion '{}' uses '{}' but {} not found at {}",
+                            stage.id,
+                            criterion,
+                            tool_cmd.trim(),
+                            config_file,
+                            working_dir.display()
+                        ));
+                    }
+                }
+            }
+
+            // Check for double-path artifacts (working_dir prefix in artifact path)
+            if !stage.working_dir.is_empty() && stage.working_dir != "." {
+                for (idx, artifact) in stage.artifacts.iter().enumerate() {
+                    if artifact.starts_with(&stage.working_dir)
+                        || artifact.starts_with(&format!("{}/", stage.working_dir))
+                    {
+                        warnings.push(format!(
+                            "Stage '{}': Artifact #{} '{}' may have redundant working_dir prefix '{}'. \
+                             Artifact paths are relative to working_dir.",
+                            stage.id,
+                            idx + 1,
+                            artifact,
+                            stage.working_dir
+                        ));
+                    }
+                }
+
+                // Check for double-path in wiring sources
+                for (idx, wiring) in stage.wiring.iter().enumerate() {
+                    if wiring.source.starts_with(&stage.working_dir)
+                        || wiring
+                            .source
+                            .starts_with(&format!("{}/", stage.working_dir))
+                    {
+                        warnings.push(format!(
+                            "Stage '{}': Wiring #{} source '{}' may have redundant working_dir prefix '{}'. \
+                             Wiring paths are relative to working_dir.",
+                            stage.id,
+                            idx + 1,
+                            wiring.source,
+                            stage.working_dir
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
     warnings
 }
 
@@ -462,8 +539,7 @@ pub fn validate_structural_preflight(stages: &[super::types::StageDefinition]) -
 /// - Too short (< 5 characters)
 /// - Too generic (".*" or single character)
 /// - A common keyword that will match too broadly
-#[cfg(test)]
-fn check_wiring_pattern_quality(pattern: &str) -> Option<String> {
+pub(crate) fn check_wiring_pattern_quality(pattern: &str) -> Option<String> {
     // List of common keywords that are too generic
     const GENERIC_KEYWORDS: &[&str] = &[
         "use", "import", "require", "from", "const", "let", "var", "fn", "func", "def", "class",

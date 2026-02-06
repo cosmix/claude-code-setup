@@ -13,5 +13,5 @@ pub use types::{
 };
 pub use validation::{
     check_code_review_recommendations, check_knowledge_recommendations,
-    check_sandbox_recommendations, validate,
+    check_sandbox_recommendations, validate, validate_structural_preflight,
 };

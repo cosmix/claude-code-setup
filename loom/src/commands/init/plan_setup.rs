@@ -7,7 +7,8 @@ use crate::models::stage::{Stage, StageStatus, StageType};
 use crate::plan::parser::parse_plan;
 use crate::plan::schema::{
     check_code_review_recommendations, check_knowledge_recommendations,
-    check_sandbox_recommendations, StageDefinition, StageSandboxConfig,
+    check_sandbox_recommendations, validate_structural_preflight, StageDefinition,
+    StageSandboxConfig,
 };
 use crate::verify::serialize_stage_to_markdown;
 use anyhow::{Context, Result};
@@ -80,6 +81,13 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
     // Check for code-review-related recommendations (non-fatal warnings)
     let code_review_warnings = check_code_review_recommendations(&stages);
     for warning in &code_review_warnings {
+        println!("  {} {}", "⚠".yellow().bold(), warning.yellow());
+    }
+
+    // Run structural preflight validation (non-fatal warnings)
+    let repo_root = std::env::current_dir().ok();
+    let preflight_warnings = validate_structural_preflight(&stages, repo_root.as_deref());
+    for warning in &preflight_warnings {
         println!("  {} {}", "⚠".yellow().bold(), warning.yellow());
     }
 

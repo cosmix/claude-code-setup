@@ -468,7 +468,7 @@ fn test_preflight_warns_on_working_dir_redundancy() {
     ];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     assert!(!warnings.is_empty());
     assert!(warnings
         .iter()
@@ -482,7 +482,7 @@ fn test_preflight_no_warning_when_working_dir_is_dot() {
     stage.acceptance = vec!["loom/src/main.rs".to_string()];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     // No warnings when working_dir is "."
     assert!(warnings
         .iter()
@@ -499,7 +499,7 @@ fn test_preflight_warns_on_short_wiring_pattern() {
     }];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     assert!(!warnings.is_empty());
     assert!(warnings
         .iter()
@@ -516,7 +516,7 @@ fn test_preflight_warns_on_wildcard_pattern() {
     }];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     assert!(!warnings.is_empty());
     assert!(warnings.iter().any(|w| w.contains("matches everything")));
 }
@@ -531,7 +531,7 @@ fn test_preflight_warns_on_single_char_pattern() {
     }];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     assert!(!warnings.is_empty());
     assert!(warnings
         .iter()
@@ -548,7 +548,7 @@ fn test_preflight_warns_on_generic_keyword() {
     }];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     assert!(!warnings.is_empty());
     assert!(warnings.iter().any(|w| w.contains("common keyword")));
 }
@@ -563,7 +563,7 @@ fn test_preflight_no_warning_for_specific_pattern() {
     }];
     stage.truths = vec!["test -f README.md".to_string()];
 
-    let warnings = validate_structural_preflight(&[stage]);
+    let warnings = validate_structural_preflight(&[stage], None);
     // Should have no warnings about pattern quality for this specific pattern
     assert!(warnings
         .iter()

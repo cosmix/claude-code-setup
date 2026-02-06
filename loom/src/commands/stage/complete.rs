@@ -123,23 +123,24 @@ pub fn complete(
     let acceptance_result =
         run_acceptance_phase(&stage, &stage_id, no_verify, acceptance_dir.as_deref())?;
 
-    // Cleanup session resources (update session status, remove signal)
-    if let Some(ref sid) = session_id {
-        cleanup_session_resources(&stage_id, sid, work_dir);
-    }
-
-    // Handle acceptance failure - mark as CompletedWithFailures and exit early
-    // (but not for --no-verify which is a deliberate skip)
+    // Handle acceptance failure - keep stage in Executing, agent can fix and retry
+    // Do NOT transition state - stage stays Executing so agent can fix and re-run
+    // Do NOT clean up session - agent is still alive
     if acceptance_result == Some(false) {
-        stage.try_complete_with_failures()?;
-        save_stage(&stage, work_dir)?;
-        println!("Stage '{stage_id}' completed with failures - acceptance criteria did not pass");
-        println!("  Run 'loom stage retry {stage_id}' to try again after fixing issues");
-        return Ok(());
+        eprintln!("Acceptance criteria FAILED for stage '{stage_id}'");
+        eprintln!("  Fix the issues and run 'loom stage complete {stage_id}' again");
+        anyhow::bail!("Acceptance criteria failed for stage '{stage_id}'");
     }
 
     // Run verification and merge phase
-    run_verification_phase(&mut stage, &stage_id, no_verify, &acceptance_dir, work_dir)?;
+    run_verification_phase(
+        &mut stage,
+        &stage_id,
+        no_verify,
+        &acceptance_dir,
+        session_id.as_deref(),
+        work_dir,
+    )?;
 
     Ok(())
 }
@@ -294,6 +295,7 @@ fn run_verification_phase(
     stage_id: &str,
     no_verify: bool,
     acceptance_dir: &Option<PathBuf>,
+    session_id: Option<&str>,
     work_dir: &Path,
 ) -> Result<()> {
     if !no_verify {
@@ -309,23 +311,16 @@ fn run_verification_phase(
                 let goal_result = run_goal_backward_verification(&stage_def, verification_dir)?;
 
                 if !goal_result.is_passed() {
-                    stage.try_complete_with_failures()?;
-                    save_stage(stage, work_dir)?;
-                    println!(
-                        "Stage '{stage_id}' completed with failures - goal-backward verification failed"
-                    );
-
                     // Print gaps
                     for gap in goal_result.gaps() {
-                        println!("  ✗ {:?}: {}", gap.gap_type, gap.description);
-                        println!("    → {}", gap.suggestion);
+                        eprintln!("  ✗ {:?}: {}", gap.gap_type, gap.description);
+                        eprintln!("    → {}", gap.suggestion);
                     }
 
-                    println!();
-                    println!(
-                        "  Run 'loom stage retry {stage_id}' to try again after fixing issues"
-                    );
-                    return Ok(());
+                    eprintln!();
+                    eprintln!("Goal-backward verification FAILED for stage '{stage_id}'");
+                    eprintln!("  Fix the issues and run 'loom stage complete {stage_id}' again");
+                    anyhow::bail!("Goal-backward verification failed for stage '{stage_id}'");
                 }
                 println!("Goal-backward verification passed!");
             }
@@ -367,15 +362,9 @@ fn run_verification_phase(
                             if impact.has_new_failures()
                                 && change_impact_config.policy == ChangeImpactPolicy::Fail
                             {
-                                stage.try_complete_with_failures()?;
-                                save_stage(stage, work_dir)?;
-                                println!(
-                                    "Stage '{stage_id}' completed with failures - new failures introduced"
-                                );
-                                println!(
-                                    "  Run 'loom stage retry {stage_id}' to try again after fixing issues"
-                                );
-                                return Ok(());
+                                eprintln!("Change impact check FAILED for stage '{stage_id}' - new failures introduced");
+                                eprintln!("  Fix the issues and run 'loom stage complete {stage_id}' again");
+                                anyhow::bail!("Change impact check failed for stage '{stage_id}' - new failures introduced");
                             }
 
                             if impact.has_new_failures()
@@ -391,6 +380,11 @@ fn run_verification_phase(
                     }
                 }
             }
+        }
+
+        // All verifications passed - NOW clean up session resources
+        if let Some(sid) = session_id {
+            cleanup_session_resources(stage_id, sid, work_dir);
         }
 
         // Attempt progressive merge into the merge point (base_branch)

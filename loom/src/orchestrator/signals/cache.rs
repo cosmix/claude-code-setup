@@ -140,7 +140,9 @@ pub fn generate_stable_prefix() -> String {
     content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");
-    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n\n");
+    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n");
+    content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
+    content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
     content.push_str("**Session Memory - MEMORY ONLY (MANDATORY):**\n\n");
     content.push_str("```text\n");
     content.push_str("⚠️  IMPLEMENTATION STAGES USE `loom memory` ONLY - NEVER `loom knowledge`\n");
@@ -283,7 +285,9 @@ pub fn generate_code_review_stable_prefix() -> String {
     content.push_str("- **Fix issues** - code review stages should fix, not just report\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");
-    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n\n");
+    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n");
+    content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
+    content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
 
     // Memory recording for code review (can update knowledge like integration-verify)
     content.push_str("**Recording Findings (CAN UPDATE KNOWLEDGE):**\n\n");
@@ -405,7 +409,9 @@ pub fn generate_integration_verify_stable_prefix() -> String {
     );
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");
-    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n\n");
+    content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n");
+    content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
+    content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
 
     // Knowledge promotion
     content.push_str("**Recording & Knowledge Promotion (CAN UPDATE KNOWLEDGE):**\n\n");
@@ -505,8 +511,9 @@ pub fn generate_knowledge_stable_prefix() -> String {
     content.push_str("**Completion:**\n");
     content.push_str("- **Verify acceptance criteria** before marking stage complete\n");
     content.push_str("- **Create handoff** if context exceeds 75%\n");
-    content
-        .push_str("- **Run `loom stage complete <stage-id>`** when done (from the repo root)\n\n");
+    content.push_str("- **Run `loom stage complete <stage-id>`** when done (from the repo root)\n");
+    content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
+    content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
     content.push_str("**Binary Usage (CRITICAL when working on loom):**\n");
     content.push_str("- **ALWAYS use `loom`** - the installed binary from PATH\n");
     content.push_str("- **NEVER use `target/debug/loom`** or `./loom/target/debug/loom`\n");

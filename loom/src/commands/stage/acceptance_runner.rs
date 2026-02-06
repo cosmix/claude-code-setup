@@ -29,10 +29,30 @@ pub fn resolve_acceptance_dir(
 
             // Canonicalize and check containment for path traversal defense
             let canonical = full_path.canonicalize().with_context(|| {
-                format!(
-                    "Failed to resolve acceptance directory: {}",
-                    full_path.display()
-                )
+                let mut msg = format!(
+                    "Failed to resolve acceptance directory: {} (working_dir='{}')",
+                    full_path.display(),
+                    subdir
+                );
+                // Check where build files actually are to provide hints
+                for build_file in ["Cargo.toml", "package.json", "go.mod", "pyproject.toml"] {
+                    if root.join(build_file).exists() {
+                        msg.push_str(&format!(
+                            "\n  HINT: {} found at worktree root — working_dir should probably be \".\"",
+                            build_file
+                        ));
+                    }
+                    // Also check common subdirectories
+                    for subdir_name in ["loom", "app", "src", "packages"] {
+                        if root.join(subdir_name).join(build_file).exists() && subdir != subdir_name {
+                            msg.push_str(&format!(
+                                "\n  HINT: {} found at {}/{} — working_dir should probably be \"{}\"",
+                                build_file, subdir_name, build_file, subdir_name
+                            ));
+                        }
+                    }
+                }
+                msg
             })?;
 
             // Defense-in-depth: verify resolved path is within worktree

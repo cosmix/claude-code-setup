@@ -116,18 +116,16 @@ pub fn complete_knowledge_stage(
         Some(true)
     };
 
-    // Cleanup session resources if session_id provided
-    if let Some(sid) = session_id {
-        cleanup_session_resources(stage_id, sid, work_dir);
+    // Handle acceptance failure - keep stage in Executing, agent can fix and retry
+    if acceptance_result == Some(false) {
+        eprintln!("Acceptance criteria FAILED for knowledge stage '{stage_id}'");
+        eprintln!("  Fix the issues and run 'loom stage complete {stage_id}' again");
+        anyhow::bail!("Acceptance criteria failed for knowledge stage '{stage_id}'");
     }
 
-    // Handle acceptance failure
-    if acceptance_result == Some(false) {
-        stage.try_complete_with_failures()?;
-        save_stage(&stage, work_dir)?;
-        println!("Knowledge stage '{stage_id}' completed with failures - acceptance criteria did not pass");
-        println!("  Run 'loom stage retry {stage_id}' to try again after fixing issues");
-        return Ok(());
+    // Cleanup session resources AFTER acceptance passes
+    if let Some(sid) = session_id {
+        cleanup_session_resources(stage_id, sid, work_dir);
     }
 
     // Knowledge stages auto-set merged=true since there's no branch to merge
