@@ -3,14 +3,14 @@
 //! Knowledge stages run in the main repository (not worktrees) and focus on
 //! exploring and documenting the codebase. They don't require commits or merges.
 
-use anyhow::{Context, Result};
-use std::fs;
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use crate::models::session::Session;
 use crate::models::stage::Stage;
 
 use super::cache::generate_knowledge_stable_prefix;
+use super::format::extract_tasks_from_description;
 use super::generate::build_embedded_context_with_session;
 use super::types::DependencyStatus;
 
@@ -27,17 +27,10 @@ pub fn generate_knowledge_signal(
     dependencies_status: &[DependencyStatus],
     work_dir: &Path,
 ) -> Result<PathBuf> {
-    let signals_dir = work_dir.join("signals");
-
-    if !signals_dir.exists() {
-        fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
-    }
-
     // Build embedded context
     let embedded_context =
         build_embedded_context_with_session(work_dir, None, &stage.id, Some(&session.id));
 
-    let signal_path = signals_dir.join(format!("{}.md", session.id));
     let content = format_knowledge_signal_content(
         session,
         stage,
@@ -46,14 +39,7 @@ pub fn generate_knowledge_signal(
         &embedded_context,
     );
 
-    fs::write(&signal_path, content).with_context(|| {
-        format!(
-            "Failed to write knowledge signal file: {}",
-            signal_path.display()
-        )
-    })?;
-
-    Ok(signal_path)
+    super::helpers::write_signal_file(&session.id, &content, work_dir)
 }
 
 /// Format the content for a knowledge stage signal
@@ -162,25 +148,6 @@ fn extract_tasks_from_stage(stage: &Stage) -> Vec<String> {
     if tasks.is_empty() && !stage.acceptance.is_empty() {
         for criterion in &stage.acceptance {
             tasks.push(criterion.clone());
-        }
-    }
-
-    tasks
-}
-
-/// Extract tasks from description text
-fn extract_tasks_from_description(description: &str) -> Vec<String> {
-    let mut tasks = Vec::new();
-
-    for line in description.lines() {
-        let trimmed = line.trim();
-
-        if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
-            tasks.push(trimmed[2..].trim().to_string());
-        } else if let Some(rest) = trimmed.strip_prefix(|c: char| c.is_ascii_digit()) {
-            if let Some(task) = rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")) {
-                tasks.push(task.trim().to_string());
-            }
         }
     }
 

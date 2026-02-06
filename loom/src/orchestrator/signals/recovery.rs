@@ -3,7 +3,7 @@
 //! When a session crashes or hangs, the orchestrator generates a recovery signal
 //! that contains context about what was happening and how to continue.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -19,11 +19,6 @@ pub fn generate_recovery_signal(
     stage: &Stage,
     work_dir: &Path,
 ) -> Result<PathBuf> {
-    let signals_dir = work_dir.join("signals");
-    if !signals_dir.exists() {
-        fs::create_dir_all(&signals_dir).context("Failed to create signals directory")?;
-    }
-
     // Build embedded context including any available handoff
     let handoff_file = find_latest_handoff_for_stage(work_dir, &content.stage_id);
     let embedded_context = build_embedded_context_with_stage(
@@ -32,13 +27,9 @@ pub fn generate_recovery_signal(
         Some(&content.stage_id),
     );
 
-    let signal_path = signals_dir.join(format!("{}.md", &content.session_id));
     let signal_content = format_recovery_signal(content, stage, &embedded_context);
 
-    fs::write(&signal_path, &signal_content)
-        .with_context(|| format!("Failed to write recovery signal: {}", signal_path.display()))?;
-
-    Ok(signal_path)
+    super::helpers::write_signal_file(&content.session_id, &signal_content, work_dir)
 }
 
 /// Find the latest handoff file for a stage

@@ -3,6 +3,7 @@ mod cache;
 mod crud;
 mod format;
 mod generate;
+mod helpers;
 mod knowledge;
 mod merge;
 mod merge_conflict;
