@@ -1,7 +1,7 @@
 use anyhow::Result;
 use loom::commands::{
-    clean, diagnose, graph, handoff, hooks, init, knowledge, map, memory, merge, repair, resume,
-    run, sandbox, self_update, sessions, stage, status, stop, verify, worktree_cmd,
+    clean, diagnose, graph, handoff, hooks, init, knowledge, map, memory, repair, resume, run,
+    sandbox, self_update, sessions, stage, status, stop, verify, worktree_cmd,
 };
 use loom::completions::{complete_dynamic, generate_completions, CompletionContext, Shell};
 use std::path::PathBuf;
@@ -36,7 +36,6 @@ pub fn dispatch(command: Commands) -> Result<()> {
             verbose,
         } => status::execute(live, compact, verbose),
         Commands::Resume { stage_id } => resume::execute(stage_id),
-        Commands::Merge { stage_id, force } => merge::execute(stage_id, force),
         Commands::Sessions { command } => match command {
             SessionsCommands::List => sessions::list(),
             SessionsCommands::Kill { session_ids, stage } => sessions::kill(session_ids, stage),

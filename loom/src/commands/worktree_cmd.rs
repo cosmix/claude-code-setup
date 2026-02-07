@@ -1,17 +1,16 @@
 //! Worktree management commands
 //! Usage: loom worktree [list|clean|remove <stage-id>]
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use colored::Colorize;
 use std::path::PathBuf;
 
-use crate::commands::merge::mark_stage_merged;
 use crate::fs::stage_files::find_stage_file;
 use crate::git::branch::branch_name_for_stage;
 use crate::git::cleanup::{cleanup_after_merge, prune_worktrees, CleanupConfig};
 use crate::git::worktree::find_worktree_by_prefix;
 use crate::models::stage::StageStatus;
-use crate::verify::transitions::parse_stage_from_markdown;
+use crate::verify::transitions::{load_stage, parse_stage_from_markdown, save_stage};
 
 /// List all worktrees
 pub fn list() -> Result<()> {
@@ -236,6 +235,33 @@ pub fn clean() -> Result<()> {
     Ok(())
 }
 
+/// Update stage status to Completed and mark as merged after successful merge
+fn mark_stage_merged(stage_id: &str, work_dir: &std::path::Path) -> Result<()> {
+    let stages_dir = work_dir.join("stages");
+
+    // Only update if stage file exists
+    if find_stage_file(&stages_dir, stage_id)?.is_none() {
+        return Ok(());
+    }
+
+    let mut stage = load_stage(stage_id, work_dir)?;
+
+    if stage.status != StageStatus::Completed {
+        crate::verify::transitions::transition_stage(stage_id, StageStatus::Completed, work_dir)
+            .with_context(|| format!("Failed to update stage status for: {stage_id}"))?;
+        stage = load_stage(stage_id, work_dir)?;
+        println!("Updated stage status to Completed");
+    }
+
+    if !stage.merged {
+        stage.merged = true;
+        save_stage(&stage, work_dir)?;
+        println!("Marked stage as merged");
+    }
+
+    Ok(())
+}
+
 /// Get the base worktrees directory
 pub fn worktrees_dir() -> PathBuf {
     std::env::current_dir()
@@ -249,7 +275,7 @@ pub fn worktrees_dir() -> PathBuf {
 /// It cleans up the worktree and branch WITHOUT attempting another merge.
 ///
 /// # Use Case
-/// When `loom merge` encounters conflicts:
+/// When auto-merge encounters conflicts:
 /// 1. A CC session is spawned to resolve conflicts
 /// 2. CC runs `git merge loom/<stage>` → resolves → `git add` → `git commit`
 /// 3. The merge is complete but worktree/branch still exist

@@ -71,7 +71,6 @@ loom run [--manual] [--max-parallel N] [--foreground] [--watch] [--no-merge]
 loom status [--live] [--compact] [--verbose]
 loom stop
 loom resume <stage-id>
-loom merge <stage-id> [--force]
 loom verify <stage-id> [--suggest]
 loom diagnose <stage-id>
 ```

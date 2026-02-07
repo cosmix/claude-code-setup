@@ -32,7 +32,11 @@ pub fn render_merge_status<W: Write>(w: &mut W, merge: &MergeSummary) -> std::io
         for stage_id in &merge.pending {
             writeln!(w, "    {} {}", "→".dimmed(), stage_id)?;
         }
-        writeln!(w, "    {}", "Run: loom merge <stage-id>".dimmed())?;
+        writeln!(
+            w,
+            "    {}",
+            "Run: loom stage retry-merge <stage-id>".dimmed()
+        )?;
     }
 
     // Conflicts
@@ -49,7 +53,7 @@ pub fn render_merge_status<W: Write>(w: &mut W, merge: &MergeSummary) -> std::io
         writeln!(
             w,
             "    {}",
-            "Run: loom merge <stage-id> to start resolution".dimmed()
+            "Run: loom stage retry-merge <stage-id> to start resolution".dimmed()
         )?;
     }
 

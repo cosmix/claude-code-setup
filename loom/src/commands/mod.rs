@@ -8,7 +8,6 @@ pub mod init;
 pub mod knowledge;
 pub mod map;
 pub mod memory;
-pub mod merge;
 pub mod repair;
 pub mod resume;
 pub mod run;

@@ -141,7 +141,12 @@ impl Detection {
                         // after completing its work
                         if let Some(stage_id) = &session.stage_id {
                             if let Some(stage) = stages.iter().find(|s| &s.id == stage_id) {
-                                if matches!(stage.status, StageStatus::Completed) {
+                                if matches!(
+                                    stage.status,
+                                    StageStatus::Completed
+                                        | StageStatus::MergeConflict
+                                        | StageStatus::MergeBlocked
+                                ) {
                                     // Stage completed successfully, treat as normal completion
                                     // Persist session status to file immediately
                                     handlers

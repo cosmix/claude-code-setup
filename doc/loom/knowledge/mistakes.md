@@ -731,7 +731,7 @@ Two plan criteria caused false negatives in integration-verify:
 ### Notes
 
 - Code review of fix-merge-respawn: 3 subagents identified High issues (stale signal files blocking future merges, fragile string matching in has_merge_signal_for_stage) and Medium issues (code duplication in Merged/BranchMissing arms, inconsistent stage ID extraction, save_session failure not cleaning up active_sessions)
-- Unresolved: stale signal files (kept as respawn guard) have no cleanup mechanism. If user resolves merge manually, orphaned signal blocks future merge sessions. Needs a staleness-based cleanup or integration with loom merge/worktree remove.
+- Unresolved: stale signal files (kept as respawn guard) have no cleanup mechanism. If user resolves merge manually, orphaned signal blocks future merge sessions. Needs a staleness-based cleanup or integration with loom stage retry-merge/worktree remove.
 
 ### Decisions
 

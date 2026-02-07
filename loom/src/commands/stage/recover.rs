@@ -59,7 +59,7 @@ pub fn recover(stage_id: String, force: bool) -> Result<()> {
             }
             StageStatus::MergeConflict => {
                 bail!(
-                    "Stage '{stage_id}' has merge conflicts. Use 'loom merge {stage_id}' to resolve."
+                    "Stage '{stage_id}' has merge conflicts. Use 'loom stage retry-merge {stage_id}' to resolve."
                 );
             }
             StageStatus::NeedsHumanReview => {
