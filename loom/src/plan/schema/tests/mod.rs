@@ -2,7 +2,6 @@
 
 mod acceptance_tests;
 mod auto_merge_tests;
-mod code_review_tests;
 mod knowledge_recommendations_tests;
 mod stage_id_tests;
 mod validation_tests;

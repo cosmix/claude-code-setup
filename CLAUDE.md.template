@@ -62,7 +62,7 @@ You waste user's time implementing unapproved work. Your work will be rejected.
 The skill provides complete guidance for:
 - Plan document structure (human-readable content + YAML metadata)
 - Parallelization strategy (subagents FIRST, agent teams SECOND—if available, stages THIRD)
-- Mandatory bookend stages (knowledge-bootstrap, code-review, integration-verify)
+- Mandatory bookend stages (knowledge-bootstrap, integration-verify)
 - YAML metadata format and validation rules
 - Sandbox configuration
 - Goal-backward verification (truths, artifacts, wiring)
@@ -162,7 +162,7 @@ Worktrees mirror main repo structure exactly. If `Cargo.toml` is at `loom/Cargo.
 Before writing acceptance criteria: 1) What is working_dir? 2) Do paths exist relative to it? 3) Will command output match?
 
 The `working_dir` field is **REQUIRED** on every stage.
-The `stage_type` field is **REQUIRED** on every stage: `knowledge`, `standard`, `code-review`, or `integration-verify`.
+The `stage_type` field is **REQUIRED** on every stage: `knowledge`, `standard`, or `integration-verify`.
 
 **⚠️ STANDARD STAGES MUST HAVE GOAL-BACKWARD VERIFICATION:**
 
@@ -173,14 +173,14 @@ Every `stage_type: standard` stage MUST define at least ONE of:
 
 **This is VALIDATED by `loom init` and will REJECT plans that violate it.**
 
-Only knowledge and code-review stages are EXEMPT from this requirement. **integration-verify stages REQUIRE at least one of truths/artifacts/wiring** for functional verification.
+Only knowledge stages are EXEMPT from this requirement. **integration-verify stages REQUIRE at least one of truths/artifacts/wiring** for functional verification.
 
 **⛔ NEVER PUT TRIPLE BACKTICKS INSIDE YAML DESCRIPTIONS:**
 
 This breaks YAML parsing and causes confusing validation errors. Use plain indented text for examples instead of code fences.
 
 **Checklist:**
-□ stage_type set (lowercase: knowledge, standard, code-review, integration-verify)
+□ stage_type set (lowercase: knowledge, standard, integration-verify)
 □ working_dir set for where build tools expect
 □ File paths relative to working_dir (NO `../` path traversal allowed)
 □ grep/test patterns match actual output
@@ -206,6 +206,10 @@ This breaks YAML parsing and causes confusing validation errors. Use plain inden
 **Rule:** ALL paths (acceptance, artifacts, wiring, truths) are relative to working_dir. If `working_dir: "loom"`, pretend you're IN loom/ when writing paths.
 
 #### Parallelization Strategy
+
+**⚠️ STAGES ARE EXPENSIVE** — each stage creates a worktree, spawns a session,
+and costs significant time + tokens. STRONGLY prefer subagents within
+one stage over creating additional stages.
 
 **⚠️ PRIORITY: Parallel SUBAGENTS first, multiple STAGES only when necessary**
 
@@ -358,7 +362,7 @@ Agent teams provide richer coordination than subagents: inter-agent messaging, s
 | Scope | Concrete, well-defined | Wide, exploratory |
 | Communication | None (fire-and-forget) | DM, broadcast, shared tasks |
 | Task discovery | Static (assigned upfront) | Dynamic (agents claim work) |
-| Stage types | Standard implementation | Knowledge, code-review, integration-verify |
+| Stage types | Standard implementation | Knowledge, integration-verify |
 | Cost | Lower (~1x per subagent) | Higher (~7x total) |
 
 **TEAM LEAD RULES:**
@@ -595,22 +599,7 @@ During standard implementation stages, you MUST:
 
 **Exception:** If you discover a CRITICAL MISTAKE that would block other stages, record it immediately with `loom knowledge update mistakes "..."` AND document why in your commit message.
 
-### 13. CODE REVIEW (AUTO-INSERTED)
-
-**`loom init` automatically inserts a `code-review` stage before `integration-verify` if not present.**
-
-The code-review stage performs security and quality review using parallel subagents:
-- Security review (vulnerabilities, input validation, secrets)
-- Architecture review (patterns, coupling, maintainability)
-- Code quality review (error handling, edge cases, tests)
-
-**Code review stages:**
-- Have `stage_type: code-review`
-- Are exempt from goal-backward verification requirements
-- Should depend on all implementation stages
-- Fix issues found rather than just reporting them
-
-### 14. INTEGRATION VERIFICATION (MANDATORY)
+### 13. INTEGRATION VERIFICATION (MANDATORY)
 
 **Every plan MUST end with `integration-verify`.**
 
@@ -658,6 +647,16 @@ integration-verify MUST include FUNCTIONAL VERIFICATION:
 | Wiring | Is the feature registered/mounted in the application? |
 | Reachability | Can you invoke it (CLI command, API endpoint, UI)? |
 | End-to-end | Does the primary use case produce expected behavior? |
+
+**integration-verify ALSO performs CODE REVIEW:**
+
+| Review Dimension | Agent to Spawn | Focus |
+| --- | --- | --- |
+| Security | security-engineer | OWASP, auth, secrets, injection |
+| Architecture | senior-software-engineer | patterns, coupling, quality |
+| Testing | /testing skill | coverage gaps, edge cases |
+
+Spawn these as PARALLEL subagents. FIX issues found, don't just report.
 
 **Example acceptance criteria:**
 
@@ -831,9 +830,8 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 
 **PLAN STRUCTURE:**
 □ knowledge-bootstrap FIRST (includes architecture.md)
-□ code-review BEFORE integration-verify (auto-inserted by loom init if missing)
-□ integration-verify LAST (TESTS ≠ WORKING)
-□ Every stage has stage_type: knowledge, standard, code-review, or integration-verify
+□ integration-verify LAST (reviews AND verifies)
+□ Every stage has stage_type: knowledge, standard, or integration-verify
 □ **Every standard AND integration-verify stage has at least ONE of: truths, artifacts, or wiring**
 □ NO path traversal (`../`) in any path field
 □ Parallel SUBAGENTS first, multiple stages only when files clash

@@ -819,3 +819,15 @@ Two plan criteria caused false negatives in integration-verify:
 ### Notes
 
 - knowledge bootstrap: coverage 100% (18/18 modules). architecture.md has StageType info (4 variants), patterns.md has signal generation pattern (4-section Manus layout), mistakes.md has 88 sections. GC advisory: architecture.md at 207 lines (max 200). No updates needed.
+
+## Promoted from Memory [2026-02-07 17:45]
+
+### Notes
+
+- Removed CodeReview variant from StageType enum and all related code
+- Added STAGES ARE EXPENSIVE warning to CLAUDE.md.template and SKILL.md
+
+### Decisions
+
+- **Merged code-review guidance into integration-verify prefix**
+  - _Rationale:_ Reduces stage count, same quality gate - integration-verify now serves as both review and verification

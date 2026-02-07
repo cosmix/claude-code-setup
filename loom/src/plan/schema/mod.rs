@@ -12,6 +12,6 @@ pub use types::{
     StageType, SuccessCriteria, TruthCheck, ValidationError, WiringCheck, WiringTest,
 };
 pub use validation::{
-    check_code_review_recommendations, check_knowledge_recommendations,
-    check_sandbox_recommendations, validate, validate_structural_preflight,
+    check_knowledge_recommendations, check_sandbox_recommendations, validate,
+    validate_structural_preflight,
 };

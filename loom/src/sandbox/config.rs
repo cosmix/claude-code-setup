@@ -401,30 +401,6 @@ mod tests {
             .contains(&"doc/loom/knowledge/**".to_string()));
     }
 
-    #[test]
-    fn test_merge_config_code_review_stage() {
-        let plan = SandboxConfig {
-            enabled: true,
-            auto_allow: true,
-            allow_unsandboxed_escape: false,
-            excluded_commands: vec!["loom".to_string()],
-            filesystem: FilesystemConfig::default(),
-            network: NetworkConfig::default(),
-            linux: LinuxConfig::default(),
-        };
-
-        let stage = StageSandboxConfig::default();
-
-        let merged = merge_config(&plan, &stage, StageType::CodeReview);
-
-        // CodeReview stage should NOT have doc/loom/knowledge/** in allow_write
-        // (uses `loom knowledge update` CLI which runs outside sandbox)
-        assert!(!merged
-            .filesystem
-            .allow_write
-            .contains(&"doc/loom/knowledge/**".to_string()));
-    }
-
     // =========================================================================
     // Sandbox Hardening Tests
     // =========================================================================

@@ -435,25 +435,6 @@ fn test_knowledge_stage_exempt_from_goal_backward() {
     assert!(validate(&metadata).is_ok());
 }
 
-#[test]
-fn test_code_review_stage_exempt_from_goal_backward() {
-    let mut stage = make_stage("code-review", "Code Review");
-    stage.stage_type = StageType::CodeReview;
-    // No truths/artifacts/wiring - should pass because CodeReview is exempt
-
-    let metadata = LoomMetadata {
-        loom: LoomConfig {
-            version: 1,
-            auto_merge: None,
-            sandbox: SandboxConfig::default(),
-            change_impact: None,
-            stages: vec![stage],
-        },
-    };
-
-    assert!(validate(&metadata).is_ok());
-}
-
 // ============================================================================
 // Pre-flight validation tests
 // ============================================================================

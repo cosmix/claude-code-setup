@@ -6,8 +6,7 @@ use crate::models::worktree::Worktree;
 use crate::models::stage::StageType;
 
 use super::cache::{
-    generate_code_review_stable_prefix, generate_integration_verify_stable_prefix,
-    generate_stable_prefix, SignalMetrics,
+    generate_integration_verify_stable_prefix, generate_stable_prefix, SignalMetrics,
 };
 use super::types::{DependencyStatus, EmbeddedContext};
 
@@ -72,7 +71,6 @@ pub fn format_signal_with_metrics(
     let header = format!("# Signal: {}\n\n", &session.id);
     // Select stable prefix based on stage type
     let stable_prefix = match stage.stage_type {
-        StageType::CodeReview => generate_code_review_stable_prefix(),
         StageType::IntegrationVerify => generate_integration_verify_stable_prefix(),
         _ => generate_stable_prefix(),
     };
