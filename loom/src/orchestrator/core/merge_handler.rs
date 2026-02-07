@@ -23,17 +23,16 @@ impl Orchestrator {
         clear_status_line();
         eprintln!("Merge session '{session_id}' completed for stage '{stage_id}'");
 
-        // Remove the merge signal file
-        remove_signal(session_id, &self.config.work_dir)?;
-
-        // Clean up the active session
-        self.active_sessions.remove(stage_id);
-
         // Check if the merge was successful and update stage accordingly
         let mut stage = self.load_stage(stage_id)?;
 
         // If stage is already marked as merged (e.g., agent ran `loom worktree remove`), we're done
         if stage.merged {
+            // Merge resolved - clean up signal and active session
+            if let Err(e) = remove_signal(session_id, &self.config.work_dir) {
+                eprintln!("Warning: Failed to remove merge signal: {e}");
+            }
+            self.active_sessions.remove(stage_id);
             clear_status_line();
             eprintln!("Stage '{stage_id}' merge completed successfully");
             return Ok(());
@@ -72,6 +71,12 @@ impl Orchestrator {
                     eprintln!("Warning: Failed to mark stage as completed in graph: {e}");
                 }
 
+                // Merge resolved - clean up signal and active session
+                if let Err(e) = remove_signal(session_id, &self.config.work_dir) {
+                    eprintln!("Warning: Failed to remove merge signal: {e}");
+                }
+                self.active_sessions.remove(stage_id);
+
                 clear_status_line();
                 eprintln!("Stage '{stage_id}' merge verified and marked as complete");
             }
@@ -99,10 +104,20 @@ impl Orchestrator {
                     eprintln!("Warning: Failed to mark stage as completed in graph: {e}");
                 }
 
+                // Merge resolved - clean up signal and active session
+                if let Err(e) = remove_signal(session_id, &self.config.work_dir) {
+                    eprintln!("Warning: Failed to remove merge signal: {e}");
+                }
+                self.active_sessions.remove(stage_id);
+
                 clear_status_line();
                 eprintln!("Stage '{stage_id}' branch cleaned up, marking as merged");
             }
             Ok(MergeState::Pending) | Ok(MergeState::Conflict) | Ok(MergeState::Unknown) => {
+                // PID dead but merge not resolved - remove active session but KEEP signal
+                // file as guard against respawning every poll cycle
+                self.active_sessions.remove(stage_id);
+
                 // Merge not complete - log next steps for the user
                 eprintln!("Merge may not be complete. To finish:");
                 eprintln!("  1. Verify the merge was successful: git status");
@@ -110,6 +125,10 @@ impl Orchestrator {
                 eprintln!("  3. If issues remain, run: loom merge {stage_id}");
             }
             Err(e) => {
+                // PID dead but merge state unknown - remove active session but KEEP signal
+                // file as guard against respawning every poll cycle
+                self.active_sessions.remove(stage_id);
+
                 eprintln!("Warning: Failed to verify merge state: {e}");
                 eprintln!("To complete:");
                 eprintln!("  1. Verify the merge was successful: git status");
@@ -276,7 +295,7 @@ impl Orchestrator {
                 success
             }
             Ok(AutoMergeResult::ConflictResolutionSpawned {
-                session_id,
+                session,
                 conflicting_files,
             }) => {
                 // CRITICAL: Transition stage to MergeConflict status to prevent dependent stages
@@ -294,6 +313,14 @@ impl Orchestrator {
                 // Also update the graph to reflect MergeConflict status
                 if let Err(e) = self.graph.mark_status(stage_id, StageStatus::MergeConflict) {
                     eprintln!("Warning: Failed to mark stage as merge conflict in graph: {e}");
+                }
+
+                // Track the merge session so the monitor can detect its lifecycle
+                let session_id = session.id.clone();
+                self.active_sessions
+                    .insert(stage_id.to_string(), session.clone());
+                if let Err(e) = self.save_session(&session) {
+                    eprintln!("Warning: Failed to save merge session: {e}");
                 }
 
                 clear_status_line();

@@ -31,7 +31,7 @@ pub enum AutoMergeResult {
     AlreadyUpToDate { cleanup: CleanupResult },
     /// Conflicts detected, spawned resolution session
     ConflictResolutionSpawned {
-        session_id: String,
+        session: Session,
         conflicting_files: Vec<String>,
     },
     /// Stage has no worktree (nothing to merge)
@@ -133,7 +133,7 @@ pub fn attempt_auto_merge(
                 .context("Failed to spawn merge resolution session")?;
 
             Ok(AutoMergeResult::ConflictResolutionSpawned {
-                session_id: spawned_session.id,
+                session: spawned_session,
                 conflicting_files,
             })
         }
