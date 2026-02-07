@@ -624,3 +624,14 @@ Two plan criteria caused false negatives in integration-verify:
   - _Rationale:_ Analysis of existing code shows NeedsHumanReview has icon/color/label in types.rs but is missing from status_order in display/stages.rs and attention filter in render/attention.rs
 - **Desktop notifications via notify-send (Linux) and osascript (macOS) triggered from orchestrator event handler when StageNeedsHumanReview event detected. New notify module under src/orchestrator/ for notification logic**
   - _Rationale:_ Monitor already detects stage state changes in detection.rs but NeedsHumanReview falls through to catch-all. Need new MonitorEvent variant and handler
+
+## Promoted from Memory [2026-02-07 13:58]
+
+### Notes
+
+- merge_resolver.rs: Wiring-only change. spawn_merge_resolver() uses NativeBackend, Session::new_merge, generate_merge_signal, spawn_merge_session, save_session. Returns daemon-managed sentinel when daemon is running.
+
+### Decisions
+
+- **Used crate::daemon::DaemonServer instead of crate::daemon::server::DaemonServer because server module is private**
+  - _Rationale:_ daemon/mod.rs re-exports DaemonServer at crate::daemon level
