@@ -9,9 +9,13 @@ pub struct SkillMetadata {
     pub name: String,
     /// Human-readable description of what the skill does
     pub description: String,
-    /// List of trigger words/phrases that activate this skill
+    /// List of trigger words/phrases that activate this skill (YAML array format)
     #[serde(default)]
     pub triggers: Vec<String>,
+    /// Comma-separated trigger keywords (CSV string in YAML frontmatter)
+    /// Field name in YAML is `trigger-keywords` (with hyphen)
+    #[serde(default, alias = "trigger-keywords")]
+    pub trigger_keywords: Option<String>,
 }
 
 /// A matched skill with its relevance score

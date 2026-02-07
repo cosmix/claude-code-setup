@@ -776,3 +776,16 @@ Two plan criteria caused false negatives in integration-verify:
 ### Notes
 
 - Integration verification passed for fix-tui-terminal-cleanup: All 1258+ tests pass, clippy clean, build succeeds, fmt clean. All 6 acceptance criteria pass. Functional verification confirms three-layer cleanup system: (1) panic hook via install_crossterm_panic_hook() in both TuiApp::new() and LiveMode::run(), (2) Ctrl+C signal handlers call cleanup_terminal_crossterm() in both app.rs and live_mode.rs, (3) TuiApp::cleanup_terminal() called unconditionally in run() with Drop delegation and cleaned_up flag preventing double cleanup.
+
+## Promoted from Memory [2026-02-07 17:14]
+
+### Notes
+
+- Three trigger formats in SKILL.md files: (1) YAML triggers array — 6 skills (auth, grafana, etc.), (2) YAML trigger-keywords field with hyphen as CSV string — 2 skills (testing, ci-cd), (3) 'Trigger keywords:' or 'TRIGGERS:' suffix in description — ~19 skills. 31 skills have NO triggers at all. Total: 57 skills.
+- Implementation: Added trigger_keywords (Option<String>) to SkillMetadata with serde alias 'trigger-keywords'. Modified add_skill() to use priority chain: YAML triggers > trigger-keywords CSV > description-embedded (TRIGGERS: / Trigger keywords:). Added get_by_name() for exact name lookup. Added 13 new tests covering all three parsing formats and priority ordering.
+- mistake: Test YAML files with colons in values need quoting — description containing 'Trigger keywords:' breaks YAML parsing when unquoted
+
+### Decisions
+
+- **Implementing types+index+tests myself rather than spawning 2 subagents — the work touches only 2 files (types.rs, index.rs) and tests are inline in those files, making parallel work impractical due to file ownership overlap**
+  - _Rationale:_ Subagent 2 would write tests inline in index.rs which subagent 1 also owns. Creating a separate tests.rs adds unnecessary complexity for ~50 lines of test code.
