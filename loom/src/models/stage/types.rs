@@ -19,7 +19,6 @@ pub enum StageType {
     Knowledge,
     /// Integration verification stage (e.g., integration-verify)
     /// Can use `loom memory` and `loom knowledge` (for promoting memories)
-    #[serde(alias = "code-review")]
     IntegrationVerify,
 }
 
