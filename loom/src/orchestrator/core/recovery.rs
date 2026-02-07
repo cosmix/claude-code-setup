@@ -431,6 +431,30 @@ impl Recovery for Orchestrator {
                             }
 
                             recovered += 1;
+                        } else if matches!(
+                            stage.status,
+                            StageStatus::MergeConflict | StageStatus::MergeBlocked
+                        ) {
+                            // Merge session died without resolving - clean up session reference
+                            // but keep the stage in its current status so spawn_merge_resolution_sessions()
+                            // can detect it and spawn a fresh merge session
+                            clear_status_line();
+                            tracing::warn!(
+                                stage_id = %stage_id,
+                                status = ?stage.status,
+                                "Recovering orphaned merge session"
+                            );
+
+                            stage.session = None;
+                            stage.close_reason = Some("Merge session crashed/orphaned".to_string());
+                            stage.updated_at = chrono::Utc::now();
+
+                            // Save the updated stage - no graph status change needed since we keep the status
+                            if let Err(e) = self.save_stage(&stage) {
+                                tracing::warn!(error = %e, "Failed to save stage during merge session recovery");
+                            }
+
+                            recovered += 1;
                         }
                     }
                 }

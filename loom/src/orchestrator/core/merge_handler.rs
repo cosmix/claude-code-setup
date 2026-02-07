@@ -8,7 +8,11 @@ use crate::git::merge::{get_conflicting_files_from_status, verify_merge_succeede
 use crate::models::session::Session;
 use crate::models::stage::StageStatus;
 use crate::orchestrator::auto_merge::{attempt_auto_merge, is_auto_merge_enabled, AutoMergeResult};
-use crate::orchestrator::signals::{generate_merge_signal, read_merge_signal, remove_signal};
+use crate::orchestrator::signals::{
+    generate_merge_signal, list_signals, read_merge_signal, remove_signal,
+};
+use crate::parser::frontmatter::parse_from_markdown;
+use crate::process::is_process_alive;
 use crate::verify::transitions::load_stage;
 
 use super::persistence::Persistence;
@@ -394,10 +398,14 @@ impl Orchestrator {
                 continue;
             }
 
-            // Skip if there's already a merge signal for this stage
-            // (indicates a merge session was previously spawned)
+            // Check if there's already a merge signal for this stage
             if self.has_merge_signal_for_stage(&stage_id) {
-                continue;
+                // Check if the session behind the signal is still alive
+                // If dead, clean up the stale signal and fall through to respawn
+                if !self.cleanup_stale_merge_signal_for_stage(&stage_id) {
+                    continue; // Signal is valid, session still running
+                }
+                // Stale signal cleaned up - fall through to spawn new session
             }
 
             // Spawn a merge resolution session
@@ -419,7 +427,7 @@ impl Orchestrator {
     /// Uses the structured `read_merge_signal` parser rather than raw string
     /// matching, so this stays correct if the signal file format changes.
     fn has_merge_signal_for_stage(&self, stage_id: &str) -> bool {
-        let signal_ids = match crate::orchestrator::signals::list_signals(&self.config.work_dir) {
+        let signal_ids = match list_signals(&self.config.work_dir) {
             Ok(ids) => ids,
             Err(e) => {
                 eprintln!("Warning: Failed to list signals while checking for merge signal: {e}");
@@ -435,6 +443,69 @@ impl Orchestrator {
             }
         }
         false
+    }
+
+    /// Check if a merge signal for the given stage is stale (session is dead).
+    /// If stale, removes the signal file and returns true.
+    /// If the signal is valid (session alive), returns false.
+    fn cleanup_stale_merge_signal_for_stage(&self, stage_id: &str) -> bool {
+        let signal_ids = match list_signals(&self.config.work_dir) {
+            Ok(ids) => ids,
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to list signals while checking for stale merge signal: {e}"
+                );
+                return false;
+            }
+        };
+
+        for signal_id in &signal_ids {
+            if let Ok(Some(merge_signal)) = read_merge_signal(signal_id, &self.config.work_dir) {
+                if merge_signal.stage_id == stage_id {
+                    // Found a merge signal for this stage - check if the session is alive
+                    let session_path = self
+                        .config
+                        .work_dir
+                        .join("sessions")
+                        .join(format!("{}.md", merge_signal.session_id));
+
+                    let session_alive = if session_path.exists() {
+                        match std::fs::read_to_string(&session_path) {
+                            Ok(content) => {
+                                match parse_from_markdown::<Session>(&content, "Session") {
+                                    Ok(session) => {
+                                        if let Some(pid) = session.pid {
+                                            is_process_alive(pid)
+                                        } else {
+                                            false // No PID means session is dead
+                                        }
+                                    }
+                                    Err(_) => false, // Failed to parse session, treat as dead
+                                }
+                            }
+                            Err(_) => false, // Failed to read session file, treat as dead
+                        }
+                    } else {
+                        false // Session file doesn't exist, signal is stale
+                    };
+
+                    if !session_alive {
+                        // Session is dead - remove the stale signal
+                        clear_status_line();
+                        eprintln!("Detected stale merge signal for stage '{stage_id}' (session '{}' is dead), cleaning up", merge_signal.session_id);
+                        if let Err(e) = remove_signal(signal_id, &self.config.work_dir) {
+                            eprintln!("Warning: Failed to remove stale merge signal: {e}");
+                            return false;
+                        }
+                        return true; // Stale signal cleaned up
+                    } else {
+                        return false; // Session is alive, signal is valid
+                    }
+                }
+            }
+        }
+
+        false // No merge signal found for this stage
     }
 
     /// Spawn a merge resolution session for a stage with merge issues.

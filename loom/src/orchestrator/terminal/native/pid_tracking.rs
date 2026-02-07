@@ -304,6 +304,14 @@ export LOOM_WORKTREE_PATH={dir_escaped}
         (String::new(), String::new())
     };
 
+    // Export LOOM_MERGE_SESSION for merge resolution sessions so hooks can detect them
+    let merge_session_export = if stage_id.starts_with("merge-") {
+        "# Merge session: exempt from commit-guard hook requirements\nexport LOOM_MERGE_SESSION=1\n"
+            .to_string()
+    } else {
+        String::new()
+    };
+
     // Shell-escape all interpolated values to prevent command injection
     let stage_id_escaped = escape(stage_id.into());
     let session_id_escaped = escape(session_id.into());
@@ -324,7 +332,7 @@ export LOOM_WORK_DIR={work_dir}
 export LOOM_MAIN_AGENT_PID=$$
 # Enable agent teams for coordinated multi-agent work
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-{worktree_path_export}
+{merge_session_export}{worktree_path_export}
 {cd_section}# Write our PID to the tracking file
 echo $$ > {pid_file}
 
@@ -334,6 +342,7 @@ exec {claude_cmd}
         stage_id = stage_id_escaped,
         session_id = session_id_escaped,
         work_dir = work_dir_escaped,
+        merge_session_export = merge_session_export,
         worktree_path_export = worktree_path_export,
         cd_section = cd_section,
         pid_file = pid_file_escaped,
@@ -452,5 +461,46 @@ mod tests {
 
         // Verify it's gone
         assert!(!wrapper_script_path(work_dir, stage_id).exists());
+    }
+
+    #[test]
+    fn test_wrapper_script_merge_session() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+        let stage_id = "merge-test-stage";
+        let session_id = "session-merge-1234567890";
+        let claude_cmd = "claude 'resolve merge conflict'";
+
+        let wrapper_path =
+            create_wrapper_script(work_dir, stage_id, session_id, claude_cmd, None).unwrap();
+
+        // Check file exists
+        assert!(wrapper_path.exists());
+
+        // Check content includes LOOM_MERGE_SESSION
+        let content = fs::read_to_string(&wrapper_path).unwrap();
+        assert!(content.contains("#!/bin/bash"));
+        assert!(content.contains("LOOM_MERGE_SESSION=1"));
+        assert!(content.contains("Merge session: exempt from commit-guard hook requirements"));
+        assert!(content.contains("echo $$"));
+        assert!(content.contains(claude_cmd));
+
+        // Also verify that a regular stage does NOT contain LOOM_MERGE_SESSION
+        let regular_stage_id = "regular-stage";
+        let regular_session_id = "session-regular-1234567890";
+        let regular_wrapper_path = create_wrapper_script(
+            work_dir,
+            regular_stage_id,
+            regular_session_id,
+            claude_cmd,
+            None,
+        )
+        .unwrap();
+
+        let regular_content = fs::read_to_string(&regular_wrapper_path).unwrap();
+        assert!(!regular_content.contains("LOOM_MERGE_SESSION"));
+        assert!(
+            !regular_content.contains("Merge session: exempt from commit-guard hook requirements")
+        );
     }
 }

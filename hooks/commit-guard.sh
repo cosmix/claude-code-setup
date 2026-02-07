@@ -403,6 +403,13 @@ main() {
 	debug_log "CWD: $(pwd)"
 	debug_log "LOOM_HOOK_DEBUG: ${LOOM_HOOK_DEBUG:-0}"
 
+	# Merge resolution sessions are exempt from commit requirements
+	# They run on the main repo to resolve merge conflicts and don't need to commit
+	if [ "${LOOM_MERGE_SESSION:-}" = "1" ]; then
+		debug_log "Merge session detected (LOOM_MERGE_SESSION=1) - allowing stop"
+		exit 0
+	fi
+
 	# Check if we're in a loom worktree
 	local STAGE_ID=""
 	if ! detect_loom_worktree; then
