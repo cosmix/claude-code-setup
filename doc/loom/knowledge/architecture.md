@@ -205,3 +205,13 @@ Components:
 Features: --deep (3-level depth + concern scanning), --focus <area> (filter entry points), --overwrite (replace vs append). Skips .git, .work, .worktrees, node_modules, target, .venv, **pycache**.
 
 CLI: loom map [--deep] [--focus <area>] [--overwrite] → commands/map.rs → writes to doc/loom/knowledge/ via KnowledgeDir
+
+## StageType Enum Update (2026-02-07)
+
+StageType now has 3 variants (CodeReview was removed and consolidated into IntegrationVerify):
+
+- **Standard** (default) -- Regular implementation stages, require goal-backward verification
+- **Knowledge** -- No worktree, no commits, exploration only, auto merged=true
+- **IntegrationVerify** -- Final quality gate combining code review AND functional verification
+
+Signal generation has 3 prefix generators in cache.rs (standard, knowledge, integration-verify). The integration-verify prefix includes code review guidance (security-engineer, senior-software-engineer review agents).

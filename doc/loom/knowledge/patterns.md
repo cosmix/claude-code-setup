@@ -175,3 +175,7 @@ Plan-level SandboxConfig merges with stage-level StageSandboxConfig. Stage value
 ## Diagnosis Pattern
 
 Failed stage → loom diagnose <stage-id> → collect DiagnosisContext (crash_report, log_tail, git_status, git_diff) → generate diagnosis signal → spawn Claude Code session → agent produces .work/diagnoses/{stage-id}.md with structured analysis and recommended action (retry, fix, skip, escalate).
+
+## Signal Generation Update (2026-02-07)
+
+Three stage-type-specific stable prefix generators exist in cache.rs (standard, knowledge, integration-verify). The code-review prefix was removed and its content merged into the integration-verify prefix. Goal-backward verification is required for Standard and IntegrationVerify stages; only Knowledge stages are exempt.

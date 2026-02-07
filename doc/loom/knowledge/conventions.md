@@ -166,3 +166,8 @@ Signal files at .work/signals/{session-id}.md use markdown with structured secti
 ## Map Module Conventions
 
 Detectors skip: .git, .work, .worktrees, node_modules, target, .venv, **pycache**. Directory tree limited to 15 entries. Deep mode = 3-level depth + concern scanning. Normal = 2-level. Focus parameter filters entry points by keyword. Source file extensions searched: .rs, .ts, .js, .py, .go, .java, .rb.
+
+## Stage Type Values (Updated 2026-02-07)
+
+Valid stage_type values: "standard" (default), "knowledge", "integration-verify"
+The "code-review" stage type has been removed. Code review responsibilities are now part of integration-verify.
