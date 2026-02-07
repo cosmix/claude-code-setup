@@ -128,3 +128,15 @@ Signal file lifecycle:
 - Created when merge conflict detected and session spawned
 - Kept when session dies without resolving (Pending/Conflict/Unknown states)
 - Removed when merge succeeds (finalize_merge_resolution or early merged=true check)
+
+### Terminal Cleanup (Three-Layer System)
+
+Three redundant cleanup layers ensure terminal state restoration on any exit path:
+
+1. **Panic Hook** (`utils.rs:install_crossterm_panic_hook`): Installed via `Once::call_once()`, calls `cleanup_terminal_crossterm()` before default hook. Separate basic/crossterm variants - basic for non-TUI, crossterm for alternate screen contexts.
+
+2. **Signal Handler** (`tui/app.rs:100-114`, `live_mode.rs:57-71`): `ctrlc::set_handler` disables raw mode, mouse capture, and leaves alternate screen, then calls `process::exit(0)`. Must handle cleanup directly since Drop won't run on `process::exit`.
+
+3. **Drop + Explicit Cleanup** (`tui/app.rs` TuiApp): `cleanup_terminal()` method sets `cleaned_up` flag to prevent double cleanup in Drop. Called explicitly before normal exit (e.g., printing completion summary). Drop implementation checks the flag and skips if already cleaned.
+
+Key design: all cleanup is best-effort (`let _`), `cleaned_up` bool prevents double cleanup, panic hook uses `Once` for single installation.

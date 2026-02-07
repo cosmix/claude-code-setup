@@ -752,3 +752,9 @@ Two plan criteria caused false negatives in integration-verify:
 
 - **Verified signal file lifecycle: kept on unresolved merge (anti-respawn guard), removed on successful merge. This prevents the poll-cycle respawn bug.**
   - _Rationale:_ The has_merge_signal_for_stage check in spawn_merge_resolution_sessions guards against respawning when a signal already exists
+
+## Promoted from Memory [2026-02-07 16:38]
+
+### Notes
+
+- Knowledge bootstrap for PLAN-fix-status-live-terminal-cleanup: Coverage at 83%, TUI Patterns already documented layout. Added three-layer terminal cleanup system (panic hook + signal handler + Drop) to patterns.md. Key files: utils.rs (panic hooks, cleanup functions), tui/app.rs (TuiApp with Drop impl and cleaned_up flag), live_mode.rs (signal handler with daemon unsubscribe).
