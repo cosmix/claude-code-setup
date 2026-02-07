@@ -157,6 +157,28 @@ pub enum StageCommands {
         stage_id: String,
     },
 
+    /// Respond to a stage flagged for human review
+    ///
+    /// Use this to approve, force-complete, or reject a stage in NeedsHumanReview state.
+    /// Without flags, shows the current review reason and available actions.
+    HumanReview {
+        /// Stage ID (alphanumeric, dash, underscore only; max 128 characters)
+        #[arg(value_parser = clap_id_validator)]
+        stage_id: String,
+
+        /// Approve: resume execution with fresh fix attempts
+        #[arg(long, group = "action")]
+        approve: bool,
+
+        /// Force-complete: skip acceptance criteria and mark as completed
+        #[arg(long, group = "action")]
+        force_complete: bool,
+
+        /// Reject: block the stage with the given reason (max 500 characters)
+        #[arg(long, group = "action", value_parser = clap_description_validator)]
+        reject: Option<String>,
+    },
+
     /// Dispute acceptance criteria and request human review
     ///
     /// Use this when acceptance criteria are incorrect or inappropriate.
