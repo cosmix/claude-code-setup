@@ -112,6 +112,11 @@ pub fn dispatch(command: Commands) -> Result<()> {
                 src_path,
                 quiet,
             } => knowledge::check(min_coverage, src_path, quiet),
+            KnowledgeCommands::Gc {
+                max_file_lines,
+                max_total_lines,
+                quiet,
+            } => knowledge::gc(max_file_lines, max_total_lines, quiet),
         },
         Commands::Memory { command } => match command {
             MemoryCommands::Note { text, session } => memory::note(text, session),

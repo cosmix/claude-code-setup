@@ -42,6 +42,21 @@ pub enum KnowledgeCommands {
         #[arg(short, long)]
         quiet: bool,
     },
+
+    /// Analyze knowledge files and print compaction instructions
+    Gc {
+        /// Max lines per file before GC is recommended
+        #[arg(long, default_value = "200")]
+        max_file_lines: usize,
+
+        /// Max total lines before GC is recommended
+        #[arg(long, default_value = "800")]
+        max_total_lines: usize,
+
+        /// Only show metrics, skip compaction instructions
+        #[arg(short, long)]
+        quiet: bool,
+    },
 }
 
 #[derive(Subcommand)]
