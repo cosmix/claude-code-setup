@@ -20,10 +20,6 @@ pub enum StageType {
     /// Integration verification stage (e.g., integration-verify)
     /// Can use `loom memory` and `loom knowledge` (for promoting memories)
     IntegrationVerify,
-    /// Code review stage (e.g., code-review)
-    /// Reviews code, can use `loom memory` and `loom knowledge` commands
-    /// Exempt from goal-backward verification requirements
-    CodeReview,
 }
 
 /// Hint for how the stage should be executed.
