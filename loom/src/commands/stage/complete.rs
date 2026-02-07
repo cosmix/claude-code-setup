@@ -6,16 +6,17 @@ use std::path::{Path, PathBuf};
 use crate::fs::permissions::sync_worktree_permissions_with_working_dir;
 use crate::fs::session_files::find_session_for_stage;
 use crate::fs::work_dir::load_config;
-use crate::git::worktree::{find_repo_root_from_cwd, find_worktree_root_from_cwd};
+use crate::git::worktree::find_repo_root_from_cwd;
 use crate::models::stage::{StageStatus, StageType};
 use crate::plan::parser::{parse_plan, ParsedPlan};
 use crate::plan::schema::{ChangeImpactConfig, ChangeImpactPolicy, StageDefinition};
 use crate::verify::baseline::compare_to_baseline;
-use crate::verify::criteria::run_acceptance;
 use crate::verify::goal_backward::run_goal_backward_verification;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
-use super::acceptance_runner::resolve_acceptance_dir;
+use super::acceptance_runner::{
+    resolve_stage_execution_paths, run_acceptance_with_display, AcceptanceDisplayOptions,
+};
 use super::knowledge_complete::complete_knowledge_stage;
 use super::progressive_complete::complete_with_merge;
 use super::session::cleanup_session_resources;
@@ -97,24 +98,10 @@ pub fn complete(
         .or_else(|| stage.session.clone())
         .or_else(|| find_session_for_stage(&stage_id, work_dir));
 
-    // Resolve worktree path: first try detecting from cwd, then fall back to stage.worktree field
-    let cwd = std::env::current_dir().ok();
-    let working_dir: Option<PathBuf> = cwd
-        .as_ref()
-        .and_then(|p| find_worktree_root_from_cwd(p))
-        .or_else(|| {
-            stage
-                .worktree
-                .as_ref()
-                .map(|w| PathBuf::from(".worktrees").join(w))
-                .filter(|p| p.exists())
-        });
-
-    // Resolve acceptance criteria working directory:
-    // If stage has a working_dir set, join it with the worktree root
-    // Special case: "." means use the worktree root directly
-    let acceptance_dir: Option<PathBuf> =
-        resolve_acceptance_dir(working_dir.as_deref(), stage.working_dir.as_deref())?;
+    // Resolve worktree and acceptance execution paths using shared logic
+    let execution_paths = resolve_stage_execution_paths(&stage)?;
+    let working_dir: Option<PathBuf> = execution_paths.worktree_root;
+    let acceptance_dir: Option<PathBuf> = execution_paths.acceptance_dir;
 
     // Sync worktree permissions before running acceptance criteria
     sync_worktree_permissions(&working_dir, &acceptance_dir);
@@ -255,33 +242,16 @@ fn run_acceptance_phase(
     let acceptance_result: Option<bool> = if no_verify {
         // --no-verify means we skip criteria entirely (deliberate skip)
         None
-    } else if !stage.acceptance.is_empty() {
-        println!("Running acceptance criteria for stage '{stage_id}'...");
-        if let Some(dir) = acceptance_dir {
-            println!("  (working directory: {})", dir.display());
-        }
-
-        let result =
-            run_acceptance(stage, acceptance_dir).context("Failed to run acceptance criteria")?;
-
-        // Print results for each criterion
-        for criterion_result in result.results() {
-            if criterion_result.success {
-                println!("  ✓ passed: {}", criterion_result.command);
-            } else if criterion_result.timed_out {
-                println!("  ✗ TIMEOUT: {}", criterion_result.command);
-            } else {
-                println!("  ✗ FAILED: {}", criterion_result.command);
-            }
-        }
-
-        if result.all_passed() {
-            println!("All acceptance criteria passed!");
-        }
-        Some(result.all_passed())
     } else {
-        // No acceptance criteria defined - treat as passed
-        Some(true)
+        Some(run_acceptance_with_display(
+            stage,
+            stage_id,
+            acceptance_dir,
+            AcceptanceDisplayOptions {
+                stage_label: Some("stage"),
+                show_empty_message: false,
+            },
+        )?)
     };
 
     Ok(acceptance_result)

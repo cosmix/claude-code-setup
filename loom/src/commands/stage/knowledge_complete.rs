@@ -4,12 +4,14 @@
 //! (no worktree) and update documentation in `doc/loom/knowledge/`.
 
 use anyhow::{Context, Result};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::models::stage::StageType;
-use crate::verify::criteria::run_acceptance;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
+use super::acceptance_runner::{
+    resolve_knowledge_acceptance_dir, run_acceptance_with_display, AcceptanceDisplayOptions,
+};
 use super::session::cleanup_session_resources;
 
 /// Complete a knowledge stage without requiring merge.
@@ -79,41 +81,17 @@ pub fn complete_knowledge_stage(
     // Run acceptance criteria unless --no-verify
     let acceptance_result: Option<bool> = if no_verify {
         None
-    } else if !stage.acceptance.is_empty() {
-        println!("Running acceptance criteria for knowledge stage '{stage_id}'...");
-
-        // Knowledge stages run in main repo context, not a worktree
-        // Use stage.working_dir if set, otherwise current directory
-        let acceptance_dir: Option<PathBuf> = stage
-            .working_dir
-            .as_ref()
-            .map(PathBuf::from)
-            .filter(|p| p.exists());
-
-        if let Some(ref dir) = acceptance_dir {
-            println!("  (working directory: {})", dir.display());
-        }
-
-        let result = run_acceptance(&stage, acceptance_dir.as_deref())
-            .context("Failed to run acceptance criteria")?;
-
-        for criterion_result in result.results() {
-            if criterion_result.success {
-                println!("  ✓ passed: {}", criterion_result.command);
-            } else if criterion_result.timed_out {
-                println!("  ✗ TIMEOUT: {}", criterion_result.command);
-            } else {
-                println!("  ✗ FAILED: {}", criterion_result.command);
-            }
-        }
-
-        if result.all_passed() {
-            println!("All acceptance criteria passed!");
-        }
-        Some(result.all_passed())
     } else {
-        // No acceptance criteria defined - treat as passed
-        Some(true)
+        let acceptance_dir = resolve_knowledge_acceptance_dir(&stage)?;
+        Some(run_acceptance_with_display(
+            &stage,
+            stage_id,
+            acceptance_dir.as_deref(),
+            AcceptanceDisplayOptions {
+                stage_label: Some("knowledge stage"),
+                show_empty_message: false,
+            },
+        )?)
     };
 
     // Handle acceptance failure - keep stage in Executing, agent can fix and retry

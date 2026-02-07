@@ -5,13 +5,13 @@ use std::path::{Path, PathBuf};
 
 use crate::git::worktree::find_repo_root_from_cwd;
 use crate::models::stage::{StageStatus, StageType};
-use crate::verify::criteria::run_acceptance;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
-use super::progressive_complete::attempt_progressive_merge;
-
-use super::acceptance_runner::resolve_acceptance_dir;
+use super::acceptance_runner::{
+    resolve_stage_execution_paths, run_acceptance_with_display, AcceptanceDisplayOptions,
+};
 use super::criteria_runner::reload_acceptance_from_plan;
+use super::progressive_complete::attempt_progressive_merge;
 
 /// Re-run acceptance criteria and complete a stage that previously failed.
 ///
@@ -44,49 +44,25 @@ pub fn verify(stage_id: String, no_reload: bool) -> Result<()> {
         reload_acceptance_from_plan(&mut stage, work_dir)?;
     }
 
-    // Resolve worktree path from stage
-    let worktree_path: Option<PathBuf> = stage
-        .worktree
-        .as_ref()
-        .map(|w| PathBuf::from(".worktrees").join(w))
-        .filter(|p| p.exists());
+    // Resolve worktree and acceptance execution paths via shared logic
+    let execution_paths = resolve_stage_execution_paths(&stage)?;
+    let worktree_path: Option<PathBuf> = execution_paths.worktree_root;
+    let acceptance_dir: Option<PathBuf> = execution_paths.acceptance_dir;
 
     if worktree_path.is_none() && stage.stage_type != StageType::Knowledge {
         bail!("Worktree not found for stage '{stage_id}'. Cannot run acceptance criteria.");
     }
 
-    // Resolve acceptance criteria working directory
-    let acceptance_dir: Option<PathBuf> =
-        resolve_acceptance_dir(worktree_path.as_deref(), stage.working_dir.as_deref())?;
-
     // Run acceptance criteria
-    let acceptance_result = if !stage.acceptance.is_empty() {
-        println!("Running acceptance criteria for stage '{stage_id}'...");
-        if let Some(ref dir) = acceptance_dir {
-            println!("  (working directory: {})", dir.display());
-        }
-
-        let result = run_acceptance(&stage, acceptance_dir.as_deref())
-            .context("Failed to run acceptance criteria")?;
-
-        for criterion_result in result.results() {
-            if criterion_result.success {
-                println!("  ✓ passed: {}", criterion_result.command);
-            } else if criterion_result.timed_out {
-                println!("  ✗ TIMEOUT: {}", criterion_result.command);
-            } else {
-                println!("  ✗ FAILED: {}", criterion_result.command);
-            }
-        }
-
-        if result.all_passed() {
-            println!("All acceptance criteria passed!");
-        }
-        result.all_passed()
-    } else {
-        println!("No acceptance criteria defined, treating as passed.");
-        true
-    };
+    let acceptance_result = run_acceptance_with_display(
+        &stage,
+        &stage_id,
+        acceptance_dir.as_deref(),
+        AcceptanceDisplayOptions {
+            stage_label: Some("stage"),
+            show_empty_message: true,
+        },
+    )?;
 
     // Handle acceptance failure
     if !acceptance_result {

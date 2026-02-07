@@ -7,14 +7,13 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::commands::stage::acceptance_runner::resolve_acceptance_dir;
+use crate::commands::stage::acceptance_runner::{
+    resolve_stage_execution_paths, run_acceptance_with_display, AcceptanceDisplayOptions,
+};
 use crate::fs::work_dir::load_config_required;
-use crate::git::worktree::find_worktree_root_from_cwd;
-use crate::models::stage::Stage;
 use crate::plan::parser::parse_plan;
-use crate::verify::criteria::run_acceptance;
 use crate::verify::goal_backward::{run_goal_backward_verification, GoalBackwardResult};
 use crate::verify::transitions::load_stage;
 
@@ -46,8 +45,9 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
         .find(|s| s.id == stage_id)
         .with_context(|| format!("Stage '{stage_id}' not found in plan"))?;
 
-    // Resolve acceptance directory using worktree-safe approach
-    let acceptance_dir = resolve_acceptance_dir_for_stage(&stage)?;
+    // Resolve acceptance directory using shared stage execution logic
+    let execution_paths = resolve_stage_execution_paths(&stage)?;
+    let acceptance_dir = execution_paths.acceptance_dir;
 
     println!(
         "{} Running goal-backward verification for '{}'...\n",
@@ -57,8 +57,15 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
 
     // 1. Run standard acceptance criteria first
     println!("{}", "Acceptance Criteria:".bold());
-    let acceptance_result = run_acceptance(&stage, acceptance_dir.as_deref())?;
-    print_acceptance_result(&acceptance_result);
+    let acceptance_passed = run_acceptance_with_display(
+        &stage,
+        stage_id,
+        acceptance_dir.as_deref(),
+        AcceptanceDisplayOptions {
+            stage_label: None,
+            show_empty_message: false,
+        },
+    )?;
 
     // 2. Run goal-backward verification
     let has_goal_checks = !stage_def.truths.is_empty()
@@ -78,14 +85,10 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
 
         // Final summary
         println!();
-        if acceptance_result.all_passed() && goal_result.is_passed() {
+        if acceptance_passed && goal_result.is_passed() {
             println!("{} All verifications passed!", "✓".green().bold());
         } else {
-            let acceptance_ok = if acceptance_result.all_passed() {
-                "✓"
-            } else {
-                "✗"
-            };
+            let acceptance_ok = if acceptance_passed { "✓" } else { "✗" };
             let goal_ok = if goal_result.is_passed() {
                 "✓"
             } else {
@@ -102,48 +105,12 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
         println!("\n{}", "Goal-Backward Verification:".dimmed());
         println!("  {} No truths, artifacts, or wiring defined", "−".dimmed());
 
-        if acceptance_result.all_passed() {
+        if acceptance_passed {
             println!("\n{} Acceptance criteria passed!", "✓".green().bold());
         }
     }
 
     Ok(())
-}
-
-/// Resolve the directory for running acceptance criteria
-///
-/// Uses worktree-safe path resolution:
-/// 1. First tries to detect worktree from cwd
-/// 2. Falls back to looking for worktree in .worktrees/ directory
-/// 3. Falls back to current directory with working_dir applied
-fn resolve_acceptance_dir_for_stage(stage: &Stage) -> Result<Option<PathBuf>> {
-    // Resolve worktree path: first try detecting from cwd, then fall back to stage.worktree field
-    let cwd = std::env::current_dir().ok();
-    let worktree_root: Option<PathBuf> = cwd
-        .as_ref()
-        .and_then(|p| find_worktree_root_from_cwd(p))
-        .or_else(|| {
-            stage
-                .worktree
-                .as_ref()
-                .map(|w| PathBuf::from(".worktrees").join(w))
-                .filter(|p| p.exists())
-        });
-
-    // Use the shared resolve_acceptance_dir helper
-    resolve_acceptance_dir(worktree_root.as_deref(), stage.working_dir.as_deref())
-}
-
-/// Print acceptance criteria results
-fn print_acceptance_result(result: &crate::verify::criteria::AcceptanceResult) {
-    for r in result.results() {
-        let status = if r.success {
-            "✓".green()
-        } else {
-            "✗".red()
-        };
-        println!("  {} {}", status, r.command);
-    }
 }
 
 /// Print goal-backward verification results
