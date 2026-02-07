@@ -247,3 +247,18 @@ When adding new fields to StageDefinition:
 5. ALL test files constructing Stage directly (check tests/ directory too!)
 6. plan/schema/validation.rs - validation rules
 7. fs/stage_loading.rs, plan/graph/tests.rs, models/stage/methods.rs - any file constructing Stage
+
+## Merge Recovery Flow
+
+When auto-merge fails during orchestration:
+
+1. **MergeConflict**: Stage transitions to MergeConflict status
+2. **Session exits**: detection.rs recognizes MergeConflict/MergeBlocked as normal exits (not crashes)
+3. **Recovery spawn**: `spawn_merge_resolution_sessions()` in merge_handler.rs picks up stages in MergeConflict/MergeBlocked status
+4. **User guidance**: Error messages direct to `loom stage retry-merge <stage-id>`
+
+Key files:
+
+- `src/orchestrator/monitor/detection.rs:147-148` - Session exit recognition
+- `src/orchestrator/core/merge_handler.rs` - Recovery session spawning
+- `src/commands/worktree_cmd.rs:239` - mark_stage_merged function

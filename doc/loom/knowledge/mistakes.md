@@ -878,3 +878,25 @@ When implementing features that change the schema (adding/removing YAML fields),
 ## loom knowledge update Path Resolution (2026-02-08)
 
 When running `loom knowledge update` from a subdirectory (e.g., `loom/`), the CLI creates knowledge files relative to the cwd, not the worktree root. This results in spurious files like `loom/doc/loom/knowledge/` instead of `doc/loom/knowledge/`. Always run knowledge commands from the worktree root.
+
+## loom merge command removed (2026-02-07)
+
+**What happened:** The `loom merge` command was found to be redundant with 5 bugs preventing it from working. `loom stage complete` already handles merging, and `loom stage retry-merge` / `loom stage merge-complete` cover recovery.
+
+**Decision:** Removed entirely rather than fixing. The `mark_stage_merged` function was relocated from `commands/merge/execute/operations.rs` to `commands/worktree_cmd.rs` (its only consumer).
+
+**Key lesson:** When a command duplicates existing functionality and has multiple bugs, removal is better than repair.
+
+## detection.rs session exit bug (2026-02-07)
+
+**What happened:** `detection.rs:144` only recognized `StageStatus::Completed` as a normal session exit. When merge conflict resolution sessions exited after setting stage to `MergeConflict`, the daemon treated it as a crash, transitioned to `Blocked`, and auto-recovery never triggered.
+
+**Fix:** Added `MergeConflict | MergeBlocked` to the matches! pattern at detection.rs:147-148.
+
+**How to avoid:** When adding new terminal/expected stage statuses, always check detection.rs to ensure the session monitor recognizes them as normal exits.
+
+## loom verify wiring check: negation patterns are literal
+
+**What happened:** Wiring check for `!Merge` in dispatch.rs was a false positive. The verify tool treats `!` as a literal character, not negation.
+
+**How to avoid:** Use positive patterns in wiring checks (e.g., check for what SHOULD be there), not negated patterns for what should be absent. Use `truths` with shell commands for absence checks.
