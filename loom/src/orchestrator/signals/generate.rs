@@ -117,19 +117,13 @@ fn build_skill_match_text(stage: &Stage) -> String {
     text
 }
 
-/// Build embedded context with optional session ID for memory recitation
-pub(super) fn build_embedded_context_with_session(
+/// Build embedded context for a stage's memory recitation
+pub(super) fn build_embedded_context_for_stage(
     work_dir: &Path,
     handoff_file: Option<&str>,
     stage_id: &str,
-    session_id: Option<&str>,
 ) -> EmbeddedContext {
-    build_embedded_context_with_stage_and_session(
-        work_dir,
-        handoff_file,
-        Some(stage_id),
-        session_id,
-    )
+    build_embedded_context_with_stage_and_session(work_dir, handoff_file, Some(stage_id))
 }
 
 /// Build embedded context with optional stage-specific task state (no session memory)
@@ -138,15 +132,14 @@ pub fn build_embedded_context_with_stage(
     handoff_file: Option<&str>,
     stage_id: Option<&str>,
 ) -> EmbeddedContext {
-    build_embedded_context_with_stage_and_session(work_dir, handoff_file, stage_id, None)
+    build_embedded_context_with_stage_and_session(work_dir, handoff_file, stage_id)
 }
 
 /// Build embedded context with both stage and session info for full recitation
 pub fn build_embedded_context_with_stage_and_session(
     work_dir: &Path,
     handoff_file: Option<&str>,
-    _stage_id: Option<&str>,
-    session_id: Option<&str>,
+    stage_id: Option<&str>,
 ) -> EmbeddedContext {
     let mut context = EmbeddedContext::default();
 
@@ -180,8 +173,8 @@ pub fn build_embedded_context_with_stage_and_session(
     context.knowledge_has_content = knowledge.has_content();
 
     // Read recent memory entries for recitation (Manus pattern - last 10 entries)
-    // This keeps important session context in the attention window
-    if let Some(sid) = session_id {
+    // This keeps important stage context in the attention window
+    if let Some(sid) = stage_id {
         context.memory_content = format_memory_for_signal(work_dir, sid, 10);
     }
 
@@ -317,9 +310,8 @@ fn build_signal_context(
     work_dir: &Path,
     handoff_file: Option<&str>,
 ) -> EmbeddedContext {
-    // Build embedded context by reading files, including task state and session memory for recitation
-    let mut embedded_context =
-        build_embedded_context_with_session(work_dir, handoff_file, &stage.id, Some(&session.id));
+    // Build embedded context by reading files, including task state and stage memory for recitation
+    let mut embedded_context = build_embedded_context_for_stage(work_dir, handoff_file, &stage.id);
 
     // Populate context budget from stage (or use default)
     embedded_context.context_budget = stage

@@ -86,7 +86,6 @@ Complete ALL items before marking stage complete:
 **MEMORY & KNOWLEDGE (BEFORE COMMIT):**
 □ loom memory list (verify insights captured)
 □ loom memory decision/note "..." for key decisions
-□ loom memory promote all mistakes
 □ loom knowledge update mistakes "..." for errors made
 
 **INTEGRATION:**
@@ -556,13 +555,13 @@ loom knowledge update mistakes "## [Short description]
 **How to avoid:** [Prevention]"
 ```
 
-#### Using Session Memory
+#### Using Stage Memory
 
 **⚠️ MEMORY RECORDING IS MANDATORY**
 
 Record insights AS DISCOVERED: mistakes (immediately), decisions (when choosing), discoveries (patterns, gotchas).
 
-Empty memory at session end = lost learning. During work:
+Empty memory at stage end = lost learning. During work:
 
 | Type | When | Command |
 | ---- | ---- | ------- |
@@ -570,12 +569,11 @@ Empty memory at session end = lost learning. During work:
 | Decision | Choices made | `loom memory decision "text" --context "why"` |
 | Question | Open questions | `loom memory question "text"` |
 
-Before completing any stage, review and promote valuable insights:
+Before completing any stage, review captured insights:
 
 ```bash
-loom memory list                        # Review session entries
-loom memory promote all mistakes        # Promote all entries to mistakes
-loom memory promote decision patterns   # Promote decisions to patterns
+loom memory list                        # Review stage entries
+loom memory show --all                  # Show all stage memories
 ```
 
 #### Memory vs Knowledge Commands (CRITICAL)
@@ -586,11 +584,11 @@ loom memory promote decision patterns   # Promote decisions to patterns
 |------------|---------------|------------------|
 | knowledge-bootstrap | YES | YES |
 | Implementation stages (Standard) | YES (ONLY) | **NEVER** |
-| integration-verify | YES | YES (promote only) |
+| integration-verify | YES | YES (curate from memory) |
 
 **Why this separation?**
 
-- **Memory** is session-scoped and temporary - captures all insights during work
+- **Memory** is stage-scoped and temporary - captures all insights during work
 - **Knowledge** is permanent and shared across all stages - only proven patterns belong here
 - Only after full integration (integration-verify) do we know which insights are worth keeping permanently
 
@@ -598,7 +596,7 @@ loom memory promote decision patterns   # Promote decisions to patterns
 
 1. **knowledge-bootstrap**: Directly writes to knowledge files (architecture, patterns, conventions)
 2. **Implementation stages**: Record EVERYTHING to memory (`loom memory note/decision`), NEVER touch knowledge
-3. **integration-verify**: Reviews memory, promotes valuable insights to knowledge (`loom memory promote`)
+3. **integration-verify**: Reads memory, curates valuable insights using `loom knowledge update`
 
 **Implementation Stage Rule (CRITICAL):**
 
@@ -619,7 +617,7 @@ During standard implementation stages, you MUST:
 integration-verify starts WITHOUT context from prior stages. Before doing ANY verification, you MUST:
 
 1. **Read the plan** — Read the plan file from `doc/plans/` (check `.work/config.toml` for `source_path`) to understand what was implemented, the stage descriptions, and acceptance criteria
-2. **Read ALL session memory** — Run `loom memory sessions` to list all journals, then `loom memory show --session <id>` for EACH session to understand decisions made, issues encountered, and insights recorded during implementation
+2. **Read ALL stage memory** — Run `loom memory show --all` to read all stage memories and understand decisions made, issues encountered, and insights recorded during implementation
 3. **Read knowledge files** — Read `doc/loom/knowledge/*.md` for architecture context and any mistakes recorded
 
 Without this context, you will miss wiring issues, misunderstand design decisions, and fail to verify the actual intent of the feature.
@@ -754,9 +752,9 @@ When context usage reaches the budget threshold, orchestrator triggers auto-hand
 | `loom knowledge init` | Initialize knowledge directory |
 | `loom knowledge show` | Show all knowledge |
 | `loom knowledge update <file> <content>` | Append to knowledge file |
-| `loom memory note/decision/question <text>` | Record session insights |
-| `loom memory list` | List session memory entries |
-| `loom memory promote <type> <target>` | Promote memory to knowledge |
+| `loom memory note/decision/question <text>` | Record stage insights |
+| `loom memory list` | List stage memory entries |
+| `loom memory show --all` | Show all stage memories |
 
 ---
 
@@ -834,7 +832,7 @@ Use `file:line` format: `src/auth.ts:45-120` not "the auth file"
 
 **BEFORE COMPLETING ANY STAGE (Stage Completion Checklist):**
 □ loom memory note/decision recorded for insights
-□ loom memory promote all mistakes (BEFORE commit)
+□ loom memory list (verify insights captured)
 □ Feature wired in and smoke test passes
 □ No TODO/FIXME, no security issues
 □ git add <specific-files> && commit

@@ -158,12 +158,12 @@ fn test_signal_sections_ordering() {
     // 1. STABLE: Worktree Context, Execution Rules
     // 2. SEMI-STABLE: Knowledge, Facts
     // 3. DYNAMIC: Target, Assignment, Acceptance
-    // 4. RECITATION: Immediate Tasks, Session Memory (at END)
+    // 4. RECITATION: Immediate Tasks, Stage Memory (at END)
 
     let worktree_pos = content.find("## Worktree Context").unwrap();
     let execution_pos = content.find("## Execution Rules").unwrap();
-    // Standard stages show "## Session Memory" in semi-stable section
-    let memory_semi_stable_pos = content.find("## Session Memory").unwrap();
+    // Standard stages show "## Stage Memory" in semi-stable section
+    let memory_semi_stable_pos = content.find("## Stage Memory").unwrap();
     let target_pos = content.find("## Target").unwrap();
     let tasks_pos = content.find("## Immediate Tasks").unwrap();
 
@@ -196,8 +196,8 @@ fn test_signal_contains_session_memory_section_for_standard_stages() {
         &embedded_context,
     );
 
-    // Standard stages should show Session Memory section (not Knowledge Management)
-    assert!(content.contains("## Session Memory"));
+    // Standard stages should show Stage Memory section (not Knowledge Management)
+    assert!(content.contains("## Stage Memory"));
     assert!(!content.contains("## Knowledge Management"));
 
     // Should show memory-only instructions

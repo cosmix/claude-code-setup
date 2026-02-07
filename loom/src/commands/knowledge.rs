@@ -234,7 +234,7 @@ pub fn gc(max_file_lines: usize, max_total_lines: usize, quiet: bool) -> Result<
             println!("{}", "Compaction Instructions:".cyan().bold());
             println!("  1. Review each knowledge file for outdated or redundant content");
             println!("  2. Merge duplicate headers into single consolidated sections");
-            println!("  3. Summarize promoted memory blocks into concise knowledge");
+            println!("  3. Summarize curated memory blocks into concise knowledge");
             println!("  4. Remove any content that is no longer accurate");
             println!("  5. Edit files directly in doc/loom/knowledge/");
         }

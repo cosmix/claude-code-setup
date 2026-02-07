@@ -11,7 +11,7 @@ use crate::models::stage::Stage;
 
 use super::cache::generate_knowledge_stable_prefix;
 use super::format::extract_tasks_from_description;
-use super::generate::build_embedded_context_with_session;
+use super::generate::build_embedded_context_for_stage;
 use super::types::DependencyStatus;
 
 /// Generate a signal file for a knowledge stage
@@ -28,8 +28,7 @@ pub fn generate_knowledge_signal(
     work_dir: &Path,
 ) -> Result<PathBuf> {
     // Build embedded context
-    let embedded_context =
-        build_embedded_context_with_session(work_dir, None, &stage.id, Some(&session.id));
+    let embedded_context = build_embedded_context_for_stage(work_dir, None, &stage.id);
 
     let content = format_knowledge_signal_content(
         session,

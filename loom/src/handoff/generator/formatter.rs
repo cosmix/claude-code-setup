@@ -116,7 +116,7 @@ pub fn format_handoff_markdown(content: &HandoffContent) -> Result<String> {
         md.push('\n');
     }
 
-    // Session Memory (if available)
+    // Stage Memory (if available)
     if let Some(memory) = &content.memory_content {
         md.push_str(memory);
     }

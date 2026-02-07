@@ -143,10 +143,10 @@ pub fn generate_stable_prefix() -> String {
     content.push_str("- **IMPORTANT: Before running `loom stage complete`, ensure you are at the worktree root directory**\n");
     content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
     content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
-    content.push_str("**Session Memory - MEMORY ONLY (MANDATORY):**\n\n");
+    content.push_str("**Stage Memory - MEMORY ONLY (MANDATORY):**\n\n");
     content.push_str("```text\n");
     content.push_str("⚠️  IMPLEMENTATION STAGES USE `loom memory` ONLY - NEVER `loom knowledge`\n");
-    content.push_str("    Only integration-verify stages can promote memories to knowledge.\n");
+    content.push_str("    Only integration-verify stages can curate memories into knowledge.\n");
     content.push_str("```\n\n");
     content.push_str(
         "- **Record discoveries** as you find them: `loom memory note \"observation\"`\n",
@@ -155,7 +155,7 @@ pub fn generate_stable_prefix() -> String {
     content.push_str("- **Record mistakes** immediately when they occur: `loom memory note \"mistake: description\"`\n");
     content.push_str("- **FORBIDDEN**: `loom knowledge update` commands - these are ONLY for knowledge-bootstrap and integration-verify stages\n");
     content
-        .push_str("- Memory entries persist across sessions - they will be promoted to knowledge during integration-verify\n\n");
+        .push_str("- Memory entries persist across sessions - they will be reviewed and curated into knowledge during integration-verify\n\n");
     content.push_str("**Git Staging (CRITICAL - READ CAREFULLY):**\n\n");
     content.push_str("```text\n");
     content.push_str("  ⛔ DANGER: .work is a SYMLINK to shared state in worktrees\n");
@@ -201,7 +201,7 @@ pub fn generate_stable_prefix() -> String {
 /// - ZERO TOLERANCE for issues - ALL warnings and errors must be fixed
 /// - Nothing is "pre-existing" or "too trivial" - fix everything
 /// - Final gate before merge - no shortcuts
-/// - Can update knowledge (promote learnings)
+/// - Can update knowledge (curate learnings)
 pub fn generate_integration_verify_stable_prefix() -> String {
     let mut content = String::new();
 
@@ -253,7 +253,7 @@ pub fn generate_integration_verify_stable_prefix() -> String {
     content.push_str(
         "- Functional verification teammate: wiring, reachability, smoke tests, end-to-end\n",
     );
-    content.push_str("- Knowledge promotion teammate: review memory, promote to knowledge\n");
+    content.push_str("- Knowledge curation teammate: review memory, curate to knowledge\n");
     content.push_str("Teams allow verification tasks to coordinate on discovered issues.\n\n");
 
     // Worktree isolation
@@ -304,14 +304,16 @@ pub fn generate_integration_verify_stable_prefix() -> String {
     content.push_str("- **If acceptance criteria fail**: Fix the issues and run `loom stage complete <stage-id>` again\n");
     content.push_str("- **NEVER use `loom stage retry` from an active session** — it creates a parallel session\n\n");
 
-    // Knowledge promotion
-    content.push_str("**Recording & Knowledge Promotion (CAN UPDATE KNOWLEDGE):**\n\n");
-    content.push_str("Integration-verify stages CAN and SHOULD update knowledge:\n");
-    content.push_str("- `loom memory promote all mistakes` - promote session learnings\n");
-    content.push_str("- `loom knowledge update patterns \"...\"` - document patterns discovered\n");
+    // Knowledge curation
+    content.push_str("**Knowledge Curation (CAN UPDATE KNOWLEDGE):**\n\n");
+    content.push_str("Integration-verify stages CURATE memory into knowledge:\n");
+    content.push_str("1. Read ALL stage memory: `loom memory show --all`\n");
+    content.push_str("2. Evaluate each insight — is it worth keeping permanently?\n");
+    content.push_str("3. Write curated content: `loom knowledge update <file> \"content\"`\n");
     content.push_str(
-        "- `loom knowledge update mistakes \"...\"` - record errors for future avoidance\n\n",
+        "   Focus on: mistakes worth avoiding, patterns worth reusing, architectural decisions\n",
     );
+    content.push_str("4. DO NOT blindly copy entries — synthesize and curate\n\n");
 
     // Git staging
     content.push_str("**Git Staging (CRITICAL):**\n");
@@ -608,6 +610,7 @@ mod tests {
 
         // Can update knowledge
         assert!(prefix.contains("CAN UPDATE KNOWLEDGE"));
+        assert!(prefix.contains("loom memory show --all"));
         assert!(prefix.contains("loom knowledge update"));
 
         // Worktree root directory reminder

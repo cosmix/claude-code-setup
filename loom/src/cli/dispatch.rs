@@ -128,25 +128,16 @@ pub fn dispatch(command: Commands) -> Result<()> {
             } => knowledge::gc(max_file_lines, max_total_lines, quiet),
         },
         Commands::Memory { command } => match command {
-            MemoryCommands::Note { text, session } => memory::note(text, session),
+            MemoryCommands::Note { text, stage } => memory::note(text, stage),
             MemoryCommands::Decision {
                 text,
                 context,
-                session,
-            } => memory::decision(text, context, session),
-            MemoryCommands::Question { text, session } => memory::question(text, session),
-            MemoryCommands::Query { search, session } => memory::query(search, session),
-            MemoryCommands::List {
-                session,
-                entry_type,
-            } => memory::list(session, entry_type),
-            MemoryCommands::Show { session } => memory::show(session),
-            MemoryCommands::Sessions => memory::sessions(),
-            MemoryCommands::Promote {
-                entry_type,
-                target,
-                session,
-            } => memory::promote(entry_type, target, session),
+                stage,
+            } => memory::decision(text, context, stage),
+            MemoryCommands::Question { text, stage } => memory::question(text, stage),
+            MemoryCommands::Query { search, stage } => memory::query(search, stage),
+            MemoryCommands::List { stage, entry_type } => memory::list(stage, entry_type),
+            MemoryCommands::Show { stage, all } => memory::show(stage, all),
         },
         Commands::Sandbox { command } => match command {
             SandboxCommands::Suggest => sandbox::suggest(),

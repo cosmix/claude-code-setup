@@ -37,9 +37,7 @@ pub use query::{generate_summary, get_recent_entries, query_entries};
 pub use export::{format_memory_for_handoff, format_memory_for_signal};
 
 // Re-export persistence functions
-pub use persistence::{
-    delete_entries_by_type, extract_key_notes, list_journals, preserve_for_crash, validate_content,
-};
+pub use persistence::{extract_key_notes, list_journals, preserve_for_crash, validate_content};
 
 #[cfg(test)]
 mod tests {
@@ -75,12 +73,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "test-session-123";
-        create_journal(work_dir, session_id, Some("test-stage")).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
 
-        let journal = read_journal(work_dir, session_id).unwrap();
-        assert_eq!(journal.session_id, session_id);
-        assert_eq!(journal.stage_id.as_deref(), Some("test-stage"));
+        let journal = read_journal(work_dir, stage_id).unwrap();
+        assert_eq!(journal.stage_id, stage_id);
         assert!(journal.entries.is_empty());
     }
 
@@ -89,26 +86,26 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "test-session-456";
-        create_journal(work_dir, session_id, None).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
 
         let entry1 = MemoryEntry::new(MemoryEntryType::Note, "Found important pattern".to_string());
-        append_entry(work_dir, session_id, &entry1).unwrap();
+        append_entry(work_dir, stage_id, &entry1).unwrap();
 
         let entry2 = MemoryEntry::with_context(
             MemoryEntryType::Decision,
             "Use builder pattern for config".to_string(),
             "Provides better API ergonomics".to_string(),
         );
-        append_entry(work_dir, session_id, &entry2).unwrap();
+        append_entry(work_dir, stage_id, &entry2).unwrap();
 
         let entry3 = MemoryEntry::new(
             MemoryEntryType::Question,
             "Should we cache results?".to_string(),
         );
-        append_entry(work_dir, session_id, &entry3).unwrap();
+        append_entry(work_dir, stage_id, &entry3).unwrap();
 
-        let journal = read_journal(work_dir, session_id).unwrap();
+        let journal = read_journal(work_dir, stage_id).unwrap();
         assert_eq!(journal.entries.len(), 3);
 
         assert_eq!(journal.entries[0].entry_type, MemoryEntryType::Note);
@@ -125,18 +122,18 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "signal-test";
-        create_journal(work_dir, session_id, None).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
 
         let entry1 = MemoryEntry::new(MemoryEntryType::Note, "Note 1".to_string());
         let entry2 = MemoryEntry::new(MemoryEntryType::Decision, "Decision 1".to_string());
         let entry3 = MemoryEntry::new(MemoryEntryType::Question, "Question 1".to_string());
 
-        append_entry(work_dir, session_id, &entry1).unwrap();
-        append_entry(work_dir, session_id, &entry2).unwrap();
-        append_entry(work_dir, session_id, &entry3).unwrap();
+        append_entry(work_dir, stage_id, &entry1).unwrap();
+        append_entry(work_dir, stage_id, &entry2).unwrap();
+        append_entry(work_dir, stage_id, &entry3).unwrap();
 
-        let signal = format_memory_for_signal(work_dir, session_id, 10).unwrap();
+        let signal = format_memory_for_signal(work_dir, stage_id, 10).unwrap();
         assert!(signal.contains("### Notes"));
         assert!(signal.contains("Note 1"));
         assert!(signal.contains("### Decisions"));
@@ -150,29 +147,29 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "query-test";
-        create_journal(work_dir, session_id, None).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
 
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::new(MemoryEntryType::Note, "Authentication flow".to_string()),
         )
         .unwrap();
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::new(MemoryEntryType::Note, "Database schema".to_string()),
         )
         .unwrap();
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::new(MemoryEntryType::Decision, "Use JWT for auth".to_string()),
         )
         .unwrap();
 
-        let journal = read_journal(work_dir, session_id).unwrap();
+        let journal = read_journal(work_dir, stage_id).unwrap();
 
         let results = query_entries(&journal, "auth");
         assert_eq!(results.len(), 2);
@@ -187,8 +184,7 @@ mod tests {
     #[test]
     fn test_generate_summary() {
         let journal = MemoryJournal {
-            session_id: "summary-test".to_string(),
-            stage_id: Some("test-stage".to_string()),
+            stage_id: "test-stage".to_string(),
             entries: vec![
                 MemoryEntry::new(MemoryEntryType::Note, "Note 1".to_string()),
                 MemoryEntry::new(MemoryEntryType::Note, "Note 2".to_string()),
@@ -213,18 +209,18 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "handoff-test";
-        create_journal(work_dir, session_id, None).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
 
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::new(MemoryEntryType::Note, "Important note".to_string()),
         )
         .unwrap();
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::with_context(
                 MemoryEntryType::Decision,
                 "Key decision".to_string(),
@@ -233,8 +229,8 @@ mod tests {
         )
         .unwrap();
 
-        let handoff = format_memory_for_handoff(work_dir, session_id).unwrap();
-        assert!(handoff.contains("## Session Memory"));
+        let handoff = format_memory_for_handoff(work_dir, stage_id).unwrap();
+        assert!(handoff.contains("## Stage Memory"));
         assert!(handoff.contains("### Decisions Made"));
         assert!(handoff.contains("Key decision"));
         assert!(handoff.contains("Good rationale"));
@@ -247,18 +243,18 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        let session_id = "crash-test";
-        create_journal(work_dir, session_id, None).unwrap();
+        let stage_id = "test-stage";
+        create_journal(work_dir, stage_id).unwrap();
         append_entry(
             work_dir,
-            session_id,
+            stage_id,
             &MemoryEntry::new(MemoryEntryType::Note, "Important work".to_string()),
         )
         .unwrap();
 
-        let preserved = preserve_for_crash(work_dir, session_id).unwrap().unwrap();
+        let preserved = preserve_for_crash(work_dir, stage_id).unwrap().unwrap();
         assert!(preserved.exists());
-        assert!(preserved.to_string_lossy().contains("memory-crash-test.md"));
+        assert!(preserved.to_string_lossy().contains("memory-test-stage.md"));
 
         let content = std::fs::read_to_string(&preserved).unwrap();
         assert!(content.contains("Important work"));
@@ -267,8 +263,7 @@ mod tests {
     #[test]
     fn test_extract_key_notes() {
         let journal = MemoryJournal {
-            session_id: "extract-test".to_string(),
-            stage_id: None,
+            stage_id: "test-stage".to_string(),
             entries: vec![
                 MemoryEntry::new(MemoryEntryType::Note, "Just a note".to_string()),
                 MemoryEntry::with_context(
@@ -300,117 +295,12 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let work_dir = temp_dir.path();
 
-        create_journal(work_dir, "session-1", None).unwrap();
-        create_journal(work_dir, "session-2", None).unwrap();
+        create_journal(work_dir, "stage-1").unwrap();
+        create_journal(work_dir, "stage-2").unwrap();
 
         let journals = list_journals(work_dir).unwrap();
         assert_eq!(journals.len(), 2);
-        assert!(journals.contains(&"session-1".to_string()));
-        assert!(journals.contains(&"session-2".to_string()));
-    }
-
-    #[test]
-    fn test_delete_entries_by_type_single() {
-        let temp_dir = TempDir::new().unwrap();
-        let work_dir = temp_dir.path();
-
-        let session_id = "delete-single-test";
-        create_journal(work_dir, session_id, None).unwrap();
-
-        // Add entries of different types
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Note, "Note 1".to_string()),
-        )
-        .unwrap();
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Decision, "Decision 1".to_string()),
-        )
-        .unwrap();
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Question, "Question 1".to_string()),
-        )
-        .unwrap();
-
-        // Delete only notes
-        let deleted =
-            delete_entries_by_type(work_dir, session_id, Some(MemoryEntryType::Note)).unwrap();
-        assert_eq!(deleted.len(), 1);
-        assert_eq!(deleted[0].entry_type, MemoryEntryType::Note);
-        assert!(deleted[0].content.contains("Note 1"));
-
-        // Verify remaining entries
-        let journal = read_journal(work_dir, session_id).unwrap();
-        assert_eq!(journal.entries.len(), 2);
-        assert!(journal
-            .entries
-            .iter()
-            .all(|e| e.entry_type != MemoryEntryType::Note));
-    }
-
-    #[test]
-    fn test_delete_entries_by_type_all() {
-        let temp_dir = TempDir::new().unwrap();
-        let work_dir = temp_dir.path();
-
-        let session_id = "delete-all-test";
-        create_journal(work_dir, session_id, None).unwrap();
-
-        // Add entries of different types
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Note, "Note 1".to_string()),
-        )
-        .unwrap();
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Decision, "Decision 1".to_string()),
-        )
-        .unwrap();
-        append_entry(
-            work_dir,
-            session_id,
-            &MemoryEntry::new(MemoryEntryType::Question, "Question 1".to_string()),
-        )
-        .unwrap();
-
-        // Delete all (entry_type = None)
-        let deleted = delete_entries_by_type(work_dir, session_id, None).unwrap();
-        assert_eq!(deleted.len(), 3);
-
-        // Verify journal is now empty
-        let journal = read_journal(work_dir, session_id).unwrap();
-        assert!(journal.entries.is_empty());
-    }
-
-    #[test]
-    fn test_delete_entries_by_type_empty_journal() {
-        let temp_dir = TempDir::new().unwrap();
-        let work_dir = temp_dir.path();
-
-        let session_id = "delete-empty-test";
-        create_journal(work_dir, session_id, None).unwrap();
-
-        // Delete from empty journal
-        let deleted =
-            delete_entries_by_type(work_dir, session_id, Some(MemoryEntryType::Note)).unwrap();
-        assert!(deleted.is_empty());
-    }
-
-    #[test]
-    fn test_delete_entries_by_type_nonexistent_session() {
-        let temp_dir = TempDir::new().unwrap();
-        let work_dir = temp_dir.path();
-
-        // Delete from nonexistent session
-        let deleted = delete_entries_by_type(work_dir, "nonexistent", None).unwrap();
-        assert!(deleted.is_empty());
+        assert!(journals.contains(&"stage-1".to_string()));
+        assert!(journals.contains(&"stage-2".to_string()));
     }
 }

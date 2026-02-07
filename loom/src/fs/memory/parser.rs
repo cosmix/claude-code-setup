@@ -5,9 +5,9 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 
 /// Parse a memory journal from markdown content
-pub fn parse_journal(content: &str, session_id: &str) -> Result<MemoryJournal> {
+pub fn parse_journal(content: &str, stage_id: &str) -> Result<MemoryJournal> {
     let mut journal = MemoryJournal {
-        session_id: session_id.to_string(),
+        stage_id: stage_id.to_string(),
         ..Default::default()
     };
 
@@ -25,9 +25,9 @@ pub fn parse_journal(content: &str, session_id: &str) -> Result<MemoryJournal> {
             continue;
         }
 
-        // Parse stage ID from header
+        // Parse stage ID from header (update if present in content)
         if line.starts_with("**Stage**:") {
-            journal.stage_id = Some(line.trim_start_matches("**Stage**:").trim().to_string());
+            journal.stage_id = line.trim_start_matches("**Stage**:").trim().to_string();
             continue;
         }
 

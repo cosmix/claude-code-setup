@@ -44,7 +44,7 @@ pub enum KnowledgeCommands {
         quiet: bool,
     },
 
-    /// Analyze knowledge files for size, duplicates, and promoted blocks
+    /// Analyze knowledge files for size, duplicates, and curated blocks
     Gc {
         /// Max lines per file before GC is recommended
         #[arg(long, default_value_t = DEFAULT_MAX_FILE_LINES)]
@@ -62,14 +62,14 @@ pub enum KnowledgeCommands {
 
 #[derive(Subcommand)]
 pub enum MemoryCommands {
-    /// Record a note in the session memory
+    /// Record a note in the stage memory
     Note {
         /// The note text
         text: String,
 
-        /// Session ID (auto-detected from worktree if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Stage ID (auto-detected from LOOM_STAGE_ID if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
     },
 
     /// Record a decision with optional rationale
@@ -81,9 +81,9 @@ pub enum MemoryCommands {
         #[arg(short, long)]
         context: Option<String>,
 
-        /// Session ID (auto-detected from worktree if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Stage ID (auto-detected from LOOM_STAGE_ID if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
     },
 
     /// Record an open question
@@ -91,9 +91,9 @@ pub enum MemoryCommands {
         /// The question text
         text: String,
 
-        /// Session ID (auto-detected from worktree if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Stage ID (auto-detected from LOOM_STAGE_ID if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
     },
 
     /// Search memory entries
@@ -101,16 +101,16 @@ pub enum MemoryCommands {
         /// Search term
         search: String,
 
-        /// Session ID to search (searches all if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Stage ID to search (searches all if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
     },
 
-    /// List memory entries from a session
+    /// List memory entries from a stage
     List {
-        /// Session ID (auto-detected if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Stage ID (auto-detected if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
 
         /// Filter by entry type (note, decision, question)
         #[arg(short = 't', long)]
@@ -119,24 +119,12 @@ pub enum MemoryCommands {
 
     /// Show full memory journal
     Show {
-        /// Session ID (auto-detected if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
-    },
+        /// Stage ID (auto-detected if not provided)
+        #[arg(short = 'S', long, value_parser = clap_id_validator)]
+        stage: Option<String>,
 
-    /// List all memory journals
-    Sessions,
-
-    /// Promote memory entries to knowledge files
-    Promote {
-        /// Entry type to promote: note, decision, question, or all
-        entry_type: String,
-
-        /// Target knowledge file: entry-points, patterns, conventions, mistakes
-        target: String,
-
-        /// Session ID (auto-detected if not provided)
-        #[arg(short, long, value_parser = clap_id_validator)]
-        session: Option<String>,
+        /// Show ALL stage memories
+        #[arg(short, long)]
+        all: bool,
     },
 }

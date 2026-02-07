@@ -14,9 +14,9 @@ pub fn memory_dir(work_dir: &Path) -> PathBuf {
     work_dir.join("memory")
 }
 
-/// Get the path to a session's memory file
-pub fn memory_file_path(work_dir: &Path, session_id: &str) -> PathBuf {
-    memory_dir(work_dir).join(format!("{session_id}.md"))
+/// Get the path to a stage's memory file
+pub fn memory_file_path(work_dir: &Path, stage_id: &str) -> PathBuf {
+    memory_dir(work_dir).join(format!("{stage_id}.md"))
 }
 
 /// Initialize the memory directory
@@ -35,21 +35,14 @@ pub fn init_memory_dir(work_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Create a new memory journal for a session
-pub fn create_journal(
-    work_dir: &Path,
-    session_id: &str,
-    stage_id: Option<&str>,
-) -> Result<PathBuf> {
+/// Create a new memory journal for a stage
+pub fn create_journal(work_dir: &Path, stage_id: &str) -> Result<PathBuf> {
     init_memory_dir(work_dir)?;
 
-    let file_path = memory_file_path(work_dir, session_id);
-    let stage_line = stage_id
-        .map(|s| format!("**Stage**: {s}\n"))
-        .unwrap_or_default();
+    let file_path = memory_file_path(work_dir, stage_id);
 
     let header = format!(
-        "{MEMORY_HEADER}# Memory Journal: {session_id}\n\n**Session**: {session_id}\n{stage_line}**Created**: {}\n\n---\n\n",
+        "{MEMORY_HEADER}# Memory Journal: {stage_id}\n\n**Stage**: {stage_id}\n**Created**: {}\n\n---\n\n",
         Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     );
 
@@ -59,13 +52,13 @@ pub fn create_journal(
     Ok(file_path)
 }
 
-/// Append an entry to a session's memory journal
-pub fn append_entry(work_dir: &Path, session_id: &str, entry: &MemoryEntry) -> Result<()> {
-    let file_path = memory_file_path(work_dir, session_id);
+/// Append an entry to a stage's memory journal
+pub fn append_entry(work_dir: &Path, stage_id: &str, entry: &MemoryEntry) -> Result<()> {
+    let file_path = memory_file_path(work_dir, stage_id);
 
     // Create journal if it doesn't exist
     if !file_path.exists() {
-        create_journal(work_dir, session_id, None)?;
+        create_journal(work_dir, stage_id)?;
     }
 
     let formatted = format_entry(entry);
@@ -85,13 +78,13 @@ pub fn append_entry(work_dir: &Path, session_id: &str, entry: &MemoryEntry) -> R
     Ok(())
 }
 
-/// Read a session's memory journal
-pub fn read_journal(work_dir: &Path, session_id: &str) -> Result<MemoryJournal> {
-    let file_path = memory_file_path(work_dir, session_id);
+/// Read a stage's memory journal
+pub fn read_journal(work_dir: &Path, stage_id: &str) -> Result<MemoryJournal> {
+    let file_path = memory_file_path(work_dir, stage_id);
 
     if !file_path.exists() {
         return Ok(MemoryJournal {
-            session_id: session_id.to_string(),
+            stage_id: stage_id.to_string(),
             ..Default::default()
         });
     }
@@ -99,12 +92,12 @@ pub fn read_journal(work_dir: &Path, session_id: &str) -> Result<MemoryJournal> 
     let content = fs::read_to_string(&file_path)
         .with_context(|| format!("Failed to read memory journal: {}", file_path.display()))?;
 
-    parse_journal(&content, session_id)
+    parse_journal(&content, stage_id)
 }
 
 /// Write summary to the journal file
-pub fn write_summary(work_dir: &Path, session_id: &str, summary: &str) -> Result<()> {
-    let file_path = memory_file_path(work_dir, session_id);
+pub fn write_summary(work_dir: &Path, stage_id: &str, summary: &str) -> Result<()> {
+    let file_path = memory_file_path(work_dir, stage_id);
 
     let mut file = fs::OpenOptions::new()
         .append(true)

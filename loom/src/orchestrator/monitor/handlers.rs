@@ -83,7 +83,8 @@ impl Handlers {
     /// Called when a session reaches the warning threshold.
     /// Generates a summary of the memory journal to reduce context burden.
     pub fn handle_context_warning(&self, session: &Session) -> Result<()> {
-        let journal = read_journal(&self.config.work_dir, &session.id)?;
+        let stage_id = session.stage_id.as_deref().unwrap_or(&session.id);
+        let journal = read_journal(&self.config.work_dir, stage_id)?;
 
         if journal.entries.is_empty() {
             return Ok(());
@@ -93,11 +94,11 @@ impl Handlers {
         let summary = generate_summary(&journal, 5);
 
         // Write summary to the journal
-        write_summary(&self.config.work_dir, &session.id, &summary)?;
+        write_summary(&self.config.work_dir, stage_id, &summary)?;
 
         eprintln!(
-            "Auto-summarized memory for session '{}' ({} entries)",
-            session.id,
+            "Auto-summarized memory for stage '{}' ({} entries)",
+            stage_id,
             journal.entries.len()
         );
 
@@ -108,7 +109,7 @@ impl Handlers {
     ///
     /// Called when a session reaches critical context threshold.
     /// Loads session and stage data, creates handoff content, and generates the handoff file.
-    /// Also merges session memory into the handoff for continuity.
+    /// Also merges stage memory into the handoff for continuity.
     pub fn handle_context_critical(&self, session: &Session, stage: &Stage) -> Result<PathBuf> {
         let context_percent = context_usage_percent(session.context_tokens, session.context_limit);
 
@@ -118,7 +119,8 @@ impl Handlers {
             .unwrap_or_else(|| format!("Work on stage: {}", stage.name));
 
         // Get memory content for handoff (preserves decisions and questions)
-        let memory_content = format_memory_for_handoff(&self.config.work_dir, &session.id);
+        let stage_id = session.stage_id.as_deref().unwrap_or(&session.id);
+        let memory_content = format_memory_for_handoff(&self.config.work_dir, stage_id);
 
         let content = HandoffContent::new(session.id.clone(), stage.id.clone())
             .with_context_percent(context_percent)
@@ -135,7 +137,7 @@ impl Handlers {
     /// Handle session crash by generating a crash report
     ///
     /// Called when a session crash is detected.
-    /// Creates a CrashReport, generates the crash report file, and preserves session memory.
+    /// Creates a CrashReport, generates the crash report file, and preserves stage memory.
     pub fn handle_session_crash(&self, session: &Session, reason: &str) -> Option<PathBuf> {
         let report = CrashReport::new(
             session.id.clone(),
@@ -143,19 +145,17 @@ impl Handlers {
             reason.to_string(),
         );
 
-        // Preserve session memory for recovery
-        match preserve_for_crash(&self.config.work_dir, &session.id) {
+        // Preserve stage memory for recovery
+        let stage_id = session.stage_id.as_deref().unwrap_or(&session.id);
+        match preserve_for_crash(&self.config.work_dir, stage_id) {
             Ok(Some(path)) => {
-                eprintln!("Preserved session memory: {}", path.display());
+                eprintln!("Preserved stage memory: {}", path.display());
             }
             Ok(None) => {
                 // No memory to preserve
             }
             Err(e) => {
-                eprintln!(
-                    "Failed to preserve memory for session '{}': {}",
-                    session.id, e
-                );
+                eprintln!("Failed to preserve memory for stage '{}': {}", stage_id, e);
             }
         }
 

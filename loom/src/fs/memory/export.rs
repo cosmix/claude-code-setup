@@ -23,10 +23,10 @@ pub fn truncate_content(s: &str, max_len: usize) -> String {
 /// Format memory entries for embedding in a signal
 pub fn format_memory_for_signal(
     work_dir: &Path,
-    session_id: &str,
+    stage_id: &str,
     max_entries: usize,
 ) -> Option<String> {
-    let journal = read_journal(work_dir, session_id).ok()?;
+    let journal = read_journal(work_dir, stage_id).ok()?;
 
     if journal.entries.is_empty() {
         return None;
@@ -99,18 +99,18 @@ pub fn format_memory_for_signal(
 }
 
 /// Format memory for inclusion in handoff file
-pub fn format_memory_for_handoff(work_dir: &Path, session_id: &str) -> Option<String> {
-    let journal = read_journal(work_dir, session_id).ok()?;
+pub fn format_memory_for_handoff(work_dir: &Path, stage_id: &str) -> Option<String> {
+    let journal = read_journal(work_dir, stage_id).ok()?;
 
     if journal.entries.is_empty() {
         return None;
     }
 
     let mut output = String::new();
-    output.push_str("## Session Memory\n\n");
+    output.push_str("## Stage Memory\n\n");
     output.push_str(&format!(
-        "Memory journal from session {} ({} entries).\n\n",
-        session_id,
+        "Memory journal from stage {} ({} entries).\n\n",
+        stage_id,
         journal.entries.len()
     ));
 

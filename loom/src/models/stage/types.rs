@@ -18,7 +18,7 @@ pub enum StageType {
     /// Can use both `loom memory` and `loom knowledge` commands
     Knowledge,
     /// Integration verification stage (e.g., integration-verify)
-    /// Can use `loom memory` and `loom knowledge` (for promoting memories)
+    /// Can use `loom memory` and `loom knowledge` (for curating memories)
     IntegrationVerify,
 }
 

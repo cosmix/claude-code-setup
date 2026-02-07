@@ -498,7 +498,7 @@ Captures codebase understanding before implementation:
     MEMORY RECORDING:
     - As you explore, record insights: loom memory note "observation"
     - Record decisions: loom memory decision "choice" --context "why"
-    - Before completing: loom memory promote all mistakes
+    - Before completing: loom memory list (verify insights captured)
   dependencies: []
   acceptance:
     - "loom knowledge check --min-coverage 50"
@@ -578,13 +578,14 @@ Verifies all work integrates correctly after merges AND that the feature actuall
         - Are events being published/subscribed?
         - Are dependencies injected correctly?
 
-    KNOWLEDGE (MANDATORY):
-    11. Review and promote session memory:
-        loom memory list
-        loom memory promote all mistakes
-        loom memory promote decision patterns
-    12. Update architecture.md if structure changed
-    13. Record any lessons learned
+    KNOWLEDGE CURATION (MANDATORY):
+    11. Read all stage memory: loom memory show --all
+    12. Curate valuable insights to knowledge:
+        - Mistakes worth avoiding → loom knowledge update mistakes "..."
+        - Patterns worth reusing → loom knowledge update patterns "..."
+        - Architectural decisions → loom knowledge update architecture "..."
+    13. Update architecture.md if structure changed
+    14. Record any lessons learned
   dependencies: ["stage-a", "stage-b", "stage-c"] # ALL feature stages
   acceptance:
     - "cargo test"
@@ -628,7 +629,7 @@ Verifies all work integrates correctly after merges AND that the feature actuall
 │  Only knowledge-bootstrap and integration-verify stages can write   │
 │  to knowledge files directly.                                       │
 │                                                                     │
-│  Memory gets promoted to knowledge during integration-verify.       │
+│  Memory gets curated into knowledge during integration-verify.      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -648,9 +649,9 @@ description: |
 | Benefit                | Explanation                                                |
 | ---------------------- | ---------------------------------------------------------- |
 | Insight persistence    | Memory entries persist across sessions and context resets  |
-| Mistake prevention     | Promoted mistakes become knowledge that future agents read |
+| Mistake prevention     | Curated mistakes become knowledge that future agents read  |
 | Decision documentation | Records WHY choices were made, not just what was done      |
-| Learning transfer      | Memory → Knowledge transfer makes lessons permanent        |
+| Learning transfer      | Memory → Knowledge curation makes lessons permanent        |
 
 ### 13. Memory vs Knowledge Rules
 
@@ -660,11 +661,11 @@ description: |
 | --------------------- | ------------- | ------------------ |
 | knowledge-bootstrap   | YES           | YES                |
 | Implementation stages | YES (ONLY)    | **FORBIDDEN**      |
-| integration-verify    | YES           | YES (promote only) |
+| integration-verify    | YES           | YES (curate from memory) |
 
 **Why this separation?**
 
-- **Memory** is session-scoped and temporary - captures all insights during work
+- **Memory** is stage-scoped and temporary - captures all insights during work
 - **Knowledge** is permanent and shared across all stages - only proven patterns belong here
 - Only after full integration (integration-verify) do we know which insights are worth keeping permanently
 
@@ -672,7 +673,7 @@ description: |
 
 1. **knowledge-bootstrap**: Directly writes to knowledge files (architecture, patterns, conventions)
 2. **Implementation stages**: Record EVERYTHING to memory, NEVER touch knowledge
-3. **integration-verify**: Reviews memory, promotes valuable insights to knowledge
+3. **integration-verify**: Reads memory, curates valuable insights using `loom knowledge update`
 
 **Implementation Stage Rule:**
 
@@ -898,7 +899,7 @@ _Functional Verification (CRITICAL):_
 
 _Knowledge:_
 
-- Promote session memory insights to knowledge
+- Read all stage memory and curate valuable insights to knowledge
 - Update architecture.md if structure changed
 
 **Files:** None (verification only)

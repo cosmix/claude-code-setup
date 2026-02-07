@@ -109,7 +109,7 @@ pub(super) fn format_semi_stable_section(
                 "│  ⚠️  NEVER use 'loom knowledge' in implementation stages           │\n",
             );
             content.push_str(
-                "│      Memory gets promoted to knowledge by integration-verify       │\n",
+                "│      Memory gets curated into knowledge by integration-verify      │\n",
             );
             content.push_str(
                 "└────────────────────────────────────────────────────────────────────┘\n",
@@ -219,9 +219,9 @@ pub(super) fn format_semi_stable_section(
         }
         StageType::Standard => {
             // Standard implementation stages: Show MEMORY guidance instead
-            content.push_str("## Session Memory\n\n");
+            content.push_str("## Stage Memory\n\n");
             content.push_str(
-                "**Record insights as you work** (to be promoted later by integration-verify):\n\n",
+                "**Record insights as you work** (to be curated later by integration-verify):\n\n",
             );
             content.push_str("- Decisions and their rationale\n");
             content.push_str("- Code patterns discovered during implementation\n");
@@ -545,14 +545,14 @@ pub(super) fn format_recitation_section(
                 content.push_str("```\n");
                 content.push_str("┌─────────────────────────────────────────────────┐\n");
                 content.push_str("│  🛑 BUDGET EXCEEDED - HANDOFF REQUIRED         │\n");
-                content.push_str("│  Run: loom memory promote all mistakes          │\n");
+                content.push_str("│  Run: loom memory list (verify insights captured)  │\n");
                 content.push_str("│  Then: loom stage complete <stage-id>           │\n");
                 content.push_str("└─────────────────────────────────────────────────┘\n");
                 content.push_str("```\n");
             } else {
                 content.push_str("**Approaching budget limit.** Prepare for handoff:\n");
                 content.push_str("- `loom memory note` to record remaining observations\n");
-                content.push_str("- `loom memory promote all mistakes` before completing\n");
+                content.push_str("- `loom memory list` to verify insights captured\n");
             }
             content.push('\n');
         }
@@ -572,10 +572,10 @@ pub(super) fn format_recitation_section(
     }
     content.push('\n');
 
-    // Embed session memory at the END for maximum attention (Manus recitation pattern)
-    content.push_str("## Session Memory\n\n");
+    // Embed stage memory at the END for maximum attention (Manus recitation pattern)
+    content.push_str("## Stage Memory\n\n");
     if let Some(memory_content) = &embedded_context.memory_content {
-        content.push_str("**YOUR WORKING MEMORY** - Notes and decisions from this session:\n\n");
+        content.push_str("**YOUR WORKING MEMORY** - Notes and decisions from this stage:\n\n");
         content.push_str(memory_content);
         content.push('\n');
     } else {
@@ -599,8 +599,8 @@ pub(super) fn format_recitation_section(
         "- `loom memory decision \"choice\" --context \"rationale\"` - Record a decision\n",
     );
     content.push_str("- `loom memory question \"open question\"` - Record an open question\n");
-    content.push_str("- `loom memory list` - Review your session entries\n");
-    content.push_str("- `loom memory promote all mistakes` - Promote insights to knowledge (BEFORE completing)\n\n");
+    content.push_str("- `loom memory list` - Review your stage entries\n");
+    content.push_str("- `loom memory show --all` - Show all stage memories\n\n");
 
     content
 }

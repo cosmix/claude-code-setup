@@ -96,10 +96,8 @@ impl MemoryEntry {
 /// Memory journal for a session
 #[derive(Debug, Clone, Default)]
 pub struct MemoryJournal {
-    /// Session ID this journal belongs to
-    pub session_id: String,
-    /// Stage ID associated with this session
-    pub stage_id: Option<String>,
+    /// Stage ID this journal belongs to
+    pub stage_id: String,
     /// All entries in the journal
     pub entries: Vec<MemoryEntry>,
     /// Summary of the journal (generated at context threshold)
