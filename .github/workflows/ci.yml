@@ -49,9 +49,18 @@ jobs:
         run: cargo build --all-targets
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     needs: build
+    strategy:
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+            test_cmd: cargo test --all-targets
+          - name: macos-build
+            os: macos-latest
+            test_cmd: cargo test --all-targets --no-run
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -74,7 +83,7 @@ jobs:
 
       - name: Run tests
         working-directory: loom
-        run: cargo test --all-targets
+        run: ${{ matrix.test_cmd }}
 
   clippy:
     name: Clippy
