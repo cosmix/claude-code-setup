@@ -2,9 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::commands::status::common::levels;
 use crate::daemon::StageInfo;
 use crate::models::stage::StageStatus;
+use crate::plan::graph::levels;
 
 /// Graph state tracking for scroll position.
 #[derive(Default)]

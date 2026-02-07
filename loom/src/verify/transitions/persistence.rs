@@ -7,10 +7,10 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-use crate::commands::status::common::levels::compute_all_levels;
 use crate::fs::locking::{locked_read, locked_write};
 use crate::fs::stage_files::{find_stage_file, stage_file_path};
 use crate::models::stage::Stage;
+use crate::plan::graph::levels::compute_all_levels;
 
 use super::serialization::{parse_stage_from_markdown, serialize_stage_to_markdown};
 

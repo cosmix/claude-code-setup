@@ -5,9 +5,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use super::result::{GapType, VerificationGap};
+use crate::commands::common::truncate;
 use crate::plan::schema::WiringTest;
 use crate::verify::criteria::run_single_criterion_with_timeout;
-use crate::verify::utils::truncate_string;
 
 /// Default timeout for wiring test commands (30 seconds)
 const WIRING_TEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -62,7 +62,7 @@ pub fn verify_wiring_tests(
         // Validate stdout_contains
         for pattern in &test.success_criteria.stdout_contains {
             if !result.stdout.contains(pattern) {
-                let preview = truncate_output(&result.stdout, 200);
+                let preview = truncate(&result.stdout, 200);
                 gaps.push(VerificationGap::new(
                     GapType::WiringBroken,
                     format!(
@@ -80,7 +80,7 @@ pub fn verify_wiring_tests(
         // Validate stdout_not_contains
         for pattern in &test.success_criteria.stdout_not_contains {
             if result.stdout.contains(pattern) {
-                let preview = truncate_output(&result.stdout, 200);
+                let preview = truncate(&result.stdout, 200);
                 gaps.push(VerificationGap::new(
                     GapType::WiringBroken,
                     format!(
@@ -98,7 +98,7 @@ pub fn verify_wiring_tests(
         // Validate stderr_contains
         for pattern in &test.success_criteria.stderr_contains {
             if !result.stderr.contains(pattern) {
-                let preview = truncate_output(&result.stderr, 200);
+                let preview = truncate(&result.stderr, 200);
                 gaps.push(VerificationGap::new(
                     GapType::WiringBroken,
                     format!(
@@ -116,7 +116,7 @@ pub fn verify_wiring_tests(
         // Validate stderr_empty
         if let Some(true) = test.success_criteria.stderr_empty {
             if !result.stderr.is_empty() {
-                let preview = truncate_output(&result.stderr, 200);
+                let preview = truncate(&result.stderr, 200);
                 gaps.push(VerificationGap::new(
                     GapType::WiringBroken,
                     format!("Wiring test '{}' failed: stderr not empty", test.name),
@@ -127,11 +127,6 @@ pub fn verify_wiring_tests(
     }
 
     Ok(gaps)
-}
-
-/// Truncate output to a specified length for display in error messages
-fn truncate_output(output: &str, max_len: usize) -> String {
-    truncate_string(output, max_len)
 }
 
 #[cfg(test)]
@@ -244,16 +239,5 @@ mod tests {
 
         assert_eq!(gaps.len(), 1);
         assert!(gaps[0].description.contains("stderr not empty"));
-    }
-
-    #[test]
-    fn test_truncate_output() {
-        let short = "short string";
-        assert_eq!(truncate_output(short, 100), short);
-
-        let long = "a".repeat(300);
-        let truncated = truncate_output(&long, 200);
-        assert_eq!(truncated.len(), 203); // 200 chars + "..."
-        assert!(truncated.ends_with("..."));
     }
 }

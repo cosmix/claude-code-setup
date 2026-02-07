@@ -80,19 +80,18 @@ pub fn verify(stage_id: String, no_reload: bool) -> Result<()> {
 
     // Run goal-backward verification if defined
     {
-        let config = crate::fs::work_dir::load_config_required(work_dir)?;
-        let plan_path = config
-            .source_path()
-            .context("No plan source path configured in .work/config.toml")?;
-        let plan = crate::plan::parser::parse_plan(&plan_path)
-            .with_context(|| format!("Failed to parse plan: {}", plan_path.display()))?;
+        // Load stage definition to check if verification is needed
+        let stage_def =
+            crate::commands::verify::load_stage_definition_from_plan(&stage_id, work_dir)?;
 
-        if let Some(stage_def) = plan.stages.iter().find(|s| s.id == stage_id) {
+        if let Some(ref stage_def) = stage_def {
             if stage_def.has_any_goal_checks() {
                 println!("Running goal-backward verification...");
                 let verify_dir = acceptance_dir.as_deref().unwrap_or(Path::new("."));
-                let goal_result = crate::verify::goal_backward::run_goal_backward_verification(
-                    stage_def, verify_dir,
+
+                // Use shared helper for verification
+                let goal_result = crate::commands::verify::run_and_verify_stage_goal(
+                    &stage_id, verify_dir, work_dir,
                 )?;
 
                 if !goal_result.is_passed() {

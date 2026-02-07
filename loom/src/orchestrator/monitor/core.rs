@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use crate::models::session::Session;
 use crate::models::stage::Stage;
 use crate::parser::frontmatter::parse_from_markdown;
-use crate::verify::transitions::parse_stage_from_markdown;
 
 use super::config::MonitorConfig;
 use super::detection::Detection;
@@ -56,16 +55,6 @@ impl Monitor {
         Ok(events)
     }
 
-    /// Get the heartbeat watcher for direct access
-    pub fn heartbeat_watcher(&self) -> &HeartbeatWatcher {
-        &self.heartbeat_watcher
-    }
-
-    /// Get mutable heartbeat watcher
-    pub fn heartbeat_watcher_mut(&mut self) -> &mut HeartbeatWatcher {
-        &mut self.heartbeat_watcher
-    }
-
     /// Get handlers for generating handoffs and crash reports
     pub fn handlers(&self) -> &Handlers {
         &self.handlers
@@ -73,35 +62,7 @@ impl Monitor {
 
     /// Load all stages from .work/stages/
     pub fn load_stages(&self) -> Result<Vec<Stage>> {
-        let stages_dir = self.config.work_dir.join("stages");
-        if !stages_dir.exists() {
-            return Ok(Vec::new());
-        }
-
-        let mut stages = Vec::new();
-        let entries = std::fs::read_dir(&stages_dir).with_context(|| {
-            format!("Failed to read stages directory: {}", stages_dir.display())
-        })?;
-
-        for entry in entries {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                match load_stage_from_file(&path) {
-                    Ok(stage) => stages.push(stage),
-                    Err(e) => {
-                        eprintln!(
-                            "Warning: Failed to load stage from {}: {}",
-                            path.display(),
-                            e
-                        );
-                    }
-                }
-            }
-        }
-
-        Ok(stages)
+        crate::verify::transitions::list_all_stages(&self.config.work_dir)
     }
 
     /// Load all sessions from .work/sessions/
@@ -139,14 +100,6 @@ impl Monitor {
 
         Ok(sessions)
     }
-}
-
-/// Load a single stage from a markdown file
-fn load_stage_from_file(path: &std::path::Path) -> Result<Stage> {
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read stage file: {}", path.display()))?;
-
-    parse_stage_from_markdown(&content)
 }
 
 /// Load a single session from a markdown file

@@ -14,6 +14,7 @@ use crate::commands::stage::acceptance_runner::{
 };
 use crate::fs::work_dir::load_config_required;
 use crate::plan::parser::parse_plan;
+use crate::plan::schema::StageDefinition;
 use crate::verify::goal_backward::{run_goal_backward_verification, GoalBackwardResult};
 use crate::verify::transitions::load_stage;
 
@@ -76,7 +77,8 @@ pub fn execute(stage_id: &str, suggest: bool) -> Result<()> {
             .as_deref()
             .context("No working directory available for goal-backward verification")?;
 
-        let goal_result = run_goal_backward_verification(stage_def, verify_dir)?;
+        // Use shared helper for verification
+        let goal_result = run_and_verify_stage_goal(stage_id, verify_dir, work_dir)?;
         print_goal_result(&goal_result, suggest);
 
         // Final summary
@@ -133,4 +135,61 @@ fn print_goal_result(result: &GoalBackwardResult, suggest: bool) {
             }
         }
     }
+}
+
+/// Shared helper: Load plan, find stage definition, run goal-backward verification
+///
+/// This helper encapsulates the common pattern used across:
+/// - `loom stage complete` (with verification)
+/// - `loom stage verify` (re-verification after fixes)
+/// - `loom verify` (standalone verification command)
+///
+/// Returns Ok(result) on successful verification run, Err if plan/stage not found.
+pub fn run_and_verify_stage_goal(
+    stage_id: &str,
+    verification_dir: &Path,
+    work_dir: &Path,
+) -> Result<GoalBackwardResult> {
+    // Load config to get plan source path
+    let config = load_config_required(work_dir)?;
+    let plan_path = config
+        .source_path()
+        .context("No plan source path configured in .work/config.toml")?;
+
+    // Parse plan to get stage definition
+    let plan = parse_plan(&plan_path)
+        .with_context(|| format!("Failed to parse plan: {}", plan_path.display()))?;
+
+    let stage_def = plan
+        .stages
+        .iter()
+        .find(|s| s.id == stage_id)
+        .with_context(|| format!("Stage '{stage_id}' not found in plan"))?;
+
+    // Run goal-backward verification
+    run_goal_backward_verification(stage_def, verification_dir)
+}
+
+/// Load stage definition from the active plan
+///
+/// Used by callers that need the stage definition for other purposes
+/// (e.g., checking has_any_goal_checks() before calling verification).
+pub fn load_stage_definition_from_plan(
+    stage_id: &str,
+    work_dir: &Path,
+) -> Result<Option<StageDefinition>> {
+    let config = match crate::fs::work_dir::load_config(work_dir)? {
+        Some(config) => config,
+        None => return Ok(None),
+    };
+
+    let plan_path = match config.source_path() {
+        Some(path) => path,
+        None => return Ok(None),
+    };
+
+    let plan = parse_plan(&plan_path)
+        .with_context(|| format!("Failed to parse plan: {}", plan_path.display()))?;
+
+    Ok(plan.stages.into_iter().find(|s| s.id == stage_id))
 }

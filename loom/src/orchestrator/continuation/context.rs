@@ -4,14 +4,11 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::fs::stage_files::find_stage_file;
 use crate::git::branch::branch_name_for_stage;
 use crate::handoff::generator::find_latest_handoff;
 use crate::handoff::schema::{HandoffV2, ParsedHandoff};
 use crate::models::stage::Stage;
 use crate::models::worktree::Worktree;
-
-use super::yaml_parse::parse_stage_from_markdown;
 
 /// Context prepared for continuing a stage after handoff
 #[derive(Debug)]
@@ -91,16 +88,9 @@ pub fn load_handoff_v2(handoff_path: &Path) -> Result<Option<HandoffV2>> {
 
 /// Load a stage from .work/stages/
 fn load_stage(work_dir: &Path, stage_id: &str) -> Result<Stage> {
-    let stages_dir = work_dir.join("stages");
-
-    let stage_path = find_stage_file(&stages_dir, stage_id)?.ok_or_else(|| {
-        anyhow!("Stage file not found for: {stage_id}. Run 'loom stage create' first.")
-    })?;
-
-    let content = fs::read_to_string(&stage_path)
-        .with_context(|| format!("Failed to read stage file: {}", stage_path.display()))?;
-
-    parse_stage_from_markdown(&content)
+    crate::verify::transitions::load_stage(stage_id, work_dir).with_context(|| {
+        format!("Stage file not found for: {stage_id}. Run 'loom stage create' first.")
+    })
 }
 
 /// Resolve worktree path and branch for a stage

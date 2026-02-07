@@ -10,17 +10,16 @@
 
 mod context;
 mod session_io;
-mod yaml_parse;
 
 #[cfg(test)]
 mod tests;
 
+pub use crate::verify::transitions::parse_stage_from_markdown;
 pub use context::{
     load_and_parse_handoff, load_handoff_content, load_handoff_v2, prepare_continuation,
     ContinuationContext,
 };
 pub use session_io::{save_session, session_to_markdown};
-pub use yaml_parse::parse_stage_from_markdown;
 
 use anyhow::{bail, Context, Result};
 use std::path::Path;

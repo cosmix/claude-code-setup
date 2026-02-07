@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
 
-use crate::commands::status::common::levels;
 use crate::daemon::{CompletionSummary, StageCompletionInfo};
+use crate::plan::graph::levels;
 
 use crate::utils::format_elapsed_verbose;
 

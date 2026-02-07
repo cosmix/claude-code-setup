@@ -1,6 +1,7 @@
 //! Execution graph for managing stage dependencies and execution order
 
 mod cycle;
+pub mod levels;
 mod loader;
 mod nodes;
 mod scheduling;

@@ -2,9 +2,10 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
 
+use crate::commands::common::find_work_dir;
+use crate::git::branch::current_branch;
 use crate::handoff::generator::{generate_handoff, HandoffContent};
 use crate::models::session::{Session, SessionStatus};
 use crate::models::stage::Stage;
@@ -58,7 +59,7 @@ pub fn execute(
     }
 
     // Get current branch
-    if let Ok(branch) = get_current_branch() {
+    if let Ok(branch) = current_branch(&std::env::current_dir()?) {
         content = content.with_current_branch(Some(branch));
     }
 
@@ -140,37 +141,6 @@ fn resolve_session_id(session_arg: &Option<String>) -> Result<String> {
         "No session ID provided and LOOM_SESSION_ID environment variable not set. \
          Use --session <ID> or run from a loom session.",
     )
-}
-
-/// Find the .work directory (either as a real directory or symlink)
-fn find_work_dir() -> Result<PathBuf> {
-    let work_path = PathBuf::from(".work");
-
-    if work_path.exists() {
-        Ok(work_path)
-    } else {
-        anyhow::bail!(
-            "No .work directory found. This command must be run from a loom worktree or project root."
-        )
-    }
-}
-
-/// Get the current git branch name
-fn get_current_branch() -> Result<String> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .output()
-        .context("Failed to run git rev-parse")?;
-
-    if output.status.success() {
-        let branch = String::from_utf8(output.stdout)
-            .context("Invalid UTF-8 in git output")?
-            .trim()
-            .to_string();
-        Ok(branch)
-    } else {
-        anyhow::bail!("Failed to get current branch")
-    }
 }
 
 /// Get list of modified files from git status

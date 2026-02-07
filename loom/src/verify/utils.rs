@@ -38,22 +38,6 @@ pub fn extract_matching_lines(output: &str, patterns: &[String]) -> Result<Vec<S
     Ok(matching_lines)
 }
 
-/// Truncate a string to a maximum length, adding ellipsis if needed.
-///
-/// # Arguments
-/// * `s` - The string to truncate
-/// * `max_len` - Maximum length before truncation
-///
-/// # Returns
-/// The original string if within limit, or truncated with "..." appended
-pub fn truncate_string(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -85,20 +69,5 @@ mod tests {
 
         let matches = extract_matching_lines(output, &patterns).unwrap();
         assert_eq!(matches.len(), 1);
-    }
-
-    #[test]
-    fn test_truncate_string_short() {
-        assert_eq!(truncate_string("short", 100), "short");
-    }
-
-    #[test]
-    fn test_truncate_string_exact() {
-        assert_eq!(truncate_string("exactly", 7), "exactly");
-    }
-
-    #[test]
-    fn test_truncate_string_long() {
-        assert_eq!(truncate_string("toolongstring", 7), "toolong...");
     }
 }
