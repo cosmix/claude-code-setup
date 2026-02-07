@@ -81,6 +81,12 @@ pub fn dispatch(command: Commands) -> Result<()> {
                 no_reload,
             } => stage::verify(stage_id, no_reload),
             StageCommands::CheckAcceptance { stage_id } => stage::check_acceptance(stage_id),
+            StageCommands::HumanReview {
+                stage_id,
+                approve,
+                force_complete,
+                reject,
+            } => stage::human_review(stage_id, approve, force_complete, reject),
             StageCommands::DisputeCriteria { stage_id, reason } => {
                 stage::dispute_criteria(stage_id, reason)
             }
