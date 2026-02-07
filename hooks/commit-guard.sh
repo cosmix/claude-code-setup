@@ -7,10 +7,8 @@
 #
 # Exit codes:
 #   0 - Allow Claude to stop (no issues or not in worktree)
-#   2 - Block and return error to Claude (uncommitted changes or stage incomplete)
-#
-# Output format when blocking:
-#   {"continue": false, "reason": "..."}
+#   (Previously used exit 2 to block, now advisory-only due to Claude Code
+#    firing Stop hooks during Task tool/subagent waits, not just session exit)
 
 set -euo pipefail
 
@@ -303,18 +301,25 @@ find_stage_file() {
 	echo ""
 }
 
-# Output blocking JSON and exit
+# Output advisory warning and allow stop
+# Previously this blocked (exit 2), but Claude Code now fires Stop hooks
+# during Task tool/subagent waits, not just on session exit. Blocking at
+# that point kills the session before the agent can commit.
 # Args: $1 = reason string
-block_with_reason() {
+warn_with_reason() {
 	local reason="$1"
-	# Escape special characters in reason for JSON
-	reason="${reason//\\/\\\\}"   # Escape backslashes
-	reason="${reason//\"/\\\"}"   # Escape quotes
-	reason="${reason//$'\n'/\\n}" # Escape newlines
-	reason="${reason//$'\r'/}"    # Remove carriage returns
 
-	printf '{"continue": false, "reason": "%s"}\n' "$reason"
-	exit 2
+	printf '\n' >&2
+	printf '%s\n' "================================================================" >&2
+	printf '%s\n' "  LOOM COMMIT REMINDER (advisory)" >&2
+	printf '%s\n' "================================================================" >&2
+	printf '%s\n' "" >&2
+	# Print reason with newline interpretation
+	printf '%b\n' "$reason" >&2
+	printf '%s\n' "" >&2
+	printf '%s\n' "================================================================" >&2
+
+	exit 0
 }
 
 # Non-blocking reminder about knowledge capture
@@ -626,7 +631,7 @@ main() {
 	message+="\nTo enable verbose logging, set: LOOM_HOOK_DEBUG=1"
 	message+="\n------------------"
 
-	block_with_reason "$message"
+	warn_with_reason "$message"
 }
 
 # Run main

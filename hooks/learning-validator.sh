@@ -16,7 +16,9 @@
 # This hook runs alongside commit-guard.sh (which handles uncommitted changes).
 # It focuses on learning and outcome validation.
 
-set -euo pipefail
+set -uo pipefail
+# Note: intentionally NOT using set -e. Any command failure in this advisory
+# hook must not cause a non-zero exit that kills the session.
 
 # Drain stdin to prevent blocking (Stop hooks receive JSON from Claude Code)
 # Cross-platform: gtimeout (macOS+coreutils), timeout (Linux), or cat
