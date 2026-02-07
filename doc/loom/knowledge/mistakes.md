@@ -813,3 +813,15 @@ Two plan criteria caused false negatives in integration-verify:
   - _Rationale:_ Decouples display names from skill lookup names. Go displays as 'Go' but the skill is 'golang'. Using Display for lookup created a silent bug.
 - **Fixed trailing punctuation in trigger extraction by adding trim_end_matches for ASCII punctuation**
   - _Rationale:_ parse_csv_triggers was including trailing periods from description text like 'TRIGGERS: a, b, c.' producing 'c.' as a trigger
+
+## Promoted from Memory [2026-02-07 17:45]
+
+### Notes
+
+- Removed CodeReview variant from StageType enum and all related code
+- Added STAGES ARE EXPENSIVE warning to CLAUDE.md.template and SKILL.md
+
+### Decisions
+
+- **Merged code-review guidance into integration-verify prefix**
+  - _Rationale:_ Reduces stage count, same quality gate - integration-verify now serves as both review and verification
