@@ -813,3 +813,9 @@ Two plan criteria caused false negatives in integration-verify:
   - _Rationale:_ Decouples display names from skill lookup names. Go displays as 'Go' but the skill is 'golang'. Using Display for lookup created a silent bug.
 - **Fixed trailing punctuation in trigger extraction by adding trim_end_matches for ASCII punctuation**
   - _Rationale:_ parse_csv_triggers was including trailing periods from description text like 'TRIGGERS: a, b, c.' producing 'c.' as a trigger
+
+## Promoted from Memory [2026-02-07 17:36]
+
+### Notes
+
+- knowledge bootstrap: coverage 100% (18/18 modules). architecture.md has StageType info (4 variants), patterns.md has signal generation pattern (4-section Manus layout), mistakes.md has 88 sections. GC advisory: architecture.md at 207 lines (max 200). No updates needed.
