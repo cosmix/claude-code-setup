@@ -98,16 +98,35 @@ impl SkillIndex {
         self.descriptions
             .insert(metadata.name.clone(), metadata.description.clone());
 
-        // Build trigger map
-        for trigger in &metadata.triggers {
+        // Collect triggers from all three sources with priority:
+        // 1. YAML triggers array (highest priority)
+        // 2. trigger-keywords CSV field
+        // 3. Description-embedded "Trigger keywords:" or "TRIGGERS:" (fallback)
+        let triggers: Vec<String> = if !metadata.triggers.is_empty() {
+            metadata.triggers.clone()
+        } else if let Some(ref csv) = metadata.trigger_keywords {
+            parse_csv_triggers(csv)
+        } else {
+            extract_description_triggers(&metadata.description)
+        };
+
+        // Build trigger map from collected triggers
+        for trigger in &triggers {
             let normalized = normalize_text(trigger);
-            self.trigger_map
-                .entry(normalized)
-                .or_default()
-                .push(metadata.name.clone());
+            if !normalized.is_empty() {
+                self.trigger_map
+                    .entry(normalized)
+                    .or_default()
+                    .push(metadata.name.clone());
+            }
         }
 
         self.skills.push(metadata);
+    }
+
+    /// Get a skill by exact name lookup
+    pub fn get_by_name(&self, name: &str) -> Option<&SkillMetadata> {
+        self.skills.iter().find(|s| s.name == name)
     }
 
     /// Match skills against input text
@@ -135,6 +154,44 @@ impl SkillIndex {
     pub fn is_empty(&self) -> bool {
         self.skills.is_empty()
     }
+}
+
+/// Parse a CSV string of trigger keywords into individual triggers
+fn parse_csv_triggers(csv: &str) -> Vec<String> {
+    csv.split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// Extract triggers from description text by looking for known patterns:
+/// - "TRIGGERS:" followed by comma-separated list
+/// - "Trigger keywords:" followed by comma-separated list
+fn extract_description_triggers(description: &str) -> Vec<String> {
+    // Try "TRIGGERS:" first (case-insensitive search for the marker)
+    for line in description.lines() {
+        let trimmed = line.trim();
+
+        // Check for "TRIGGERS:" pattern
+        if let Some(pos) = trimmed.to_uppercase().find("TRIGGERS:") {
+            let after = &trimmed[pos + "TRIGGERS:".len()..];
+            let triggers = parse_csv_triggers(after);
+            if !triggers.is_empty() {
+                return triggers;
+            }
+        }
+
+        // Check for "Trigger keywords:" pattern
+        if let Some(pos) = trimmed.to_lowercase().find("trigger keywords:") {
+            let after = &trimmed[pos + "trigger keywords:".len()..];
+            let triggers = parse_csv_triggers(after);
+            if !triggers.is_empty() {
+                return triggers;
+            }
+        }
+    }
+
+    Vec::new()
 }
 
 #[cfg(test)]
@@ -272,6 +329,234 @@ triggers:
     fn test_empty_index_match() {
         let index = SkillIndex::new();
         let matches = index.match_skills("any text", 5);
+        assert!(matches.is_empty());
+    }
+
+    // --- CSV trigger_keywords parsing tests ---
+
+    #[test]
+    fn test_parse_csv_triggers_basic() {
+        let result = parse_csv_triggers("login, password, token");
+        assert_eq!(result, vec!["login", "password", "token"]);
+    }
+
+    #[test]
+    fn test_parse_csv_triggers_whitespace() {
+        let result = parse_csv_triggers("  login , password ,  token  ");
+        assert_eq!(result, vec!["login", "password", "token"]);
+    }
+
+    #[test]
+    fn test_parse_csv_triggers_empty_entries() {
+        let result = parse_csv_triggers("login,,password,  ,token");
+        assert_eq!(result, vec!["login", "password", "token"]);
+    }
+
+    #[test]
+    fn test_parse_csv_triggers_empty_string() {
+        let result = parse_csv_triggers("");
+        assert!(result.is_empty());
+    }
+
+    // --- Description-embedded trigger extraction tests ---
+
+    #[test]
+    fn test_extract_description_triggers_uppercase() {
+        let desc = "Authentication patterns.\n\nTRIGGERS: login, logout, password";
+        let result = extract_description_triggers(desc);
+        assert_eq!(result, vec!["login", "logout", "password"]);
+    }
+
+    #[test]
+    fn test_extract_description_triggers_keyword_format() {
+        let desc = "Debugging tool. Trigger keywords: debug, bug, error, crash";
+        let result = extract_description_triggers(desc);
+        assert_eq!(result, vec!["debug", "bug", "error", "crash"]);
+    }
+
+    #[test]
+    fn test_extract_description_triggers_none() {
+        let desc = "A simple skill with no trigger information";
+        let result = extract_description_triggers(desc);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_extract_description_triggers_multiline() {
+        let desc = "Some description.\n\nUSE WHEN: things.\n\nTRIGGERS: a, b, c.";
+        let result = extract_description_triggers(desc);
+        // Trailing period gets included as part of last trigger "c."
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], "a");
+        assert_eq!(result[1], "b");
+    }
+
+    // --- trigger-keywords YAML field tests ---
+
+    fn create_test_skill_with_trigger_keywords(
+        dir: &Path,
+        name: &str,
+        description: &str,
+        trigger_keywords: &str,
+    ) {
+        let skill_dir = dir.join(name);
+        fs::create_dir_all(&skill_dir).unwrap();
+
+        let skill_file = skill_dir.join("SKILL.md");
+        let mut file = fs::File::create(&skill_file).unwrap();
+
+        writeln!(file, "---").unwrap();
+        writeln!(file, "name: {name}").unwrap();
+        writeln!(file, "description: {description}").unwrap();
+        writeln!(file, "trigger-keywords: {trigger_keywords}").unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "# {name}").unwrap();
+    }
+
+    fn create_test_skill_description_triggers(dir: &Path, name: &str, description: &str) {
+        let skill_dir = dir.join(name);
+        fs::create_dir_all(&skill_dir).unwrap();
+
+        let skill_file = skill_dir.join("SKILL.md");
+        let mut file = fs::File::create(&skill_file).unwrap();
+
+        // Use YAML quoted string to avoid colon parsing issues
+        writeln!(file, "---").unwrap();
+        writeln!(file, "name: {name}").unwrap();
+        writeln!(
+            file,
+            "description: \"{}\"",
+            description.replace('"', "\\\"")
+        )
+        .unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "# {name}").unwrap();
+    }
+
+    #[test]
+    fn test_load_trigger_keywords_csv() {
+        let temp_dir = TempDir::new().unwrap();
+        let skills_dir = temp_dir.path();
+
+        create_test_skill_with_trigger_keywords(
+            skills_dir,
+            "ci-cd",
+            "CI/CD pipeline management",
+            "pipeline, deploy, build, GitHub Actions",
+        );
+
+        let index = SkillIndex::load_from_directory(skills_dir).unwrap();
+        assert_eq!(index.skill_count(), 1);
+
+        // Two word matches should exceed threshold
+        let matches = index.match_skills("deploy a new build pipeline", 5);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].name, "ci-cd");
+        assert!(matches[0].score >= 2.0);
+    }
+
+    #[test]
+    fn test_load_description_embedded_triggers() {
+        let temp_dir = TempDir::new().unwrap();
+        let skills_dir = temp_dir.path();
+
+        create_test_skill_description_triggers(
+            skills_dir,
+            "debugging",
+            "Systematic debugging. Trigger keywords: debug, bug, error, crash, investigate",
+        );
+
+        let index = SkillIndex::load_from_directory(skills_dir).unwrap();
+        assert_eq!(index.skill_count(), 1);
+
+        let matches = index.match_skills("debug the crash in login", 5);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].name, "debugging");
+        assert!(matches[0].score >= 2.0);
+    }
+
+    #[test]
+    fn test_yaml_triggers_take_priority_over_csv() {
+        let temp_dir = TempDir::new().unwrap();
+        let skills_dir = temp_dir.path();
+
+        // Skill with both triggers array AND trigger-keywords — triggers should win
+        let skill_dir = skills_dir.join("auth");
+        fs::create_dir_all(&skill_dir).unwrap();
+        let skill_file = skill_dir.join("SKILL.md");
+        let mut file = fs::File::create(&skill_file).unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "name: auth").unwrap();
+        writeln!(file, "description: Auth patterns").unwrap();
+        writeln!(file, "triggers:").unwrap();
+        writeln!(file, "  - login").unwrap();
+        writeln!(file, "  - password").unwrap();
+        writeln!(file, "trigger-keywords: deploy, build").unwrap();
+        writeln!(file, "---").unwrap();
+
+        let index = SkillIndex::load_from_directory(skills_dir).unwrap();
+
+        // "login password" should match (from triggers array)
+        let matches = index.match_skills("login with password", 5);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].name, "auth");
+
+        // "deploy build" should NOT match (trigger-keywords ignored when triggers exists)
+        let matches = index.match_skills("deploy a build", 5);
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_get_by_name() {
+        let temp_dir = TempDir::new().unwrap();
+        let skills_dir = temp_dir.path();
+
+        create_test_skill(skills_dir, "auth", "Authentication patterns", &["login"]);
+        create_test_skill(skills_dir, "testing", "Testing patterns", &["test"]);
+
+        let index = SkillIndex::load_from_directory(skills_dir).unwrap();
+
+        let auth = index.get_by_name("auth");
+        assert!(auth.is_some());
+        assert_eq!(auth.unwrap().name, "auth");
+        assert_eq!(auth.unwrap().description, "Authentication patterns");
+
+        let testing = index.get_by_name("testing");
+        assert!(testing.is_some());
+
+        let nonexistent = index.get_by_name("nonexistent");
+        assert!(nonexistent.is_none());
+    }
+
+    #[test]
+    fn test_csv_triggers_take_priority_over_description() {
+        let temp_dir = TempDir::new().unwrap();
+        let skills_dir = temp_dir.path();
+
+        // Skill with trigger-keywords CSV AND description triggers — CSV should win
+        let skill_dir = skills_dir.join("mixed");
+        fs::create_dir_all(&skill_dir).unwrap();
+        let skill_file = skill_dir.join("SKILL.md");
+        let mut file = fs::File::create(&skill_file).unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "name: mixed").unwrap();
+        writeln!(
+            file,
+            "description: \"A skill. Trigger keywords: alpha, beta\""
+        )
+        .unwrap();
+        writeln!(file, "trigger-keywords: gamma, delta").unwrap();
+        writeln!(file, "---").unwrap();
+
+        let index = SkillIndex::load_from_directory(skills_dir).unwrap();
+
+        // "gamma delta" should match (from trigger-keywords CSV)
+        let matches = index.match_skills("gamma and delta", 5);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].name, "mixed");
+
+        // "alpha beta" should NOT match (description triggers ignored when CSV exists)
+        let matches = index.match_skills("alpha and beta", 5);
         assert!(matches.is_empty());
     }
 }
