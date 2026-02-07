@@ -2,7 +2,9 @@
 //!
 //! Provides functions for closing and focusing terminal windows.
 
+#[cfg(target_os = "macos")]
 use crate::orchestrator::terminal::emulator::{escape_applescript_string, TerminalEmulator};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::process::Command;
 
 /// Close a window by its title using wmctrl or xdotool (Linux).
