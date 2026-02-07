@@ -41,6 +41,15 @@ if ! cargo clippy -- -D warnings 2>&1; then
     exit 1
 fi
 
+# Audit dependencies for known vulnerabilities
+if ! cargo audit 2>&1; then
+    echo ""
+    echo "ERROR: cargo-audit found vulnerabilities."
+    echo "Run 'cargo audit' in the loom/ directory for details."
+    echo ""
+    exit 1
+fi
+
 # Run tests
 # Unset git env vars to prevent interference with test repo creation
 if ! env -u GIT_INDEX_FILE -u GIT_DIR -u GIT_WORK_TREE cargo test 2>&1; then
