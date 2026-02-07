@@ -254,6 +254,16 @@ pub struct StageDefinition {
     /// Dead code detection configuration
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dead_code_check: Option<DeadCodeCheck>,
+    /// Before-stage verification: TruthChecks that verify pre-conditions before implementation.
+    /// The plan author writes checks describing the expected "before" state.
+    /// Example: exit_code: 1 for a test that should fail before the feature exists.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub before_stage: Vec<TruthCheck>,
+    /// After-stage verification: TruthChecks that verify post-conditions after implementation.
+    /// The plan author writes checks describing the expected "after" state.
+    /// Example: exit_code: 0 for a test that should pass after the feature is built.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub after_stage: Vec<TruthCheck>,
     /// Context budget as percentage (1-100). Default is 65%.
     /// When context usage exceeds this, auto-handoff is triggered.
     #[serde(default)]

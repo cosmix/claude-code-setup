@@ -22,6 +22,8 @@ fn make_stage(id: &str, deps: Vec<&str>, group: Option<&str>) -> StageDefinition
         truth_checks: vec![],
         wiring_tests: vec![],
         dead_code_check: None,
+        before_stage: vec![],
+        after_stage: vec![],
         context_budget: None,
         sandbox: StageSandboxConfig::default(),
         execution_mode: None,

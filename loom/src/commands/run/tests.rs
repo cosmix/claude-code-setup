@@ -55,6 +55,8 @@ fn setup_work_dir_with_plan(temp_dir: &TempDir) -> (PathBuf, WorkDir) {
         truth_checks: vec![],
         wiring_tests: vec![],
         dead_code_check: None,
+        before_stage: vec![],
+        after_stage: vec![],
         context_budget: None,
         sandbox: StageSandboxConfig::default(),
         execution_mode: None,

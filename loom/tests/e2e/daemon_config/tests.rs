@@ -77,6 +77,8 @@ fn test_auto_merge_config_cascade() {
         truth_checks: vec![],
         wiring_tests: vec![],
         dead_code_check: None,
+        before_stage: vec![],
+        after_stage: vec![],
         context_budget: None,
         execution_mode: None,
     };
@@ -102,6 +104,8 @@ fn test_auto_merge_config_cascade() {
         wiring: vec![],
         truth_checks: vec![],
         wiring_tests: vec![],
+        before_stage: vec![],
+        after_stage: vec![],
         dead_code_check: None,
         context_budget: None,
         execution_mode: None,

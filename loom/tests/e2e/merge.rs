@@ -55,6 +55,8 @@ fn create_test_stage(id: &str, auto_merge: Option<bool>) -> Stage {
         truth_checks: Vec::new(),
         wiring_tests: Vec::new(),
         dead_code_check: None,
+        before_stage: Vec::new(),
+        after_stage: Vec::new(),
         execution_mode: None,
         max_fix_attempts: None,
         review_reason: None,

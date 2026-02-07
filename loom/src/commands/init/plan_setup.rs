@@ -244,6 +244,8 @@ pub(crate) fn create_stage_from_definition(stage_def: &StageDefinition, plan_id:
         truth_checks: stage_def.truth_checks.clone(),
         wiring_tests: stage_def.wiring_tests.clone(),
         dead_code_check: stage_def.dead_code_check.clone(),
+        before_stage: stage_def.before_stage.clone(),
+        after_stage: stage_def.after_stage.clone(),
         fix_attempts: 0,
         sandbox: stage_def.sandbox.clone(),
         execution_mode: stage_def.execution_mode,

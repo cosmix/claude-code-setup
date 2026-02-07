@@ -278,12 +278,15 @@ fn run_verification_phase(
     work_dir: &Path,
 ) -> Result<()> {
     if !no_verify {
+        // Load stage definition once for verification checks
+        let stage_def = load_stage_definition_from_plan(stage_id, work_dir)?;
+
         // Run goal-backward verification (truths, artifacts, wiring)
-        if let Some(stage_def) = load_stage_definition_from_plan(stage_id, work_dir)? {
+        if let Some(ref stage_def) = stage_def {
             if stage_def.has_any_goal_checks() {
                 println!("Running goal-backward verification...");
                 let verification_dir = acceptance_dir.as_deref().unwrap_or(Path::new("."));
-                let goal_result = run_goal_backward_verification(&stage_def, verification_dir)?;
+                let goal_result = run_goal_backward_verification(stage_def, verification_dir)?;
 
                 if !goal_result.is_passed() {
                     // Print gaps
@@ -298,6 +301,31 @@ fn run_verification_phase(
                     anyhow::bail!("Goal-backward verification failed for stage '{stage_id}'");
                 }
                 println!("Goal-backward verification passed!");
+            }
+        }
+
+        // Run after-stage verification (post-condition checks)
+        if let Some(ref stage_def) = stage_def {
+            if !stage_def.after_stage.is_empty() {
+                println!("Running after-stage verification...");
+                let verification_dir = acceptance_dir.as_deref().unwrap_or(Path::new("."));
+                let after_gaps = crate::verify::before_after::run_after_stage_checks(
+                    &stage_def.after_stage,
+                    verification_dir,
+                )?;
+
+                if !after_gaps.is_empty() {
+                    for gap in &after_gaps {
+                        eprintln!("  ✗ After-stage: {}", gap.description);
+                        eprintln!("    → {}", gap.suggestion);
+                    }
+
+                    eprintln!();
+                    eprintln!("After-stage verification FAILED for stage '{stage_id}'");
+                    eprintln!("  Fix the issues and run 'loom stage complete {stage_id}' again");
+                    anyhow::bail!("After-stage verification failed for stage '{stage_id}'");
+                }
+                println!("After-stage verification passed!");
             }
         }
 

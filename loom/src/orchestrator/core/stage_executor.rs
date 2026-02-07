@@ -150,6 +150,45 @@ impl StageExecutor for Orchestrator {
             }
         };
 
+        // Run before-stage checks if configured (verify pre-conditions in fresh worktree)
+        if !stage.before_stage.is_empty() {
+            let check_dir = match &stage.working_dir {
+                Some(wd) if wd != "." && !wd.is_empty() => worktree.path.join(wd),
+                _ => worktree.path.clone(),
+            };
+
+            println!("  Running before-stage checks for '{stage_id}'...");
+            match crate::verify::before_after::run_before_stage_checks(
+                &stage.before_stage,
+                &check_dir,
+            ) {
+                Ok(gaps) if !gaps.is_empty() => {
+                    for gap in &gaps {
+                        eprintln!("  ✗ Before-stage: {}", gap.description);
+                        eprintln!("    → {}", gap.suggestion);
+                    }
+                    eprintln!("Before-stage verification failed for '{stage_id}' - pre-conditions not met");
+
+                    if stage.try_mark_blocked().is_ok() {
+                        stage.failure_info = Some(FailureInfo {
+                            failure_type: FailureType::TestFailure,
+                            detected_at: Utc::now(),
+                            evidence: gaps.iter().map(|g| g.description.clone()).collect(),
+                        });
+                        self.save_stage(&stage)?;
+                    }
+                    return Ok(());
+                }
+                Ok(_) => {
+                    println!("  ✓ Before-stage checks passed for '{stage_id}'");
+                }
+                Err(e) => {
+                    eprintln!("Warning: Before-stage checks errored for '{stage_id}': {e}");
+                    // Continue anyway - before-stage is advisory, don't block on errors
+                }
+            }
+        }
+
         // Worktree created successfully - NOW mark as Executing
         // This ensures we only reach Executing state after infrastructure is ready
         stage.try_mark_executing()?;
