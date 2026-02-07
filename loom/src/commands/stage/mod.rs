@@ -9,6 +9,7 @@ mod dispute_criteria;
 mod human_review;
 mod knowledge_complete;
 mod merge_complete;
+mod merge_resolver;
 mod output;
 mod progressive_complete;
 mod recover;

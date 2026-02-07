@@ -76,12 +76,34 @@ pub fn attempt_progressive_merge(
             }
             println!();
             println!("    Stage transitioning to MergeConflict status.");
-            println!(
-                "    Resolve conflicts and run: loom stage merge-complete {}",
-                stage.id
-            );
             stage.try_mark_merge_conflict()?;
             save_stage(stage, work_dir)?;
+
+            // Try to auto-spawn a merge resolver session
+            match super::merge_resolver::spawn_merge_resolver(
+                stage,
+                &conflicting_files,
+                &merge_point,
+                repo_root,
+                work_dir,
+            ) {
+                Ok(id) if id == "daemon-managed" => {
+                    println!(
+                        "    Daemon is running - merge resolution will be handled automatically."
+                    );
+                }
+                Ok(id) => {
+                    println!("    Spawned merge resolver session: {id}");
+                }
+                Err(e) => {
+                    eprintln!("    Failed to spawn merge resolver: {e}");
+                    println!(
+                        "    Resolve conflicts manually and run: loom stage merge-complete {}",
+                        stage.id
+                    );
+                }
+            }
+
             Ok(MergeOutcome::Conflict)
         }
         Err(e) => {

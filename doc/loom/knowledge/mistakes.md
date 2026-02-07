@@ -630,3 +630,14 @@ Two plan criteria caused false negatives in integration-verify:
 ### Notes
 
 - Knowledge bootstrap for merge-conflict-auto-resolver: Coverage already 100% (18/18). Existing knowledge covers progressive merge, 6 signal types, merge failure handling, phantom merge verification. Minor gap: no documented comparison of the 3 merge signal types (merge vs merge_conflict vs base_conflict) or the MergeLock concurrency mechanism.
+
+## Promoted from Memory [2026-02-07 13:58]
+
+### Notes
+
+- merge_resolver.rs: Wiring-only change. spawn_merge_resolver() uses NativeBackend, Session::new_merge, generate_merge_signal, spawn_merge_session, save_session. Returns daemon-managed sentinel when daemon is running.
+
+### Decisions
+
+- **Used crate::daemon::DaemonServer instead of crate::daemon::server::DaemonServer because server module is private**
+  - _Rationale:_ daemon/mod.rs re-exports DaemonServer at crate::daemon level
