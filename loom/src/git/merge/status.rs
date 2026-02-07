@@ -242,6 +242,8 @@ mod tests {
             truth_checks: Vec::new(),
             wiring_tests: Vec::new(),
             dead_code_check: None,
+            before_stage: Vec::new(),
+            after_stage: Vec::new(),
             fix_attempts: 0,
             sandbox: Default::default(),
             execution_mode: None,

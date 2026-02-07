@@ -365,6 +365,64 @@ pub fn validate(metadata: &LoomMetadata) -> Result<(), Vec<ValidationError>> {
             }
         }
 
+        // Validate before_stage truth checks
+        if stage.before_stage.len() > 20 {
+            errors.push(ValidationError {
+                message: format!(
+                    "Too many before_stage checks ({}, max 20)",
+                    stage.before_stage.len()
+                ),
+                stage_id: Some(stage.id.clone()),
+            });
+        }
+        for (idx, check) in stage.before_stage.iter().enumerate() {
+            if check.command.trim().is_empty() {
+                errors.push(ValidationError {
+                    message: format!("before_stage check #{} command cannot be empty", idx + 1),
+                    stage_id: Some(stage.id.clone()),
+                });
+            }
+            if check.command.len() > 500 {
+                errors.push(ValidationError {
+                    message: format!(
+                        "before_stage check #{} command too long ({} chars, max 500)",
+                        idx + 1,
+                        check.command.len()
+                    ),
+                    stage_id: Some(stage.id.clone()),
+                });
+            }
+        }
+
+        // Validate after_stage truth checks
+        if stage.after_stage.len() > 20 {
+            errors.push(ValidationError {
+                message: format!(
+                    "Too many after_stage checks ({}, max 20)",
+                    stage.after_stage.len()
+                ),
+                stage_id: Some(stage.id.clone()),
+            });
+        }
+        for (idx, check) in stage.after_stage.iter().enumerate() {
+            if check.command.trim().is_empty() {
+                errors.push(ValidationError {
+                    message: format!("after_stage check #{} command cannot be empty", idx + 1),
+                    stage_id: Some(stage.id.clone()),
+                });
+            }
+            if check.command.len() > 500 {
+                errors.push(ValidationError {
+                    message: format!(
+                        "after_stage check #{} command too long ({} chars, max 500)",
+                        idx + 1,
+                        check.command.len()
+                    ),
+                    stage_id: Some(stage.id.clone()),
+                });
+            }
+        }
+
         // Require goal-backward checks for Standard and IntegrationVerify stages
         // Knowledge stages are exempt (they have different purposes)
         let requires_goal_backward = matches!(
@@ -475,6 +533,22 @@ pub fn validate_structural_preflight(
                     warning
                 ));
             }
+        }
+
+        // Cross-validation: before_stage and after_stage should be paired
+        if !stage.before_stage.is_empty() && stage.after_stage.is_empty() {
+            warnings.push(format!(
+                "Stage '{}': has before_stage checks but no after_stage checks. \
+                 Consider adding after_stage checks to verify post-conditions.",
+                stage.id
+            ));
+        }
+        if stage.before_stage.is_empty() && !stage.after_stage.is_empty() {
+            warnings.push(format!(
+                "Stage '{}': has after_stage checks but no before_stage checks. \
+                 Consider adding before_stage checks to verify pre-conditions.",
+                stage.id
+            ));
         }
     }
 

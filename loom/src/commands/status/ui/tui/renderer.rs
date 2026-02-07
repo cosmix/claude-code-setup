@@ -112,6 +112,8 @@ pub fn unified_stage_to_stage(us: &UnifiedStage) -> Stage {
         truth_checks: vec![],
         wiring_tests: vec![],
         dead_code_check: None,
+        before_stage: vec![],
+        after_stage: vec![],
         fix_attempts: 0,
         sandbox: Default::default(),
         execution_mode: None,

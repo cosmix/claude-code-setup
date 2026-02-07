@@ -63,6 +63,8 @@ impl StageFrontmatter {
             truth_checks: self.truth_checks,
             wiring_tests: self.wiring_tests,
             dead_code_check: self.dead_code_check,
+            before_stage: vec![],
+            after_stage: vec![],
             context_budget: None,
             sandbox: crate::plan::schema::StageSandboxConfig::default(),
             execution_mode: self.execution_mode,

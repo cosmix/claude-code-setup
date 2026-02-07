@@ -1,4 +1,5 @@
 pub mod baseline;
+pub mod before_after;
 pub mod context;
 pub mod criteria;
 pub mod gates;
@@ -10,6 +11,7 @@ pub use baseline::{
     baseline_exists, compare_to_baseline, ensure_baseline_captured, load_baseline, save_baseline,
     ChangeImpact, TestBaseline,
 };
+pub use before_after::{run_after_stage_checks, run_before_stage_checks};
 pub use context::CriteriaContext;
 pub use criteria::{
     run_acceptance, run_acceptance_with_config, run_single_criterion,
