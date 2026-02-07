@@ -1,7 +1,7 @@
 //! Query and summarization functions for memory journals.
 
 use super::types::{MemoryEntry, MemoryEntryType, MemoryJournal};
-use crate::commands::common::truncate_for_display;
+use crate::utils::truncate_for_display;
 
 /// Get recent entries from a journal (for recitation in signals)
 pub fn get_recent_entries(journal: &MemoryJournal, max_entries: usize) -> Vec<&MemoryEntry> {

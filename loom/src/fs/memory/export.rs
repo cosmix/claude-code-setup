@@ -3,7 +3,7 @@
 use super::query::get_recent_entries;
 use super::storage::read_journal;
 use super::types::MemoryEntryType;
-use crate::commands::common::truncate_for_display;
+use crate::utils::truncate_for_display;
 use std::path::Path;
 
 /// Format memory entries for embedding in a signal

@@ -5,8 +5,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use super::result::{GapType, VerificationGap};
-use crate::commands::common::truncate;
 use crate::plan::schema::TruthCheck;
+use crate::utils::truncate;
 use crate::verify::criteria::run_single_criterion_with_timeout;
 
 /// Default timeout for truth commands (30 seconds)

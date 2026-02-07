@@ -108,43 +108,9 @@ pub fn detect_stage_id() -> Option<String> {
     Some(stage_id)
 }
 
-/// Truncate a string safely by character count, not byte count.
-///
-/// This ensures we don't break UTF-8 encoding by cutting mid-character.
-/// Adds "..." ellipsis (3 characters) when truncating.
-///
-/// Use this for simple single-line string truncation.
-/// For multi-line strings that need collapsing, use `truncate_for_display()`.
-pub fn truncate(s: &str, max_chars: usize) -> String {
-    if s.chars().count() <= max_chars {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max_chars.saturating_sub(3)).collect();
-        format!("{truncated}...")
-    }
-}
-
-/// Truncate a string for display, using UTF-8 safe character-based truncation.
-///
-/// This converts multi-line strings to single lines and truncates by character
-/// count (not byte count) to avoid breaking UTF-8 encoding.
-/// Uses "…" ellipsis (1 character) when truncating.
-pub fn truncate_for_display(s: &str, max_len: usize) -> String {
-    // First, collapse multi-line strings to single line
-    let single_line: String = s.lines().collect::<Vec<_>>().join(" ");
-
-    // Use character-based truncation to be UTF-8 safe
-    if single_line.chars().count() <= max_len {
-        single_line
-    } else {
-        // Take max_len - 1 characters and add ellipsis
-        let truncated: String = single_line
-            .chars()
-            .take(max_len.saturating_sub(1))
-            .collect();
-        format!("{truncated}…")
-    }
-}
+// Re-export truncate utilities from their canonical location in utils module.
+// These are used across multiple layers (commands, orchestrator, verify, fs).
+pub use crate::utils::{truncate, truncate_for_display};
 
 #[cfg(test)]
 mod tests {
@@ -173,61 +139,5 @@ mod tests {
         assert_eq!(parse_branch("loom/_base"), None);
         assert_eq!(parse_branch("main"), None);
         assert_eq!(parse_branch("feature/test"), None);
-    }
-
-    #[test]
-    fn test_truncate() {
-        assert_eq!(truncate("hello", 10), "hello");
-        assert_eq!(truncate("hello world", 8), "hello...");
-        assert_eq!(truncate("12345", 5), "12345");
-        assert_eq!(truncate("12345", 6), "12345");
-    }
-
-    #[test]
-    fn test_truncate_utf8() {
-        // Test with emoji (multi-byte UTF-8 characters)
-        let emoji_str = "Hello 🦀 world";
-        let result = truncate(emoji_str, 10);
-        assert_eq!(result, "Hello 🦀...");
-        assert!(result.is_char_boundary(result.len()));
-    }
-
-    #[test]
-    fn test_truncate_very_short() {
-        // When max_chars is less than 3, we should still get "..."
-        assert_eq!(truncate("hello", 3), "...");
-        assert_eq!(truncate("hello", 2), "...");
-    }
-
-    #[test]
-    fn test_truncate_for_display() {
-        assert_eq!(truncate_for_display("short", 10), "short");
-        assert_eq!(
-            truncate_for_display("this is a longer string", 10),
-            "this is a…"
-        );
-        assert_eq!(
-            truncate_for_display("line1\nline2\nline3", 20),
-            "line1 line2 line3"
-        );
-    }
-
-    #[test]
-    fn test_truncate_for_display_utf8() {
-        // Test with emoji (multi-byte UTF-8 characters)
-        let emoji_str = "Hello 🦀 world!";
-        let result = truncate_for_display(emoji_str, 10);
-        // Should truncate by character count, not byte count
-        assert_eq!(result, "Hello 🦀 w…");
-
-        // Verify the result is valid UTF-8
-        assert!(result.is_char_boundary(result.len()));
-    }
-
-    #[test]
-    fn test_truncate_for_display_exact_length() {
-        let s = "12345";
-        assert_eq!(truncate_for_display(s, 5), "12345");
-        assert_eq!(truncate_for_display(s, 6), "12345");
     }
 }

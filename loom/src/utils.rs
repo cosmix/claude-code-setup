@@ -1,5 +1,4 @@
 use std::io::{self, Write};
-use std::path::Path;
 use std::sync::Once;
 
 use crate::models::constants::display::{CONTEXT_HEALTHY_PCT, CONTEXT_WARNING_PCT};
@@ -145,18 +144,6 @@ pub fn install_crossterm_panic_hook() {
     });
 }
 
-/// Display a path relative to work_dir, or just filename if outside.
-/// This prevents exposing full system paths to users.
-pub fn display_path(path: &Path, work_dir: &Path) -> String {
-    path.strip_prefix(work_dir)
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| {
-            path.file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "[path]".to_string())
-        })
-}
-
 /// Get the terminal color for a context percentage.
 ///
 /// Returns red if >= WARNING threshold, yellow if >= HEALTHY threshold, green otherwise.
@@ -183,10 +170,47 @@ pub fn context_pct_tui_color(pct: f32) -> ratatui::style::Color {
     }
 }
 
+/// Truncate a string safely by character count, not byte count.
+///
+/// This ensures we don't break UTF-8 encoding by cutting mid-character.
+/// Adds "..." ellipsis (3 characters) when truncating.
+///
+/// Use this for simple single-line string truncation.
+/// For multi-line strings that need collapsing, use `truncate_for_display()`.
+pub fn truncate(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars.saturating_sub(3)).collect();
+        format!("{truncated}...")
+    }
+}
+
+/// Truncate a string for display, using UTF-8 safe character-based truncation.
+///
+/// This converts multi-line strings to single lines and truncates by character
+/// count (not byte count) to avoid breaking UTF-8 encoding.
+/// Uses "…" ellipsis (1 character) when truncating.
+pub fn truncate_for_display(s: &str, max_len: usize) -> String {
+    // First, collapse multi-line strings to single line
+    let single_line: String = s.lines().collect::<Vec<_>>().join(" ");
+
+    // Use character-based truncation to be UTF-8 safe
+    if single_line.chars().count() <= max_len {
+        single_line
+    } else {
+        // Take max_len - 1 characters and add ellipsis
+        let truncated: String = single_line
+            .chars()
+            .take(max_len.saturating_sub(1))
+            .collect();
+        format!("{truncated}…")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn test_format_elapsed_seconds() {
@@ -231,18 +255,52 @@ mod tests {
     }
 
     #[test]
-    fn test_display_path_within_work_dir() {
-        let work_dir = PathBuf::from("/home/user/project");
-        let path = PathBuf::from("/home/user/project/.work/runners/se-001.md");
-        let result = display_path(&path, &work_dir);
-        assert_eq!(result, ".work/runners/se-001.md");
+    fn test_truncate() {
+        assert_eq!(truncate("hello", 10), "hello");
+        assert_eq!(truncate("hello world", 8), "hello...");
+        assert_eq!(truncate("12345", 5), "12345");
+        assert_eq!(truncate("12345", 6), "12345");
     }
 
     #[test]
-    fn test_display_path_outside_work_dir() {
-        let work_dir = PathBuf::from("/home/user/project");
-        let path = PathBuf::from("/etc/passwd");
-        let result = display_path(&path, &work_dir);
-        assert_eq!(result, "passwd");
+    fn test_truncate_utf8() {
+        let emoji_str = "Hello 🦀 world";
+        let result = truncate(emoji_str, 10);
+        assert_eq!(result, "Hello 🦀...");
+        assert!(result.is_char_boundary(result.len()));
+    }
+
+    #[test]
+    fn test_truncate_very_short() {
+        assert_eq!(truncate("hello", 3), "...");
+        assert_eq!(truncate("hello", 2), "...");
+    }
+
+    #[test]
+    fn test_truncate_for_display() {
+        assert_eq!(truncate_for_display("short", 10), "short");
+        assert_eq!(
+            truncate_for_display("this is a longer string", 10),
+            "this is a…"
+        );
+        assert_eq!(
+            truncate_for_display("line1\nline2\nline3", 20),
+            "line1 line2 line3"
+        );
+    }
+
+    #[test]
+    fn test_truncate_for_display_utf8() {
+        let emoji_str = "Hello 🦀 world!";
+        let result = truncate_for_display(emoji_str, 10);
+        assert_eq!(result, "Hello 🦀 w…");
+        assert!(result.is_char_boundary(result.len()));
+    }
+
+    #[test]
+    fn test_truncate_for_display_exact_length() {
+        let s = "12345";
+        assert_eq!(truncate_for_display(s, 5), "12345");
+        assert_eq!(truncate_for_display(s, 6), "12345");
     }
 }
