@@ -3,7 +3,7 @@
 //! Sends desktop notifications for events that need human attention,
 //! using notify-send on Linux and osascript on macOS.
 
-use crate::commands::common::truncate;
+use crate::utils::truncate;
 use std::process::Command;
 
 /// Send a desktop notification.
@@ -43,10 +43,12 @@ fn send_linux_notification(title: &str, body: &str) -> Result<(), String> {
 }
 
 fn send_macos_notification(title: &str, body: &str) -> Result<(), String> {
+    use crate::orchestrator::terminal::emulator::escape_applescript_string;
+
     let script = format!(
         r#"display notification "{}" with title "{}""#,
-        body.replace('"', r#"\""#),
-        title.replace('"', r#"\""#)
+        escape_applescript_string(body),
+        escape_applescript_string(title)
     );
 
     Command::new("osascript")
