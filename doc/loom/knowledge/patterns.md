@@ -179,3 +179,71 @@ Failed stage → loom diagnose <stage-id> → collect DiagnosisContext (crash_re
 ## Signal Generation Update (2026-02-07)
 
 Three stage-type-specific stable prefix generators exist in cache.rs (standard, knowledge, integration-verify). The code-review prefix was removed and its content merged into the integration-verify prefix. Goal-backward verification is required for Standard and IntegrationVerify stages; only Knowledge stages are exempt.
+
+## Verification Lifecycle Integration Points
+
+The verification system has two integration points and one notable gap:
+
+1. **At plan init time** (validation.rs:368-392): `has_any_goal_checks()` enforces Standard/IntegrationVerify stages must define at least one verification check.
+
+2. **At stage completion** (commands/stage/complete.rs:280-302): `run_verification_phase()` calls `run_goal_backward_verification()` after acceptance criteria pass but before merge.
+
+3. **GAP — No before-stage checks**: `start_stage()` in orchestrator/core/stage_executor.rs does NOT run any verification before spawning the session. This is where before_stage checks should integrate.
+
+### run_goal_backward_verification() Call Chain (verify/goal_backward/mod.rs:27-64)
+
+```text
+run_goal_backward_verification(stage_def, working_dir)
+  → verify_truths(truths, working_dir)           # Simple commands, exit 0
+  → verify_truth_checks(truth_checks, working_dir)  # Extended: stdout_contains, exit_code, etc.
+  → verify_artifacts(artifacts, working_dir)       # File existence + stub detection
+  → verify_wiring(wiring, working_dir)             # Regex patterns in source files
+  → verify_wiring_tests(wiring_tests, working_dir) # Command-based integration tests
+  → run_dead_code_check(dead_code_check, working_dir) # Dead code detection
+  → GoalBackwardResult::from_gaps(gaps)
+```
+
+### verify_truth_checks() Signature (verify/goal_backward/truths.rs:57-175)
+
+```rust
+pub fn verify_truth_checks(truth_checks: &[TruthCheck], working_dir: &Path) -> Result<Vec<VerificationGap>>
+```
+
+30s timeout per check. Validates: exit_code (default 0), stdout_contains, stdout_not_contains, stderr_empty. Uses run_single_criterion_with_timeout() from verify/criteria/executor.rs.
+
+### Key Result Types (verify/goal_backward/result.rs)
+
+GoalBackwardResult: Passed | GapsFound { gaps } | HumanNeeded { checks }
+VerificationGap: gap_type (GapType enum), description (String), suggestion (String)
+GapType: TruthFailed, ArtifactMissing, ArtifactStub, ArtifactEmpty, WiringBroken, DeadCodeFound
+
+## Before/After Verification Pattern
+
+before_stage and after_stage fields use TruthCheck definitions:
+
+- before_stage: Runs in stage_executor.rs AFTER worktree creation, BEFORE marking Executing
+- after_stage: Runs in complete.rs run_verification_phase() when agent calls loom stage complete
+- Both delegate to verify_truth_checks() - same logic, different lifecycle timing
+- before_stage errors are advisory (logged but don't block) - design decision for resilience
+- Key functions: run_before_stage_checks(), run_after_stage_checks() in verify/before_after.rs
+
+## Regression Test Requirement Pattern
+
+bug_fix + regression_test fields enforce test-driven bug fixes:
+
+- bug_fix: true requires regression_test with file path and must_contain patterns
+- Validation is bidirectional: bug_fix without regression_test fails, regression_test without bug_fix fails
+- verify_regression_test() in goal_backward/artifacts.rs checks file exists, not empty, patterns present
+- regression_test.file validated against path traversal (..) and absolute paths
+
+## Field Propagation Checklist (Updated)
+
+When adding new fields to StageDefinition:
+
+1. plan/schema/types.rs - StageDefinition struct
+2. models/stage/types.rs - Stage struct + Default impl
+3. commands/init/plan_setup.rs - create_stage_from_definition mapping
+4. plan/schema/tests/mod.rs - make_stage() test helper
+5. ALL test files constructing Stage directly (check tests/ directory too!)
+6. plan/schema/validation.rs - validation rules
+7. fs/stage_loading.rs, plan/graph/tests.rs, models/stage/methods.rs - any file constructing Stage

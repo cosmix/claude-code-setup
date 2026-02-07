@@ -153,10 +153,10 @@ When a pattern appears 3+ times, extract to a canonical location and import. Key
 
 ## Skills File Format
 
-Skills are stored as ~/.claude/skills/*/SKILL.md with YAML frontmatter:
-  name: skill-name
-  description: "What it does"
-  triggers: ["keyword1", "keyword2", "multi word phrase"]
+Skills are stored as ~/.claude/skills/\*/SKILL.md with YAML frontmatter:
+name: skill-name
+description: "What it does"
+triggers: ["keyword1", "keyword2", "multi word phrase"]
 Triggers are case-insensitive. Underscores/hyphens treated as word separators.
 
 ## Signal File Format
@@ -171,3 +171,63 @@ Detectors skip: .git, .work, .worktrees, node_modules, target, .venv, **pycache*
 
 Valid stage_type values: "standard" (default), "knowledge", "integration-verify"
 The "code-review" stage type has been removed. Code review responsibilities are now part of integration-verify.
+
+## SKILL.md Format (Detailed)
+
+### Directory Structure
+
+```text
+skills/<skill-name>/SKILL.md
+```
+
+Each skill has its own subdirectory containing exactly one SKILL.md file.
+
+### YAML Frontmatter Fields
+
+| Field            | Required | Type                          | Description                                   |
+| ---------------- | -------- | ----------------------------- | --------------------------------------------- |
+| name             | YES      | String (kebab-case)           | Skill identifier                              |
+| description      | YES      | String (multi-line with pipe) | Purpose and usage guidance                    |
+| triggers         | NO       | YAML array of strings         | Trigger keywords (HIGHEST PRIORITY)           |
+| trigger-keywords | NO       | CSV string                    | Trigger keywords (SECOND PRIORITY)            |
+| allowed-tools    | NO       | CSV string                    | Tools the skill can use (not used by matcher) |
+
+### Trigger Priority System (skills/index.rs:105-111)
+
+1. triggers array (YAML) — if present, takes priority
+2. trigger-keywords (CSV) — fallback if no triggers array
+3. Description-embedded — searches for "TRIGGERS:" or "Trigger keywords:" in description text
+
+### Matching Scoring (skills/matcher.rs:32-93)
+
+- Phrase match (multi-word trigger): 2 points
+- Word match (single-word trigger): 1 point
+- Threshold: 2.0 minimum
+- Max 5 recommendations per signal
+
+### Frontmatter Example (triggers array style — PREFERRED)
+
+```yaml
+---
+name: skill-name
+description: |
+  What this skill does and when to use it.
+
+  USE WHEN: specific scenarios
+  DO NOT USE: alternative skills for other cases
+triggers:
+  - "keyword one"
+  - "keyword two"
+  - "multi word phrase"
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash
+---
+```
+
+### Markdown Body Sections
+
+Common sections after frontmatter: Overview, When to Use, Key Concepts, Instructions, Best Practices, Examples, Anti-Patterns. Structure varies by skill domain.
+
+### Rust Types (skills/types.rs)
+
+SkillMetadata: name (String), description (String), triggers (Vec<String>, serde default), trigger_keywords (Option<String>, serde alias "trigger-keywords").
+SkillMatch: name (String), description (String), score (f32), matched_triggers (Vec<String>).

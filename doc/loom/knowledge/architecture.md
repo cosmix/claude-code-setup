@@ -239,3 +239,37 @@ Three critical bugs in the handoff chain cause complete handoff failure:
 ### Signal System - No Recovery Text
 
 3 stable prefix generators in cache.rs (standard, knowledge, integration-verify). None contain compaction recovery instructions. Budget warning in format_recitation_section() triggers at 80%+ but only shows promote/complete instructions.
+
+## StageDefinition → Stage Field Propagation (commands/init/plan_setup.rs:190-253)
+
+`create_stage_from_definition(stage_def, plan_id) -> Stage` copies ALL verification fields:
+
+Direct copies: id, name, description, dependencies, parallel_group, acceptance, setup, files, auto_merge, context_budget, truths, artifacts, wiring, truth_checks, wiring_tests, dead_code_check, sandbox, execution_mode.
+
+Special handling: working_dir wrapped in Some(), stage_type via detect_stage_type(), plan_id from parameter.
+
+Stage-only fields (not from StageDefinition): status, worktree, session, held, retry_count, merged, merge_conflict, verification_status, timestamps, etc.
+
+### Adding New Fields Checklist
+
+To add a new field from plan YAML to stage:
+
+1. Add to StageDefinition (plan/schema/types.rs) with serde defaults
+2. Add validation in validation.rs validate()
+3. Add to Stage model (models/stage/types.rs) with serde defaults
+4. Copy in create_stage_from_definition() (commands/init/plan_setup.rs)
+5. If goal-check: update has_any_goal_checks() in BOTH StageDefinition and Stage methods
+6. If verification: add verify function in verify/goal_backward/ and call from run_goal_backward_verification()
+
+### StageDefinition Verification Fields (plan/schema/types.rs:212-267)
+
+- truths: Vec<String> — simple shell commands
+- artifacts: Vec<String> — file glob patterns
+- wiring: Vec<WiringCheck> — source + regex pattern + description
+- truth_checks: Vec<TruthCheck> — enhanced with stdout_contains, exit_code, stderr_empty
+- wiring_tests: Vec<WiringTest> — named command tests with SuccessCriteria
+- dead_code_check: Option<DeadCodeCheck> — command + fail_patterns + ignore_patterns
+
+### TruthCheck Struct (plan/schema/types.rs:292-310)
+
+Fields: command (String), stdout_contains (Vec<String>), stdout_not_contains (Vec<String>), stderr_empty (Option<bool>), exit_code (Option<i32>), description (Option<String>). All optional fields use serde(default, skip_serializing_if).
