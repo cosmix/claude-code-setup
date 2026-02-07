@@ -18,9 +18,9 @@ if ! cargo fmt --check 2>/dev/null; then
     exit 1
 fi
 
-# Check markdown formatting (tracked files only)
+# Check markdown formatting (tracked files only, respects .markdownlintignore)
 cd "$REPO_ROOT" || exit 1
-MD_FILES=$(git ls-files '*.md')
+MD_FILES=$(git ls-files '*.md' | grep -v '^doc/plans/' | grep -v '^loom/tests/fixtures/')
 if [ -n "$MD_FILES" ]; then
     if ! echo "$MD_FILES" | xargs bunx markdownlint-cli2 2>/dev/null; then
         echo ""
