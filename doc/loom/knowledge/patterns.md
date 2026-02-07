@@ -140,3 +140,38 @@ Three redundant cleanup layers ensure terminal state restoration on any exit pat
 3. **Drop + Explicit Cleanup** (`tui/app.rs` TuiApp): `cleanup_terminal()` method sets `cleaned_up` flag to prevent double cleanup in Drop. Called explicitly before normal exit (e.g., printing completion summary). Drop implementation checks the flag and skips if already cleaned.
 
 Key design: all cleanup is best-effort (`let _`), `cleaned_up` bool prevents double cleanup, panic hook uses `Once` for single installation.
+
+## Skill Matching Pattern
+
+Skills are loaded from ~/.claude/skills/*/SKILL.md files with YAML frontmatter containing name, description, triggers list. An inverted index maps normalized trigger keywords to skill names. Matching uses: normalize text (lowercase, separator→space), split words, check against trigger index. Phrase matches score 2 points, word matches 1 point. Threshold of 2.0 filters low-quality matches. Up to 5 recommendations embedded in agent signals.
+
+## Signal Generation Manus Pattern (KV-cache Optimization)
+
+Signals use a 4-section layout optimized for LLM KV-cache efficiency:
+
+1. Stable prefix (~1000 bytes): Worktree rules, execution rules, CLAUDE.md reminders. SHA-256 hashed. Rarely changes.
+2. Semi-stable (~1500-2500 bytes): Knowledge refs, memory/knowledge management, agent teams framework, sandbox restrictions, skill recommendations. Changes per stage type.
+3. Dynamic (variable): Target metadata, plan overview, dependency status table, handoff content, git history, files, tasks. Changes per session.
+4. Recitation (end): Memory entries (last 10, Manus pattern), task state, critical context. Placed last for maximum attention weight.
+
+## Signal Data Flow
+
+Stage Ready (Queued) → Orchestrator.start_ready_stages() → start_stage() → create worktree → Session.new() → build_signal_context() [reads handoffs, plan overview, knowledge dir, memory entries, matches skills, computes sandbox summary] → format_signal_content() [4-section layout] → write_signal_file() → spawn Claude Code in terminal.
+
+## Sandbox Detection Pattern
+
+loom sandbox suggest uses simple file-existence checks at project root:
+
+- Cargo.toml → Rust domains (crates.io, static.crates.io, static.rust-lang.org, doc.rust-lang.org)
+- package.json → Node.js domains (registry.npmjs.org, npmjs.com)
+- requirements.txt | pyproject.toml → Python domains (pypi.org, files.pythonhosted.org)
+- Always: Git domains (github.com, api.github.com, raw.githubusercontent.com)
+Output is copy-paste-ready YAML for plan sandbox block.
+
+## Sandbox Config Merging
+
+Plan-level SandboxConfig merges with stage-level StageSandboxConfig. Stage values override plan values when present. excluded_commands vectors concatenate. Merged config generates Claude Code settings.local.json with sandbox.enabled, autoAllowBashIfSandboxed, network allowlist, and permissions (allow/deny for file tools).
+
+## Diagnosis Pattern
+
+Failed stage → loom diagnose <stage-id> → collect DiagnosisContext (crash_report, log_tail, git_status, git_diff) → generate diagnosis signal → spawn Claude Code session → agent produces .work/diagnoses/{stage-id}.md with structured analysis and recommended action (retry, fix, skip, escalate).

@@ -168,3 +168,40 @@ Stages define context_budget (1-100%, default 65%, max 75%). Monitor tracks Gree
 ## Merge Lock (progressive_merge/lock.rs)
 
 MergeLock prevents concurrent merges via exclusive file at `.work/merge.lock`. Atomic creation, PID + timestamp. Timeout 30s, stale lock auto-cleanup at 5min. Released via Drop.
+
+## Skills Module (loom/src/skills/)
+
+Provides automated skill recommendation for agent signals. Loads skill metadata from SKILL.md files in ~/.claude/skills/, builds inverted index of trigger keywords, and matches stage descriptions against triggers.
+
+Components:
+
+- types.rs: SkillMetadata (name, description, triggers), SkillMatch (name, description, score, matched_triggers)
+- matcher.rs: Keyword matching algorithm. Normalizes text (lowercase, underscore/hyphen → space). Phrase matches = 2 points, word matches = 1 point. Returns top N results above configurable threshold.
+- index.rs: SkillIndex - main API. load_from_directory() reads ~/.claude/skills/*/SKILL.md files, parses YAML frontmatter, builds trigger_map HashMap. match_skills() enforces score threshold of 2.0.
+
+Integration: Exported via lib.rs (pub mod skills). Used by signal generation (generate_signal_with_skills in orchestrator/signals/generate.rs) to embed up to 5 skill recommendations in agent signals.
+
+## Diagnosis Module (loom/src/diagnosis/)
+
+Analyzes failed/blocked stages and generates diagnostic signals for investigation.
+
+Components:
+
+- signal.rs: DiagnosisContext struct (stage, crash_report, log_tail, git_status, git_diff). generate_diagnosis_signal() creates .work/signals/{session-id}.md with failure evidence. load_crash_report() reads crash reports for a stage.
+
+Philosophy: loom collects evidence (crash reports, git state, logs), Claude Code performs analysis. Non-destructive investigation before recovery/reset.
+
+CLI: loom diagnose <stage-id> → commands/diagnose.rs
+
+## Map Module (loom/src/map/)
+
+Automated codebase analysis that populates knowledge files.
+
+Components:
+
+- analyzer.rs: Orchestrates all detectors, returns AnalysisResult (architecture, stack, conventions, concerns)
+- detectors.rs: detect_project_type() (Rust/Node/Go/Python/Ruby), analyze_dependencies() (parses Cargo.toml/package.json), find_entry_points() (main.rs/index.ts/main.py), analyze_structure() (directory tree depth 2-3), detect_conventions() (formatters, linters, tsconfig), find_concerns() (TODO/FIXME counts, .env/.secrets)
+
+Features: --deep (3-level depth + concern scanning), --focus <area> (filter entry points), --overwrite (replace vs append). Skips .git, .work, .worktrees, node_modules, target, .venv, **pycache**.
+
+CLI: loom map [--deep] [--focus <area>] [--overwrite] → commands/map.rs → writes to doc/loom/knowledge/ via KnowledgeDir

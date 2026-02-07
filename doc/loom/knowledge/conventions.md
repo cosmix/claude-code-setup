@@ -150,3 +150,19 @@ When a pattern appears 3+ times, extract to a canonical location and import. Key
 
 - `parse_stage_from_markdown` -> `verify::transitions::serialization`
 - `branch_name_for_stage` -> `git::branch::naming` (never inline `format!("loom/{}", id)`)
+
+## Skills File Format
+
+Skills are stored as ~/.claude/skills/*/SKILL.md with YAML frontmatter:
+  name: skill-name
+  description: "What it does"
+  triggers: ["keyword1", "keyword2", "multi word phrase"]
+Triggers are case-insensitive. Underscores/hyphens treated as word separators.
+
+## Signal File Format
+
+Signal files at .work/signals/{session-id}.md use markdown with structured sections. Knowledge stage signals differ from standard stage signals (no worktree context, no commit requirements). Merge and recovery signals have their own formats. All share the same .work/signals/ directory.
+
+## Map Module Conventions
+
+Detectors skip: .git, .work, .worktrees, node_modules, target, .venv, **pycache**. Directory tree limited to 15 entries. Deep mode = 3-level depth + concern scanning. Normal = 2-level. Focus parameter filters entry points by keyword. Source file extensions searched: .rs, .ts, .js, .py, .go, .java, .rb.

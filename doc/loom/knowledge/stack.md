@@ -40,3 +40,13 @@
 - Unit tests: `#[test]` with tempfile for isolation
 - Integration tests: `loom/tests/integration/` with `serial_test` crate
 - Serial test isolation required for many tests (git operations, daemon)
+
+## Skills Dependencies
+
+- serde + serde_yaml: YAML frontmatter parsing for SKILL.md files
+- crate::parser::frontmatter::extract_yaml_frontmatter: Shared YAML extraction utility
+
+## Map Dependencies
+
+- std::fs, std::path: File system traversal for project detection
+- crate::fs::knowledge::KnowledgeDir: Knowledge file management integration

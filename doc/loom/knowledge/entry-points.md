@@ -153,3 +153,42 @@
 - `.work/sessions/{session-id}.md` - Session tracking
 - `.work/signals/{session-id}.md` - Agent instruction signals
 - `doc/plans/PLAN-*.md` - Plan definition files
+
+## Skills Module Entry Points
+
+- loom/src/skills/mod.rs — Module exports: SkillIndex, SkillMatch, SkillMetadata
+- loom/src/skills/index.rs — SkillIndex::load_from_directory(), match_skills(), parse_skill_file()
+- loom/src/skills/matcher.rs — match_skills() algorithm, normalize_text(), split_into_words()
+- loom/src/skills/types.rs — SkillMetadata, SkillMatch structs
+
+## Diagnosis Module Entry Points
+
+- loom/src/diagnosis/mod.rs — Module re-export
+- loom/src/diagnosis/signal.rs — generate_diagnosis_signal(), load_crash_report(), DiagnosisContext
+- loom/src/commands/diagnose.rs — CLI command implementation (loom diagnose <stage-id>)
+
+## Map Module Entry Points
+
+- loom/src/map/mod.rs — Module re-export
+- loom/src/map/analyzer.rs — analyze_codebase(root, deep, focus) orchestrator
+- loom/src/map/detectors.rs — All detection functions (project type, deps, entry points, structure, conventions, concerns)
+- loom/src/commands/map.rs — CLI command (loom map [--deep] [--focus] [--overwrite])
+
+## Signal Generation Entry Points
+
+- loom/src/orchestrator/signals/generate.rs:44 — generate_signal_with_skills() (standard stages)
+- loom/src/orchestrator/signals/knowledge.rs:23 — generate_knowledge_signal() (knowledge stages)
+- loom/src/orchestrator/signals/format/mod.rs:40 — format_signal_content() (KV-cache optimized formatting)
+- loom/src/orchestrator/signals/format/sections.rs — Section formatters (stable, semi-stable, dynamic, recitation)
+- loom/src/orchestrator/signals/helpers.rs:17 — write_signal_file() (disk I/O)
+- loom/src/orchestrator/signals/types.rs — EmbeddedContext, DependencyStatus, SandboxSummary
+- loom/src/orchestrator/core/stage_executor.rs:192 — Signal generation trigger point
+- loom/src/orchestrator/core/stage_executor.rs:358 — get_dependency_status() (computes from ExecutionGraph)
+
+## Sandbox Suggest Entry Points
+
+- loom/src/commands/sandbox/suggest.rs — detect_project_and_suggest(), YAML output formatting
+- loom/src/commands/sandbox/mod.rs — Sandbox command module
+- loom/src/sandbox/config.rs — merge_config() (plan + stage config merging)
+- loom/src/sandbox/settings.rs — Claude Code settings.local.json generation
+- loom/src/plan/schema/types.rs — SandboxConfig, NetworkConfig, FilesystemConfig schemas
