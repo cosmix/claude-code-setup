@@ -4,10 +4,12 @@
 //! that contains context about what was happening and how to continue.
 
 use anyhow::Result;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::models::stage::Stage;
+
+#[cfg(test)]
+use std::fs;
 
 use super::generate::build_embedded_context_with_stage;
 use super::recovery_format::format_recovery_signal;
@@ -34,31 +36,11 @@ pub fn generate_recovery_signal(
 
 /// Find the latest handoff file for a stage
 pub fn find_latest_handoff_for_stage(work_dir: &Path, stage_id: &str) -> Option<String> {
-    let handoffs_dir = work_dir.join("handoffs");
-    if !handoffs_dir.exists() {
-        return None;
-    }
-
-    let mut handoffs: Vec<_> = fs::read_dir(&handoffs_dir)
-        .ok()?
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            let name = e.file_name();
-            let name_str = name.to_string_lossy();
-            name_str.ends_with(".md") && name_str.contains(stage_id)
-        })
-        .collect();
-
-    // Sort by modification time, newest first
-    handoffs.sort_by_key(|e| std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified().ok())));
-
-    handoffs.first().map(|e| {
-        e.path()
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .to_string()
-    })
+    // Use the canonical version from handoff::generator
+    crate::handoff::generator::find_latest_handoff(stage_id, work_dir)
+        .ok()
+        .flatten()
+        .and_then(|path| path.file_stem().and_then(|s| s.to_str()).map(String::from))
 }
 
 #[cfg(test)]

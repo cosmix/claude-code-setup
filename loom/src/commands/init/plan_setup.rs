@@ -1,9 +1,10 @@
 //! Plan initialization and stage creation for loom init.
 
-use crate::commands::status::common::levels::compute_all_levels;
 use crate::fs::stage_files::stage_file_path;
 use crate::fs::work_dir::WorkDir;
+use crate::git::branch::current_branch;
 use crate::models::stage::{Stage, StageStatus, StageType};
+use crate::plan::graph::levels::compute_all_levels;
 use crate::plan::parser::parse_plan;
 use crate::plan::schema::{
     check_knowledge_recommendations, check_sandbox_recommendations, validate_structural_preflight,
@@ -16,14 +17,6 @@ use colored::Colorize;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
-
-use crate::git::runner::run_git_checked;
-
-/// Get the current git branch name
-fn get_current_branch() -> Result<String> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    run_git_checked(&["rev-parse", "--abbrev-ref", "HEAD"], &cwd)
-}
 
 /// Configuration file structure for type-safe TOML serialization.
 /// Using serde ensures proper escaping of all string fields.
@@ -82,7 +75,8 @@ pub fn initialize_with_plan(work_dir: &WorkDir, plan_path: &Path) -> Result<usiz
         println!("  {} {}", "⚠".yellow().bold(), warning.yellow());
     }
 
-    let base_branch = get_current_branch().context("Failed to get current git branch")?;
+    let base_branch =
+        current_branch(&std::env::current_dir()?).context("Failed to get current git branch")?;
 
     // Build config using serde serialization for proper TOML escaping
     // This prevents injection attacks via malicious plan names/paths

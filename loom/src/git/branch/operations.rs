@@ -80,3 +80,87 @@ pub fn list_loom_branches(repo_root: &Path) -> Result<Vec<String>> {
 
     Ok(branches)
 }
+
+/// Resolve target branch from config value or repo default
+///
+/// Uses the provided config branch if available, otherwise falls back to
+/// the repository's default branch (main/master).
+pub fn resolve_target_branch(config_branch: &Option<String>, repo_root: &Path) -> String {
+    config_branch
+        .clone()
+        .unwrap_or_else(|| default_branch(repo_root).unwrap_or_else(|_| "main".to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn init_test_repo() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_root = temp_dir.path();
+
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        // Create initial commit on main
+        std::fs::write(repo_root.join("README.md"), "# Test").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        // Rename to main if needed
+        Command::new("git")
+            .args(["branch", "-M", "main"])
+            .current_dir(repo_root)
+            .output()
+            .unwrap();
+
+        temp_dir
+    }
+
+    #[test]
+    fn test_resolve_target_branch_with_config() {
+        let temp_dir = init_test_repo();
+        let repo_root = temp_dir.path();
+
+        let config_branch = Some("custom-branch".to_string());
+        let result = resolve_target_branch(&config_branch, repo_root);
+
+        assert_eq!(result, "custom-branch");
+    }
+
+    #[test]
+    fn test_resolve_target_branch_without_config() {
+        let temp_dir = init_test_repo();
+        let repo_root = temp_dir.path();
+
+        let config_branch = None;
+        let result = resolve_target_branch(&config_branch, repo_root);
+
+        assert_eq!(result, "main");
+    }
+}

@@ -7,7 +7,7 @@
 use anyhow::{bail, Result};
 use std::path::Path;
 
-use crate::git::branch::{branch_exists, branch_name_for_stage, default_branch};
+use crate::git::branch::{branch_exists, branch_name_for_stage, resolve_target_branch};
 use crate::models::stage::StageStatus;
 use crate::plan::graph::ExecutionGraph;
 
@@ -71,9 +71,10 @@ pub fn resolve_base_branch(
 
     // No deps → use init_base_branch if provided, otherwise fall back to default
     if dependencies.is_empty() {
-        let base = init_base_branch
-            .map(String::from)
-            .unwrap_or_else(|| default_branch(repo_root).unwrap_or_else(|_| "main".to_string()));
+        let base = crate::git::branch::resolve_target_branch(
+            &init_base_branch.map(String::from),
+            repo_root,
+        );
         tracing::debug!(base, "no deps, using base");
         return Ok(ResolvedBase::Main(base));
     }
@@ -98,9 +99,10 @@ pub fn resolve_base_branch(
 
     // All deps completed and merged - use merge point (init_base_branch or default)
     if unmerged_deps.is_empty() {
-        let base = init_base_branch
-            .map(String::from)
-            .unwrap_or_else(|| default_branch(repo_root).unwrap_or_else(|_| "main".to_string()));
+        let base = crate::git::branch::resolve_target_branch(
+            &init_base_branch.map(String::from),
+            repo_root,
+        );
         tracing::debug!(base, "all deps merged, using base");
         return Ok(ResolvedBase::Main(base));
     }
@@ -117,7 +119,7 @@ pub fn resolve_base_branch(
                 return Ok(ResolvedBase::Branch(dep_branch));
             }
             // Branch doesn't exist but dep is completed - assume merged, use main
-            let main = default_branch(repo_root)?;
+            let main = resolve_target_branch(&None, repo_root);
             return Ok(ResolvedBase::Main(main));
         }
 

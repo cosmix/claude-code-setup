@@ -3,15 +3,15 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+use crate::commands::verify::load_stage_definition_from_plan;
 use crate::fs::permissions::sync_worktree_permissions_with_working_dir;
 use crate::fs::session_files::find_session_for_stage;
 use crate::fs::work_dir::load_config;
 use crate::git::worktree::find_repo_root_from_cwd;
 use crate::models::stage::{StageStatus, StageType};
 use crate::plan::parser::{parse_plan, ParsedPlan};
-use crate::plan::schema::{ChangeImpactConfig, ChangeImpactPolicy, StageDefinition};
+use crate::plan::schema::{ChangeImpactConfig, ChangeImpactPolicy};
 use crate::verify::baseline::compare_to_baseline;
-use crate::verify::goal_backward::run_goal_backward_verification;
 use crate::verify::transitions::{load_stage, save_stage, trigger_dependents};
 
 use super::acceptance_runner::{
@@ -39,20 +39,6 @@ fn load_parsed_plan(work_dir: &Path) -> Result<Option<ParsedPlan>> {
         .with_context(|| format!("Failed to parse plan: {}", source_path.display()))?;
 
     Ok(Some(parsed_plan))
-}
-
-/// Load stage definition from the active plan
-fn load_stage_definition_from_plan(
-    stage_id: &str,
-    work_dir: &Path,
-) -> Result<Option<StageDefinition>> {
-    let parsed_plan = match load_parsed_plan(work_dir)? {
-        Some(plan) => plan,
-        None => return Ok(None),
-    };
-
-    // Find the stage definition by ID
-    Ok(parsed_plan.stages.into_iter().find(|s| s.id == stage_id))
 }
 
 /// Load change impact config from the active plan
@@ -286,7 +272,13 @@ fn run_verification_phase(
             if stage_def.has_any_goal_checks() {
                 println!("Running goal-backward verification...");
                 let verification_dir = acceptance_dir.as_deref().unwrap_or(Path::new("."));
-                let goal_result = run_goal_backward_verification(stage_def, verification_dir)?;
+
+                // Use shared helper for verification
+                let goal_result = crate::commands::verify::run_and_verify_stage_goal(
+                    stage_id,
+                    verification_dir,
+                    work_dir,
+                )?;
 
                 if !goal_result.is_passed() {
                     // Print gaps

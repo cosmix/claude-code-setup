@@ -14,8 +14,8 @@ use ratatui::{
 };
 
 use super::theme::{StatusColors, Theme};
-use crate::commands::status::common::levels;
 use crate::models::stage::{Stage, StageStatus};
+use crate::plan::graph::levels;
 use crate::utils::{context_pct_tui_color, format_elapsed};
 
 /// Available terminal colors for stage differentiation

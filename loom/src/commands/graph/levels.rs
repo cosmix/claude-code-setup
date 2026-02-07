@@ -2,7 +2,7 @@
 //!
 //! Re-exports the canonical compute_all_levels function.
 
-pub use crate::commands::status::common::levels::compute_all_levels;
+pub use crate::plan::graph::levels::compute_all_levels;
 
 use crate::models::stage::Stage;
 use std::collections::HashMap;

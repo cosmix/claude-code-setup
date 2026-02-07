@@ -23,6 +23,6 @@ pub use info::BranchInfo;
 pub use naming::{branch_name_for_stage, stage_id_from_branch};
 pub use operations::{
     branch_exists, create_branch, current_branch, default_branch, delete_branch, list_branches,
-    list_loom_branches,
+    list_loom_branches, resolve_target_branch,
 };
 pub use status::{get_uncommitted_changes_summary, has_uncommitted_changes};

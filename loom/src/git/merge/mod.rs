@@ -1,5 +1,6 @@
 //! Git merge operations for integrating worktree branches
 
+pub mod lock;
 mod status;
 
 use anyhow::{bail, Result};
@@ -8,7 +9,7 @@ use std::time::Duration;
 
 use super::branch::{branch_exists, branch_name_for_stage, current_branch, is_ancestor_of};
 use crate::git::runner::{run_git, run_git_checked};
-use crate::orchestrator::progressive_merge::lock::MergeLock;
+use lock::MergeLock;
 
 // Re-export status types for use by other modules
 pub use status::{build_merge_report, check_merge_state, MergeState, MergeStatusReport};

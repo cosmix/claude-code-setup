@@ -10,9 +10,9 @@ use colored::{Color, Colorize};
 
 use crate::commands::graph::colors::color_by_index;
 use crate::commands::graph::indicators::status_indicator;
-use crate::commands::status::common::levels;
 use crate::commands::status::data::{StageSummary, StatusData};
 use crate::models::stage::StageStatus;
+use crate::plan::graph::levels;
 use crate::utils::{context_pct_terminal_color, format_elapsed};
 
 /// Compute topological level for each stage (level = max(dep_levels) + 1)

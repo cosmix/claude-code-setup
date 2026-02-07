@@ -5,9 +5,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use super::result::{GapType, VerificationGap};
+use crate::commands::common::truncate;
 use crate::plan::schema::TruthCheck;
 use crate::verify::criteria::run_single_criterion_with_timeout;
-use crate::verify::utils::truncate_string;
 
 /// Default timeout for truth commands (30 seconds)
 const TRUTH_TIMEOUT: Duration = Duration::from_secs(30);
@@ -116,7 +116,7 @@ pub fn verify_truth_checks(
                         pattern
                     ),
                 };
-                let output_preview = truncate_string(&result.stdout, 200);
+                let output_preview = truncate(&result.stdout, 200);
                 let suggestion = format!(
                     "Command output: {}. Expected to contain: '{}'",
                     output_preview, pattern
@@ -160,7 +160,7 @@ pub fn verify_truth_checks(
                     Some(desc) => format!("Truth check failed: stderr was not empty - {}", desc),
                     None => "Truth check failed: stderr was not empty".to_string(),
                 };
-                let stderr_preview = truncate_string(&result.stderr, 200);
+                let stderr_preview = truncate(&result.stderr, 200);
                 let suggestion = format!("stderr output: {}", stderr_preview);
                 gaps.push(VerificationGap::new(
                     GapType::TruthFailed,
@@ -355,5 +355,5 @@ mod tests {
         assert!(result[0].description.contains("Truth failed"));
     }
 
-    // Tests for truncate_string moved to verify/utils.rs
+    // Tests for truncate moved to verify/utils.rs
 }

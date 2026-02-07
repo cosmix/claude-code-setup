@@ -6,12 +6,11 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::commands::status::common::levels::compute_all_levels;
-use crate::fs::locking::{locked_read, locked_write};
+use crate::fs::locking::locked_write;
 use crate::fs::stage_files::{find_stage_file, stage_file_path};
 use crate::models::session::Session;
 use crate::models::stage::Stage;
-use crate::parser::frontmatter::parse_from_markdown;
+use crate::plan::graph::levels::compute_all_levels;
 
 use super::Orchestrator;
 
@@ -24,34 +23,28 @@ pub(super) trait Persistence {
 
     /// Load stage definition from .work/stages/
     fn load_stage(&self, stage_id: &str) -> Result<Stage> {
-        let stages_dir = self.persistence_work_dir().join("stages");
+        // Try to load from disk using canonical implementation
+        match crate::verify::transitions::load_stage(stage_id, self.persistence_work_dir()) {
+            Ok(stage) => Ok(stage),
+            Err(_) => {
+                // Stage file doesn't exist - create from graph
+                let node = self
+                    .persistence_graph()
+                    .get_node(stage_id)
+                    .ok_or_else(|| anyhow::anyhow!("Stage not found in graph: {stage_id}"))?;
 
-        // Use find_stage_file to handle both prefixed and non-prefixed formats
-        let stage_path = find_stage_file(&stages_dir, stage_id)?;
+                let mut stage = Stage::new(node.name.clone(), node.description.clone());
+                stage.id = stage_id.to_string();
+                stage.dependencies = node.dependencies.clone();
+                stage.parallel_group = node.parallel_group.clone();
+                stage.acceptance = node.acceptance.clone();
+                stage.setup = node.setup.clone();
+                stage.files = node.files.clone();
+                stage.auto_merge = node.auto_merge;
 
-        if stage_path.is_none() {
-            // Stage file doesn't exist - create from graph
-            let node = self
-                .persistence_graph()
-                .get_node(stage_id)
-                .ok_or_else(|| anyhow::anyhow!("Stage not found in graph: {stage_id}"))?;
-
-            let mut stage = Stage::new(node.name.clone(), node.description.clone());
-            stage.id = stage_id.to_string();
-            stage.dependencies = node.dependencies.clone();
-            stage.parallel_group = node.parallel_group.clone();
-            stage.acceptance = node.acceptance.clone();
-            stage.setup = node.setup.clone();
-            stage.files = node.files.clone();
-            stage.auto_merge = node.auto_merge;
-
-            return Ok(stage);
+                Ok(stage)
+            }
         }
-
-        let stage_path = stage_path.unwrap();
-        let content = locked_read(&stage_path)?;
-
-        parse_from_markdown(&content, "Stage")
     }
 
     /// Save stage state to .work/stages/
@@ -71,17 +64,8 @@ pub(super) trait Persistence {
             stage_file_path(&stages_dir, depth, &stage.id)
         };
 
-        let yaml = serde_yaml::to_string(stage).context("Failed to serialize stage to YAML")?;
-
-        let content = format!(
-            "---\n{}---\n\n# Stage: {}\n\n{}\n",
-            yaml,
-            stage.name,
-            stage
-                .description
-                .as_deref()
-                .unwrap_or("No description provided.")
-        );
+        let content = crate::verify::transitions::serialize_stage_to_markdown(stage)
+            .context("Failed to serialize stage to markdown")?;
 
         locked_write(&stage_path, &content)?;
 
@@ -136,6 +120,7 @@ impl Persistence for Orchestrator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fs::locking::locked_read;
     use std::thread;
 
     #[test]

@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 
-use crate::git::branch::{branch_name_for_stage, default_branch};
+use crate::git::branch::branch_name_for_stage;
 use crate::git::merge::{check_merge_state, MergeState};
 use crate::git::merge::{get_conflicting_files_from_status, verify_merge_succeeded};
 use crate::models::session::Session;
@@ -43,9 +43,10 @@ impl Orchestrator {
         }
 
         // Determine the merge point to check against
-        let merge_point = self.config.base_branch.clone().unwrap_or_else(|| {
-            default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string())
-        });
+        let merge_point = crate::git::branch::resolve_target_branch(
+            &self.config.base_branch,
+            &self.config.repo_root,
+        );
 
         // Check if the merge was actually successful by examining git state
         match check_merge_state(&stage, &merge_point, &self.config.repo_root) {
@@ -241,9 +242,10 @@ impl Orchestrator {
         }
 
         // Get target branch (from config or default branch of the repo)
-        let target_branch = self.config.base_branch.clone().unwrap_or_else(|| {
-            default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string())
-        });
+        let target_branch = crate::git::branch::resolve_target_branch(
+            &self.config.base_branch,
+            &self.config.repo_root,
+        );
 
         clear_status_line();
         eprintln!("Auto-merging stage '{stage_id}'...");
@@ -516,9 +518,10 @@ impl Orchestrator {
         let source_branch = branch_name_for_stage(&stage.id);
 
         // Get target branch
-        let target_branch = self.config.base_branch.clone().unwrap_or_else(|| {
-            default_branch(&self.config.repo_root).unwrap_or_else(|_| "main".to_string())
-        });
+        let target_branch = crate::git::branch::resolve_target_branch(
+            &self.config.base_branch,
+            &self.config.repo_root,
+        );
 
         // Get conflicting files (test merge to see what conflicts)
         let conflicting_files = get_conflicting_files_from_status(
