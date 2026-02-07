@@ -95,7 +95,7 @@ truths:
 
 Rust checks must run where `Cargo.toml` exists. If your project structure is:
 
-```
+```text
 .worktrees/my-stage/
 └── loom/
     └── Cargo.toml
@@ -277,7 +277,7 @@ staticcheck ./...
 
 **Configuration File (`.staticcheck.conf`):**
 
-```
+```text
 checks = ["all", "-ST1000"]
 ```
 
@@ -461,7 +461,7 @@ stages:
     working_dir: "loom"
     acceptance:
       - "cargo test"
-      - "cargo clippy -- -D warnings"  # Includes dead code check
+      - "cargo clippy -- -D warnings" # Includes dead code check
     truths:
       - "! cargo clippy -- -D dead_code 2>&1 | grep -q 'warning:'"
 ```
@@ -501,7 +501,7 @@ stages:
         pattern: "pub mod new_command"
         description: "New command module exported"
     truths:
-      - "loom new-command --help"  # Functional verification
+      - "loom new-command --help" # Functional verification
 ```
 
 This triple-check approach (dead code + wiring + functional) catches integration issues reliably.
@@ -512,7 +512,7 @@ This triple-check approach (dead code + wiring + functional) catches integration
 
 Example project structure:
 
-```
+```text
 .worktrees/my-stage/
 ├── loom/
 │   ├── Cargo.toml       <- Build tools expect this directory
@@ -524,20 +524,20 @@ Example project structure:
 
 ```yaml
 - id: verify
-  working_dir: "loom"      # Where Cargo.toml exists
+  working_dir: "loom" # Where Cargo.toml exists
   acceptance:
     - "cargo clippy -- -D warnings"
   truths:
-    - "test -f src/new_feature.rs"  # Relative to working_dir (loom/)
+    - "test -f src/new_feature.rs" # Relative to working_dir (loom/)
 ```
 
 **Wrong Configuration:**
 
 ```yaml
 - id: verify
-  working_dir: "."         # Wrong - no Cargo.toml here
+  working_dir: "." # Wrong - no Cargo.toml here
   acceptance:
-    - "cargo clippy -- -D warnings"  # FAILS: could not find Cargo.toml
+    - "cargo clippy -- -D warnings" # FAILS: could not find Cargo.toml
 ```
 
 **Path Resolution Rule:** ALL paths in acceptance, truths, artifacts, and wiring are relative to `working_dir`.
@@ -550,7 +550,7 @@ Example project structure:
 
 **Wrong:**
 
-```yaml
+````yaml
 truths:
   - description: |
       Check for dead code like this:
@@ -558,7 +558,7 @@ truths:
       cargo clippy -- -D warnings
       ```
     command: "cargo clippy -- -D warnings"
-```
+````
 
 This breaks YAML parsing.
 
@@ -566,7 +566,7 @@ This breaks YAML parsing.
 
 ```yaml
 truths:
-  - "cargo clippy -- -D warnings"  # Check for dead code
+  - "cargo clippy -- -D warnings" # Check for dead code
 ```
 
 Or with explicit description:
@@ -594,9 +594,9 @@ Tools that exit non-zero on finding issues can be used directly:
 
 ```yaml
 acceptance:
-  - "cargo clippy -- -D warnings"  # Exits non-zero on warnings
-  - "staticcheck ./..."            # Exits non-zero on issues
-  - "bunx ts-prune --error"        # Exits non-zero on unused exports
+  - "cargo clippy -- -D warnings" # Exits non-zero on warnings
+  - "staticcheck ./..." # Exits non-zero on issues
+  - "bunx ts-prune --error" # Exits non-zero on unused exports
 ```
 
 ---
