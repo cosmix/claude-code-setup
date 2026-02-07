@@ -59,6 +59,8 @@ fn test_create_stage_from_definition_no_dependencies() {
         context_budget: None,
         sandbox: StageSandboxConfig::default(),
         execution_mode: None,
+        bug_fix: None,
+        regression_test: None,
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-001");
@@ -94,6 +96,8 @@ fn test_create_stage_from_definition_with_dependencies() {
         context_budget: None,
         sandbox: StageSandboxConfig::default(),
         execution_mode: None,
+        bug_fix: None,
+        regression_test: None,
     };
 
     let stage = create_stage_from_definition(&stage_def, "plan-002");
@@ -157,6 +161,8 @@ fn test_serialize_stage_to_markdown_minimal() {
         execution_mode: None,
         max_fix_attempts: None,
         review_reason: None,
+        bug_fix: None,
+        regression_test: None,
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -219,6 +225,8 @@ fn test_serialize_stage_to_markdown_with_all_fields() {
         execution_mode: None,
         max_fix_attempts: None,
         review_reason: None,
+        bug_fix: None,
+        regression_test: None,
     };
 
     let content = serialize_stage_to_markdown(&stage).unwrap();
@@ -277,6 +285,8 @@ fn test_initialize_with_plan_creates_config() {
         context_budget: None,
         sandbox: StageSandboxConfig::default(),
         execution_mode: None,
+        bug_fix: None,
+        regression_test: None,
     };
 
     let plan_path = create_test_plan(temp_dir.path(), vec![stage_def]);
@@ -323,6 +333,8 @@ fn test_initialize_with_plan_creates_stage_files() {
             context_budget: None,
             sandbox: StageSandboxConfig::default(),
             execution_mode: None,
+            bug_fix: None,
+            regression_test: None,
         },
         StageDefinition {
             id: "stage-2".to_string(),
@@ -345,6 +357,8 @@ fn test_initialize_with_plan_creates_stage_files() {
             context_budget: None,
             sandbox: StageSandboxConfig::default(),
             execution_mode: None,
+            bug_fix: None,
+            regression_test: None,
         },
     ];
 

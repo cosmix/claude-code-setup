@@ -109,6 +109,8 @@ pub fn build_test_graph(stages: Vec<(&str, Vec<&str>)>) -> ExecutionGraph {
             dead_code_check: None,
             context_budget: None,
             execution_mode: None,
+            bug_fix: None,
+            regression_test: None,
         })
         .collect();
 
