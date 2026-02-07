@@ -857,3 +857,12 @@ Two plan criteria caused false negatives in integration-verify:
 
 - **Using parallel subagents for 3 independent work areas: CLI command (Subagent A), hook fixes (Subagent B), signal/template improvements (Subagent C). No file overlap between them.**
   - _Rationale:_ Plan execution requires parallel subagents per EXECUTION PLAN in signal file. Each has exclusive file ownership.
+
+## Promoted from Memory [2026-02-07 18:42]
+
+### Notes
+
+- integration-verify: all acceptance criteria pass - cargo test (1269 unit + 28 e2e + 3 stage transition), clippy clean, build clean, handoff create --help functional
+- integration-verify: handoff command properly wired - Commands enum, dispatch.rs match arm, commands/mod.rs module, clap_id_validator on stage/session args
+- integration-verify: compaction recovery text present in all 3 signal stable prefix generators (standard, knowledge, integration-verify) in cache.rs and in CLAUDE.md.template rule 3b
+- integration-verify: hooks verified - pre-compact.sh has block-then-allow pattern with compaction-pending flag and exit 2, session-end.sh uses glob for stage file lookup, post-tool-use.sh has compaction recovery detection
